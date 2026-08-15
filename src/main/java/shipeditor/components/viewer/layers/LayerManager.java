@@ -167,6 +167,15 @@ public class LayerManager {
         return newLayer;
     }
 
+    public void addLayer(ViewerLayer newLayer) {
+        layers.add(newLayer);
+        if (newLayer instanceof ShipLayer sl) {
+            EventBus.publish(new ShipLayerCreated(sl));
+        } else if (newLayer instanceof WeaponLayer wl) {
+            EventBus.publish(new WeaponLayerCreated(wl));
+        }
+    }
+
     @SuppressWarnings({"OverlyCoupledMethod"})
     private void initLayerListening() {
         // Creation & Removal Events

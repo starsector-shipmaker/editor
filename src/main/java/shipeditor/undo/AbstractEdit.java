@@ -20,6 +20,14 @@ public abstract class AbstractEdit implements Edit, shipeditor.undo.edits.LayerE
     @Setter
     private boolean finished = true;
 
+    @Setter
+    private Object targetEntity = null;
+
+    @Override
+    public Object getTargetEntity() {
+        return targetEntity;
+    }
+
     @Override
     public void add(Edit edit) {
         subEdits.addFirst(edit);

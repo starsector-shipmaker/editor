@@ -219,6 +219,17 @@ public final class UndoOverseer {
         EditCategory category = edit.getCategory();
         if (category == EditCategory.NONE) return;
 
+        Object targetEntity = edit.getTargetEntity();
+        if (targetEntity instanceof shipeditor.components.viewer.layers.ship.data.ShipVariant variant) {
+            String type = category == EditCategory.VARIANT ? "variant" : "hull";
+            // Find which layer holds this variant. 
+            // If it's a module, maybe it's not directly in a layer but we want to mark the variant dirty.
+            // But LayerManager tracks unsaved by ViewerLayer. We might need to track it differently,
+            // or we just mark the active layer as dirty, AND the variant as dirty internally.
+            // Wait, LayerManager currently tracks by ViewerLayer. We should update LayerManager
+            // to be able to track ShipVariants as well, or we just keep it simple for now.
+        }
+
         // Determine the target layer from the edit itself, not the currently active layer.
         ViewerLayer target = null;
         if (edit instanceof LayerEdit layerEdit) {

@@ -41,6 +41,40 @@ final class SaveVariantAction {
     }
 
     static void saveVariant(ShipVariant variant) {
+        // --- Cascading Save Check ---
+        LayerManager manager = StaticController.getViewer().getLayerManager();
+        List<ShipVariant> dirtyModules = new ArrayList<>();
+        if (variant.getFittedModules() != null) {
+            for (InstalledFeature module : variant.getFittedModules().values()) {
+                if (module.getFeaturePainter() instanceof shipeditor.components.viewer.layers.ship.ShipPainter shipPainter) {
+                    ShipVariant modVariant = shipPainter.getActiveVariant();
+                    if (modVariant != null) {
+                        for (ViewerLayer layer : manager.getLayers()) {
+                            if (layer instanceof ShipLayer sl && sl.getActiveVariant() == modVariant) {
+                                if (manager.isVariantDirty(layer)) {
+                                    dirtyModules.add(modVariant);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (!dirtyModules.isEmpty()) {
+            int result = JOptionPane.showConfirmDialog(shipeditor.PrimaryWindow.getInstance(),
+                    "There are " + dirtyModules.size() + " unsaved module variants associated with this ship.\nDo you want to save them as well?",
+                    "Unsaved Modules Detected", JOptionPane.YES_NO_OPTION);
+            if (result == JOptionPane.YES_OPTION) {
+                for (ShipVariant dirtyMod : dirtyModules) {
+                    // For simplicity, just invoke the normal save flow which prompts the user for each.
+                    // A silent save is risky if they wanted to fork them.
+                    saveVariant(dirtyMod);
+                }
+            }
+        }
+        // -----------------------------
+
         JFileChooser fileChooser = SaveVariantAction.getSaveVariantFileChooser();
 
         File currentDirectory = fileChooser.getCurrentDirectory();
@@ -50,9 +84,11 @@ final class SaveVariantAction {
         VariantFile existing = GameDataRepository.getVariantByID(variant.getVariantId());
         if (existing != null) {
             Path specFilePath = existing.getVariantFilePath();
-            File originalPath = specFilePath.toFile();
-            if (originalPath.isFile()) {
-                fileChooser.setSelectedFile(originalPath);
+            if (specFilePath != null) {
+                File originalPath = specFilePath.toFile();
+                if (originalPath.isFile()) {
+                    fileChooser.setSelectedFile(originalPath);
+                }
             }
         }
 

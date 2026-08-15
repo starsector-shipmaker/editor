@@ -33,9 +33,41 @@ public final class WeaponSlotContextMenu {
             infoItem.setEnabled(false);
             menu.add(infoItem);
             
+            JMenuItem editItem = new JMenuItem("Edit Module in New Tab");
+            final InstalledFeature moduleToEdit = installed;
+            editItem.addActionListener(e -> {
+                if (moduleToEdit.getFeaturePainter() instanceof shipeditor.components.viewer.layers.ship.ShipPainter shipPainter) {
+                    shipeditor.components.viewer.layers.ship.data.ShipVariant variant = shipPainter.getActiveVariant();
+                    if (variant != null) {
+                        shipeditor.components.viewer.layers.ship.ShipLayer newLayer = 
+                                shipeditor.components.viewer.layers.LayerFactory.createLayerFromVariant(variant);
+                        shipeditor.utility.overseers.StaticController.getViewer().getLayerManager().addLayer(newLayer);
+                    }
+                }
+            });
+            menu.add(editItem);
+
+            JMenuItem forkItem = new JMenuItem("Fork Module Variant");
+            forkItem.addActionListener(e -> {
+                if (moduleToEdit.getFeaturePainter() instanceof shipeditor.components.viewer.layers.ship.ShipPainter shipPainter) {
+                    shipeditor.components.viewer.layers.ship.data.ShipVariant original = shipPainter.getActiveVariant();
+                    if (original != null) {
+                        shipeditor.components.viewer.layers.ship.data.ShipVariant forked = new shipeditor.components.viewer.layers.ship.data.ShipVariant();
+                        forked.setVariantId(original.getVariantId() + "_custom");
+                        forked.setDisplayName(original.getDisplayName() + " (Custom)");
+                        forked.setShipHullId(original.getShipHullId());
+                        // Just open it in a new tab for them to edit and save.
+                        shipeditor.components.viewer.layers.ship.ShipLayer newLayer = 
+                                shipeditor.components.viewer.layers.LayerFactory.createLayerFromVariant(forked);
+                        shipeditor.utility.overseers.StaticController.getViewer().getLayerManager().addLayer(newLayer);
+                    }
+                }
+            });
+            menu.add(forkItem);
+
             JMenuItem clearItem = new JMenuItem(StringManager.getString("CLEAR_MODULE"));
             InstalledFeature toRemove = installed;
-            clearItem.addActionListener(e -> EditDispatch.postFeatureUninstalled(fittedModules, slotPoint.getId(), toRemove, null));
+            clearItem.addActionListener(e -> shipeditor.undo.EditDispatch.postFeatureUninstalled(fittedModules, slotPoint.getId(), toRemove, null));
             menu.add(clearItem);
         } else {
             JMenuItem emptyItem = new JMenuItem(StringManager.getString("SLOT") + slotPoint.getId() + " (Empty)");

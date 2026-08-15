@@ -28,5 +28,12 @@ public interface Edit {
         return EditCategory.HULL;
     }
 
+    /**
+     * Gets the target variant (ShipVariant or similar) that this edit applies to.
+     * Overridden by edits that operate on specific modules rather than the base layer.
+     */
+    default Object getTargetEntity() {
+        return null;
+    }
 
 }

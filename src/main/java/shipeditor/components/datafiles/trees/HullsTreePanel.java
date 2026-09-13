@@ -128,6 +128,7 @@ public class HullsTreePanel extends DataTreePanel {
     private JTextField getSearchField() {
         JTextField searchField = new JTextField();
         searchField.setToolTipText(StringManager.getString("SEARCH_BY_SHIP_NAME_HULL_ID_OR_FILENAME"));
+        searchField.putClientProperty("JTextField.placeholderText", "Filter hulls...");
         javax.swing.Timer timer = new javax.swing.Timer(300, e -> {
             ShipFilterPanel.setCurrentTextFilter(searchField.getText());
             this.reload();
@@ -395,17 +396,17 @@ public class HullsTreePanel extends DataTreePanel {
             }
             DataTreePanel.configureCellRendererColors(object, this);
             setIcon(null);
-            if (object instanceof shipeditor.persistence.database.IndexedFile file && leaf) {
+            if (object instanceof shipeditor.persistence.database.IndexedFile file) {
                 var gameData = SettingsManager.getGameData();
                 ShipCSVEntry entry = gameData != null ? gameData.getOrCreateShipEntry(file) : null;
-                String title;
+                String title = null;
                 if (entry != null) {
                     title = entry.getShipName();
                     if (title == null || title.isBlank()) {
                         title = entry.toString();
                     }
                     if (title == null || title.isBlank()) {
-                        title = file.getEntityName() != null ? file.getEntityName() : file.getEntityId();
+                        title = file.getEntityName() != null && !file.getEntityName().isBlank() ? file.getEntityName() : file.getEntityId();
                     }
 
                     shipeditor.representation.RepresentationEnums.HullSize hullSize = entry.getSize();
@@ -413,7 +414,10 @@ public class HullsTreePanel extends DataTreePanel {
                         title = "[" + hullSize.getDisplayedName() + "] " + title;
                     }
                 } else {
-                    title = file.getEntityName() != null ? file.getEntityName() : file.getEntityId();
+                    title = file.getEntityName() != null && !file.getEntityName().isBlank() ? file.getEntityName() : file.getEntityId();
+                }
+                if (title == null || title.isBlank()) {
+                    title = file.getFileName();
                 }
                 setText(title);
             }

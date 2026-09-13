@@ -17,7 +17,11 @@ import shipeditor.components.viewer.painters.points.ship.BoundPointsPainter;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.widgets.PointLocationWidget;
 import shipeditor.utility.objects.Pair;
+import shipeditor.utility.themes.Themes;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 import javax.swing.DefaultListModel;
+import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -172,7 +176,8 @@ public class BoundsPanel extends AbstractShipPropertiesPanel {
         JPanel listHeaderPanel = new JPanel(new BorderLayout());
         listHeaderPanel.add(reorderWidget.getFirst(), BorderLayout.WEST);
 
-        javax.swing.JButton autoGenBtn = new javax.swing.JButton("Auto-Generate");
+        JButton autoGenBtn = new JButton("Auto-Generate",
+                FontIcon.of(BoxiconsRegular.SHAPE_POLYGON, 16, Themes.getIconColor()));
         autoGenBtn.setToolTipText(StringManager.getString("AUTOMATICALLY_GENERATE_COLLISION_BOUNDS_BASED_ON_THE_SPRITE_S_OPAQUE_PIXELS"));
         autoGenBtn.addActionListener(e -> autoGenerateBounds());
         registerWidgetListeners(autoGenBtn, 

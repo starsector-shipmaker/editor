@@ -99,6 +99,7 @@ public class HullDataControlPanel extends JPanel {
 
         hullNameEditor = new JTextField();
         hullNameEditor.setToolTipText(StringManager.getString("ENTER_TO_SAVE_CHANGES"));
+        hullNameEditor.putClientProperty("JTextField.placeholderText", "Hull name...");
         hullNameEditor.setColumns(10);
         hullNameEditor.addActionListener(e -> {
             if (readyForInput) {
@@ -121,6 +122,7 @@ public class HullDataControlPanel extends JPanel {
 
         hullIDEditor = new JTextField();
         hullIDEditor.setToolTipText(StringManager.getString("ENTER_TO_SAVE_CHANGES"));
+        hullIDEditor.putClientProperty("JTextField.placeholderText", "Hull ID...");
         hullIDEditor.setColumns(10);
         hullIDEditor.addActionListener(e -> {
             if (readyForInput) {

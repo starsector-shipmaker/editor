@@ -8,6 +8,8 @@ import shipeditor.undo.EditDispatch;
 import shipeditor.utility.overseers.StaticController;
 import shipeditor.utility.components.dialog.DialogUtilities;
 import shipeditor.utility.themes.Themes;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -49,8 +51,10 @@ public abstract class AbstractHullmodsListPane<T> extends JPanel {
         modsList.setBorder(new LineBorder(Themes.getBorderColor()));
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 4, 2));
-        addButton = new JButton(StringManager.getString("ADD"));
-        removeButton = new JButton(StringManager.getString("REMOVE"));
+        addButton = new JButton(StringManager.getString("ADD"),
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
+        removeButton = new JButton(StringManager.getString("REMOVE"),
+                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
         addButton.setEnabled(false);
         removeButton.setEnabled(false);
 

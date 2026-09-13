@@ -210,6 +210,7 @@ public abstract class AbstractSlotValuesPanel extends LayerPropertiesPanel {
         }
 
         JTextField editor = new JTextField();
+        editor.putClientProperty("JTextField.placeholderText", getEntityName() + " ID...");
         editor.setColumns(10);
         editor.addActionListener(e -> {
             if (isWidgetsReadyForInput()) {

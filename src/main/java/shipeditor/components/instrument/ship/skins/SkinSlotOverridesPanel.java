@@ -47,6 +47,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import shipeditor.utility.components.UIConstants;
+import shipeditor.utility.themes.Themes;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 
 /** * Panel for viewing and editing weapon slot overrides defined in skin files.
@@ -169,8 +172,9 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
         addField(panel, "Override Arc:", arcSpinner, labelGbc, fieldGbc, gridRow++);
         addField(panel, "Render Order Mod:", renderOrderSpinner, labelGbc, fieldGbc, gridRow++);
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton applyButton = new JButton(StringManager.getString("APPLY_OVERRIDE"));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 4, 0));
+        JButton applyButton = new JButton(StringManager.getString("APPLY_OVERRIDE"),
+                FontIcon.of(BoxiconsRegular.CHECK_CIRCLE, 16, Themes.getIconColor()));
         applyButton.addActionListener(e -> {
             WeaponSlotOverride.WeaponSlotOverrideBuilder builder = WeaponSlotOverride.builder();
             builder.slotID(row.slotId);
@@ -199,7 +203,8 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
             applyButton.setToolTipText("Select a skin in the chooser above to apply overrides");
         }
 
-        JButton clearButton = new JButton(StringManager.getString("CLEAR_OVERRIDE"));
+        JButton clearButton = new JButton(StringManager.getString("CLEAR_OVERRIDE"),
+                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
         clearButton.setEnabled(isSkinActive && row.hasOverride);
         clearButton.addActionListener(e -> {
             commitOverride(row.slotId, null);

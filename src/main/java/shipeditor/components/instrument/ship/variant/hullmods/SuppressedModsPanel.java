@@ -18,6 +18,8 @@ import javax.swing.border.LineBorder;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.util.List;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 import shipeditor.utility.themes.Themes;
 
 /** * Simple list editor for variant suppressedMods (raw hullmod ID strings).
@@ -27,6 +29,9 @@ class SuppressedModsPanel extends JPanel {
     private DefaultListModel<String> listModel;
     private JList<String> modsList;
     private JTextField addField;
+    private JButton addButton;
+    private JButton pickButton;
+    private JButton removeButton;
 
     SuppressedModsPanel() {
         this.setLayout(new BorderLayout());
@@ -42,17 +47,23 @@ class SuppressedModsPanel extends JPanel {
         JPanel controlPanel = new JPanel(new BorderLayout(4, 0));
         addField = new JTextField();
         addField.setToolTipText(StringManager.getString("ENTER_HULLMOD_ID_TO_SUPPRESS_THEN_PRESS_ADD_OR_ENTER"));
+        addField.putClientProperty("JTextField.placeholderText", "Hullmod ID...");
         addField.addActionListener(e -> addFromField());
+        addField.setEnabled(false);
         controlPanel.add(addField, BorderLayout.CENTER);
 
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
 
-        JButton addButton = new JButton(StringManager.getString("ADD_1"));
+        addButton = new JButton(StringManager.getString("ADD_1"),
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
+        addButton.setEnabled(false);
         addButton.addActionListener(e -> addFromField());
         buttonsPanel.add(addButton);
 
-        JButton pickButton = new JButton(StringManager.getString("PICK"));
+        pickButton = new JButton(StringManager.getString("PICK"),
+                FontIcon.of(BoxiconsRegular.SEARCH, 16, Themes.getIconColor()));
         pickButton.setToolTipText(StringManager.getString("BROWSE_AND_PICK_A_HULLMOD_TO_SUPPRESS"));
+        pickButton.setEnabled(false);
         pickButton.addActionListener(e -> {
             var activeLayer = shipeditor.utility.overseers.StaticController.getActiveLayer();
             if (!(activeLayer instanceof ShipLayer shipLayer)) return;
@@ -71,7 +82,9 @@ class SuppressedModsPanel extends JPanel {
         });
         buttonsPanel.add(pickButton);
 
-        JButton removeButton = new JButton(StringManager.getString("REMOVE"));
+        removeButton = new JButton(StringManager.getString("REMOVE"),
+                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
+        removeButton.setEnabled(false);
         removeButton.addActionListener(e -> {
             String selected = modsList.getSelectedValue();
             if (selected == null) return;
@@ -79,6 +92,10 @@ class SuppressedModsPanel extends JPanel {
             syncBackToVariant();
         });
         buttonsPanel.add(removeButton);
+
+        modsList.addListSelectionListener(e -> {
+            removeButton.setEnabled(modsList.getSelectedValue() != null);
+        });
 
         controlPanel.add(buttonsPanel, BorderLayout.LINE_END);
         this.add(controlPanel, BorderLayout.PAGE_END);
@@ -147,6 +164,11 @@ class SuppressedModsPanel extends JPanel {
         }
         this.listModel = newModel;
         this.modsList.setModel(newModel);
+        boolean enabled = this.modsList.isEnabled();
+        if (addField != null) addField.setEnabled(enabled);
+        if (addButton != null) addButton.setEnabled(enabled);
+        if (pickButton != null) pickButton.setEnabled(enabled);
+        if (removeButton != null) removeButton.setEnabled(false);
     }
 
 }

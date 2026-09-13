@@ -19,6 +19,9 @@ import shipeditor.utility.components.widgets.PointLocationWidget;
 import shipeditor.utility.components.widgets.Spinners;
 import shipeditor.utility.objects.Pair;
 import shipeditor.utility.overseers.StaticController;
+import shipeditor.utility.themes.Themes;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
@@ -116,10 +119,12 @@ public abstract class AbstractCenterPanel extends AbstractShipPropertiesPanel {
 
         JPanel buttonsPanel = new JPanel(new GridLayout(0, 2, 4, 4));
         buttonsPanel.setBorder(new EmptyBorder(4, 0, 4, 0));
-        JButton autoCalcBtn = new JButton("<html><center>Auto-Calculate<br>Radius</center></html>");
+        JButton autoCalcBtn = new JButton("<html><center>Auto-Calculate<br>Radius</center></html>",
+                FontIcon.of(BoxiconsRegular.RADAR, 16, Themes.getIconColor()));
         autoCalcBtn.addActionListener(e -> autoCalculateRadius());
 
-        JButton spriteCenterBtn = new JButton("<html><center>Set to<br>Sprite Center</center></html>");
+        JButton spriteCenterBtn = new JButton("<html><center>Set to<br>Sprite Center</center></html>",
+                FontIcon.of(BoxiconsRegular.TARGET_LOCK, 16, Themes.getIconColor()));
         spriteCenterBtn.addActionListener(e -> setToSpriteCenter());
 
         buttonsPanel.add(autoCalcBtn);

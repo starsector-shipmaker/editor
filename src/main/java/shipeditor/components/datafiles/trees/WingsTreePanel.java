@@ -273,8 +273,15 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
                 return this;
             }
             DataTreePanel.configureCellRendererColors(object, this);
-            if (object instanceof WingCSVEntry checked && leaf) {
-                setText(checked.getEntryName());
+            if (object instanceof WingCSVEntry checked) {
+                String name = checked.getEntryName();
+                if (name == null || name.isBlank()) {
+                    name = checked.getWingID();
+                }
+                if (name == null || name.isBlank()) {
+                    name = checked.toString();
+                }
+                setText(name);
             } else if (object instanceof GameDataPackage dataPackage) {
                 setText(dataPackage.getFolderName());
             }

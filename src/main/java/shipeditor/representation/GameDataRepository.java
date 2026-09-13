@@ -206,6 +206,11 @@ public class GameDataRepository {
             new com.fasterxml.jackson.core.type.TypeReference<>() {};
 
     public <T extends CSVEntry> Map<Path, List<T>> loadCsvEntriesByPackage(Path relativePath, CsvEntryFactory<T> factory) {
+        return loadCsvEntriesByPackage(relativePath, factory, null);
+    }
+
+    public <T extends CSVEntry> Map<Path, List<T>> loadCsvEntriesByPackage(Path relativePath, CsvEntryFactory<T> factory,
+                                                                          java.util.function.Predicate<Map<String, String>> validator) {
         Map<Path, List<T>> result = new LinkedHashMap<>();
         List<Path> searchFolders = new java.util.ArrayList<>();
         Path coreFolder = SettingsManager.getCoreFolderPath();
@@ -232,6 +237,9 @@ public class GameDataRepository {
                 if (rows != null) {
                     List<T> entries = new java.util.ArrayList<>();
                     for (Map<String, String> row : rows) {
+                        if (validator != null && !validator.test(row)) {
+                            continue;
+                        }
                         entries.add(factory.create(row, modFolder, csvPath));
                     }
                     if (!entries.isEmpty()) {
@@ -303,7 +311,9 @@ public class GameDataRepository {
         if (shipEntriesByPackage == null) {
             synchronized(this) {
                 if (shipEntriesByPackage == null) {
-                    shipEntriesByPackage = loadCsvEntriesByPackage(Paths.get("data", "hulls", "ship_data.csv"), (r, f, p) -> new ShipCSVEntry(r, null, f, "ship_data.csv", p));
+                    shipEntriesByPackage = loadCsvEntriesByPackage(Paths.get("data", "hulls", "ship_data.csv"),
+                            (r, f, p) -> new ShipCSVEntry(r, null, f, "ship_data.csv", p),
+                            shipeditor.parsing.loading.CsvLoader.getNormalValidationPredicate());
                 }
             }
         }
@@ -325,7 +335,9 @@ public class GameDataRepository {
         if (weaponEntriesByPackage == null) {
             synchronized(this) {
                 if (weaponEntriesByPackage == null) {
-                    weaponEntriesByPackage = loadCsvEntriesByPackage(Paths.get("data", "weapons", "weapon_data.csv"), (r, f, p) -> new WeaponCSVEntry(r, f, p));
+                    weaponEntriesByPackage = loadCsvEntriesByPackage(Paths.get("data", "weapons", "weapon_data.csv"),
+                            (r, f, p) -> new WeaponCSVEntry(r, f, p),
+                            shipeditor.parsing.loading.CsvLoader.getNormalValidationPredicate());
                 }
             }
         }
@@ -347,7 +359,9 @@ public class GameDataRepository {
         if (hullmodEntriesByPackage == null) {
             synchronized(this) {
                 if (hullmodEntriesByPackage == null) {
-                    hullmodEntriesByPackage = loadCsvEntriesByPackage(Paths.get("data", "hullmods", "hull_mods.csv"), (r, f, p) -> new HullmodCSVEntry(r, f, p));
+                    hullmodEntriesByPackage = loadCsvEntriesByPackage(Paths.get("data", "hullmods", "hull_mods.csv"),
+                            (r, f, p) -> new HullmodCSVEntry(r, f, p),
+                            shipeditor.parsing.loading.CsvLoader.getNormalValidationPredicate());
                 }
             }
         }
@@ -369,7 +383,9 @@ public class GameDataRepository {
         if (shipSystemEntriesByPackage == null) {
             synchronized(this) {
                 if (shipSystemEntriesByPackage == null) {
-                    shipSystemEntriesByPackage = loadCsvEntriesByPackage(Paths.get("data", "shipsystems", "ship_systems.csv"), (r, f, p) -> new ShipSystemCSVEntry(r, f, p));
+                    shipSystemEntriesByPackage = loadCsvEntriesByPackage(Paths.get("data", "shipsystems", "ship_systems.csv"),
+                            (r, f, p) -> new ShipSystemCSVEntry(r, f, p),
+                            shipeditor.parsing.loading.CsvLoader.getNormalValidationPredicate());
                 }
             }
         }
@@ -391,7 +407,9 @@ public class GameDataRepository {
         if (wingEntriesByPackage == null) {
             synchronized(this) {
                 if (wingEntriesByPackage == null) {
-                    wingEntriesByPackage = loadCsvEntriesByPackage(Paths.get("data", "hulls", "wing_data.csv"), (r, f, p) -> new WingCSVEntry(r, f, p));
+                    wingEntriesByPackage = loadCsvEntriesByPackage(Paths.get("data", "hulls", "wing_data.csv"),
+                            (r, f, p) -> new WingCSVEntry(r, f, p),
+                            shipeditor.parsing.loading.CsvLoader.getWingValidationPredicate());
                 }
             }
         }

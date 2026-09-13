@@ -61,7 +61,7 @@ public final class SettingsManager {
     private SettingsManager() {
     }
 
-    static Settings createDefault() {
+    public static Settings createDefault() {
         Settings empty = new Settings();
         empty.setBackgroundColor(null);
         return empty;
@@ -124,6 +124,9 @@ public final class SettingsManager {
     }
 
     public static Path getCoreFolderPath() {
+        if (settings == null || settings.getCoreFolderPath() == null) {
+            return null;
+        }
         return Path.of(settings.getCoreFolderPath());
     }
 
@@ -136,11 +139,11 @@ public final class SettingsManager {
     }
 
     public static boolean isNumericSuffixesForSlotsEnabled() {
-        return settings.numericSuffixesForSlots;
+        return settings != null && settings.numericSuffixesForSlots;
     }
 
     public static boolean isDataAutoloadEnabled() {
-        return settings.loadDataAtStart;
+        return settings != null && settings.loadDataAtStart;
     }
 
     public static File getSettingsPath() {
@@ -210,11 +213,12 @@ public final class SettingsManager {
      */
     public static Path getFolderForModId(String modId) {
         Path corePath = getCoreFolderPath();
-        // "starsector-core" is a fixed alias used during indexing
-        Path coreFileName = corePath.getFileName();
-        if ("starsector-core".equals(modId) || isCoreFolder(corePath)) {
-            if ((coreFileName != null && coreFileName.toString().equals(modId)) || "starsector-core".equals(modId)) {
-                return corePath;
+        if (corePath != null) {
+            Path coreFileName = corePath.getFileName();
+            if ("starsector-core".equals(modId) || isCoreFolder(corePath)) {
+                if ((coreFileName != null && coreFileName.toString().equals(modId)) || "starsector-core".equals(modId)) {
+                    return corePath;
+                }
             }
         }
 
@@ -238,7 +242,7 @@ public final class SettingsManager {
     }
 
     public static <T> void announcePackages(Map<Path, List<T>> packages) {
-        if (packages == null) {
+        if (packages == null || settings == null) {
             return;
         }
         for (Map.Entry<Path, List<T>> entry : packages.entrySet()) {

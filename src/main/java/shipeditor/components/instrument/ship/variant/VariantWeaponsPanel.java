@@ -29,8 +29,11 @@ import java.awt.BorderLayout;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.util.List;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 import shipeditor.communication.events.components.ComponentEvents.WeaponEntryPicked;
+import shipeditor.utility.themes.Themes;
 
 public class VariantWeaponsPanel extends AbstractVariantPanel {
 
@@ -92,8 +95,10 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
         middleRow.add(weaponInfoLabel, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.TRAILING, 4, 0));
-        installButton = new JButton(StringManager.getString("INSTALL"));
-        removeButton = new JButton(StringManager.getString("REMOVE"));
+        installButton = new JButton(StringManager.getString("INSTALL"),
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
+        removeButton = new JButton(StringManager.getString("REMOVE"),
+                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
         installButton.setEnabled(false);
         removeButton.setEnabled(false);
 
@@ -150,6 +155,7 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
                 weaponInfoLabel.setText(StringManager.getString("HTML_B") + installed.getName() + "</b> <span style='color:gray;'>("
                         + installed.getFeatureID() + ", OP: " + installed.getOPCost() + ")</span></html>");
                 installButton.setText(StringManager.getString("CHANGE"));
+                installButton.setIcon(FontIcon.of(BoxiconsRegular.EDIT, 16, Themes.getIconColor()));
                 boolean isBuiltIn = installed.isContainedInBuiltIns();
                 installButton.setEnabled(!isBuiltIn);
                 removeButton.setEnabled(!isBuiltIn);
@@ -163,6 +169,7 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
             } else {
                 weaponInfoLabel.setText(StringManager.getString("HTML_SPAN_STYLE_COLOR_GRAY_EMPTY_SLOT_NO_WEAPON_INSTALLED_SPAN_HTML"));
                 installButton.setText(StringManager.getString("INSTALL"));
+                installButton.setIcon(FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
                 installButton.setEnabled(cachedSelectedSlot.isFittable());
                 removeButton.setEnabled(false);
                 weaponIconLabel.setIcon(null);
@@ -258,7 +265,8 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
             JPanel buttonContainer = new JPanel(new BorderLayout());
             buttonContainer.setBorder(new EmptyBorder(4, 4, 0, 4));
 
-            JButton rearrangeGroups = new JButton(StringManager.getString("REARRANGE_WEAPONS"));
+            JButton rearrangeGroups = new JButton(StringManager.getString("REARRANGE_WEAPONS"),
+                    FontIcon.of(BoxiconsRegular.GRID_ALT, 16, Themes.getIconColor()));
 
             List<InstalledFeature> allFittedWeaponsList = activeVariant.getAllFittedWeaponsList();
             if (allFittedWeaponsList.isEmpty()) {

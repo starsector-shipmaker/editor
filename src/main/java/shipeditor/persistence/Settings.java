@@ -24,7 +24,7 @@ import java.util.List;
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
 public class Settings {
 
-    Settings() {}
+    public Settings() {}
 
     @JsonProperty("backgroundColor")
     @JsonDeserialize(using = ColorArrayRGBADeserializer.class)

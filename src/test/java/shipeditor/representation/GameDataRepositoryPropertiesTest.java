@@ -18,6 +18,7 @@ class GameDataRepositoryPropertiesTest {
 
     @BeforeEach
     void setUp() {
+        shipeditor.persistence.SettingsManager.setSettings(shipeditor.persistence.SettingsManager.createDefault());
         repository = new GameDataRepository();
     }
 

@@ -15,13 +15,18 @@ import shipeditor.undo.EditDispatch;
 import shipeditor.utility.Utility;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.overseers.StaticController;
+import shipeditor.utility.themes.Themes;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 import javax.swing.Box;
 import javax.swing.DefaultListModel;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.util.List;
@@ -37,6 +42,8 @@ public class VariantWingsPanel extends JPanel {
     private DefaultListModel<WingCSVEntry> wingsModel;
 
     private final Function<ShipVariant, List<WingCSVEntry>> wingsGetter;
+
+    private final JButton removeButton;
 
     private JLabel shipOPCap;
 
@@ -78,8 +85,30 @@ public class VariantWingsPanel extends JPanel {
         verticalScrollBar.setUnitIncrement(16);
 
         JPanel infoPanel = createInfoPanel();
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 4, 2));
+        removeButton = new JButton(StringManager.getString("REMOVE"),
+                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
+        removeButton.setEnabled(false);
+        removeButton.addActionListener(e -> {
+            WingCSVEntry selected = wingsList.getSelectedValue();
+            int selectedIndex = wingsList.getSelectedIndex();
+            if (selected == null || selectedIndex < 0) return;
+            StaticController.actOnCurrentVariant((shipLayer, variant) -> {
+                var entryList = wingsGetter.apply(variant);
+                EditDispatch.postWingRemoved(entryList, shipLayer, selected, selectedIndex);
+                refreshListModel(shipLayer);
+                refreshLayerInfo(shipLayer);
+            });
+        });
+        wingsList.addListSelectionListener(e -> {
+            removeButton.setEnabled(wingsList.getSelectedValue() != null);
+        });
+        buttonPanel.add(removeButton);
+
         this.add(infoPanel, BorderLayout.PAGE_START);
         this.add(scroller, BorderLayout.CENTER);
+        this.add(buttonPanel, BorderLayout.PAGE_END);
 
         this.initLayerListeners();
     }
@@ -203,6 +232,9 @@ public class VariantWingsPanel extends JPanel {
             }
         } else {
             this.wingsList.setEnabled(false);
+        }
+        if (removeButton != null) {
+            removeButton.setEnabled(false);
         }
         this.wingsModel = newModel;
         this.wingsList.setModel(newModel);

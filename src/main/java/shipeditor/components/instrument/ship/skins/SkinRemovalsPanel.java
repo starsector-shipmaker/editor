@@ -20,6 +20,9 @@ import shipeditor.undo.UndoOverseer;
 import shipeditor.undo.edits.features.SkinOverrideEdits.SkinListOverrideEdit;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.UIConstants;
+import shipeditor.utility.themes.Themes;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 
 import javax.swing.*;
@@ -209,10 +212,13 @@ public class SkinRemovalsPanel extends JPanel {
         JPanel controlPanel = new JPanel(new BorderLayout(4, 0));
         JTextField inputField = new JTextField();
         inputField.setToolTipText(inputHint);
+        inputField.putClientProperty("JTextField.placeholderText", inputHint);
         inputField.setEnabled(isSkinActive);
-        JButton addButton = new JButton(StringManager.getString("ADD_1"));
+        JButton addButton = new JButton(StringManager.getString("ADD_1"),
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
         addButton.setEnabled(isSkinActive);
-        JButton removeButton = new JButton(StringManager.getString("REMOVE"));
+        JButton removeButton = new JButton(StringManager.getString("REMOVE"),
+                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
         removeButton.setEnabled(isSkinActive && !listModel.isEmpty());
 
         addButton.addActionListener(e -> {

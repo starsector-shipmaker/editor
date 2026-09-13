@@ -135,7 +135,7 @@ public class WingCSVEntry implements OrdnancedCSVEntry {
 
     @Override
     public String getEntryName() {
-        if (this.displayedName != null) {
+        if (this.displayedName != null && !this.displayedName.isBlank()) {
             return this.displayedName;
         }
 
@@ -146,21 +146,53 @@ public class WingCSVEntry implements OrdnancedCSVEntry {
             specFile = this.wingMemberSpec;
         }
 
-        if (specFile != null) {
-            var variant = this.retrieveMemberVariant();
+        String result = null;
+        VariantFile variant = this.retrieveMemberVariant();
+
+        if (variant != null && variant.getShipHullId() != null) {
             ShipCSVEntry entry = GameDataRepository.retrieveShipCSVEntryByID(variant.getShipHullId());
-            String result = entry.getShipName();
+            if (entry != null) {
+                result = entry.getShipName();
+                if (result == null || result.isBlank()) {
+                    result = entry.toString();
+                }
+            }
+            if ((result == null || result.isBlank()) && specFile != null) {
+                result = specFile.getHullName();
+            }
+            if (result == null || result.isBlank()) {
+                result = variant.getShipHullId();
+            }
 
             String drone = "Drone";
             String displayName = variant.getDisplayName();
-            if (!(result.endsWith(drone) && displayName.equals(drone))) {
-                result = result + " " + displayName;
+            if (displayName != null && !displayName.isBlank()) {
+                if (result != null && !result.isBlank() && !(result.endsWith(drone) && displayName.equals(drone))) {
+                    if (!result.endsWith(displayName)) {
+                        result = result + " " + displayName;
+                    }
+                } else if (result == null || result.isBlank()) {
+                    result = displayName;
+                }
             }
-            this.setDisplayedName(result);
-            return result;
         }
 
-        return this.getWingID();
+        if (result == null || result.isBlank()) {
+            if (specFile != null && specFile.getHullName() != null && !specFile.getHullName().isBlank()) {
+                result = specFile.getHullName();
+            }
+        }
+
+        if (result == null || result.isBlank()) {
+            result = this.getWingID();
+        }
+
+        if (result == null || result.isBlank()) {
+            result = StringManager.getString("UNTITLED");
+        }
+
+        this.setDisplayedName(result);
+        return result;
     }
 
     @Override

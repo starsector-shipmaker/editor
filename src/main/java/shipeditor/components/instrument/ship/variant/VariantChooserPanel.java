@@ -10,6 +10,9 @@ import shipeditor.representation.GameDataRepository;
 import shipeditor.representation.ship.VariantFile;
 import shipeditor.utility.Utility;
 import shipeditor.utility.components.ComponentUtilities;
+import shipeditor.utility.themes.Themes;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -44,7 +47,8 @@ public class VariantChooserPanel extends JPanel {
 
         this.add(chooserContainer, constraints);
 
-        createVariantButton = new JButton(StringManager.getString("CREATE"));
+        createVariantButton = new JButton(StringManager.getString("CREATE"),
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
         createVariantButton.addActionListener(e -> {
             if (selectedLayer == null) return;
             ShipVariant created = new ShipVariant(false);
@@ -64,7 +68,8 @@ public class VariantChooserPanel extends JPanel {
         constraints.gridy = 1;
         this.add(createVariantButton, constraints);
 
-        removeVariantButton = new JButton(StringManager.getString("REMOVE"));
+        removeVariantButton = new JButton(StringManager.getString("REMOVE"),
+                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
         String tooltip = Utility.getWithLinebreaks("Remove entry from variants loaded to layer",
                 "Newly created variants will be erased entirely",
                 "Variants from game data files will be reloaded instead");
@@ -96,6 +101,8 @@ public class VariantChooserPanel extends JPanel {
         chooserContainer.removeAll();
         chooserContainer.add(createDisabledChooser());
         createVariantButton.setEnabled(false);
+        removeVariantButton.setText(StringManager.getString("REMOVE"));
+        removeVariantButton.setIcon(FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
         removeVariantButton.setEnabled(false);
         selectedLayer = null;
         variantToRemoveGetter = null;
@@ -107,6 +114,7 @@ public class VariantChooserPanel extends JPanel {
         chooserContainer.removeAll();
         selectedLayer = layer;
         removeVariantButton.setText(StringManager.getString("REMOVE"));
+        removeVariantButton.setIcon(FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
         createVariantButton.setEnabled(true);
 
         ShipVariant variant = recreateVariantChooser(layer);
@@ -117,6 +125,7 @@ public class VariantChooserPanel extends JPanel {
         } else {
             if (variant.isLoadedFromFile()) {
                 removeVariantButton.setText(StringManager.getString("RELOAD"));
+                removeVariantButton.setIcon(FontIcon.of(BoxiconsRegular.REFRESH, 16, Themes.getIconColor()));
             }
             removeVariantButton.setEnabled(true);
         }

@@ -19,6 +19,8 @@ import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.UIConstants;
 import shipeditor.utility.components.UIFactory;
 import shipeditor.utility.themes.Themes;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 
 import javax.swing.*;
@@ -145,8 +147,9 @@ public class SkinEngineOverridesPanel extends AbstractSkinOverridesPanel<SkinEng
         addField(panel, "Override Width:", widthSpinner, labelGbc, fieldGbc, gridRow++);
         addField(panel, "Override Style:", styleBox, labelGbc, fieldGbc, gridRow++);
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton applyButton = UIFactory.createButton("Apply Override");
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 4, 0));
+        JButton applyButton = new JButton("Apply Override",
+                FontIcon.of(BoxiconsRegular.CHECK_CIRCLE, 16, Themes.getIconColor()));
         applyButton.addActionListener(e -> {
             EngineDataOverride.EngineDataOverrideBuilder builder = EngineDataOverride.builder();
             builder.index(row.index);
@@ -169,7 +172,8 @@ public class SkinEngineOverridesPanel extends AbstractSkinOverridesPanel<SkinEng
             applyButton.setToolTipText("Select a skin in the chooser above to apply overrides");
         }
 
-        JButton clearButton = UIFactory.createButton("Clear Override");
+        JButton clearButton = new JButton("Clear Override",
+                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
         clearButton.setEnabled(isSkinActive && row.hasOverride);
         clearButton.addActionListener(e -> {
             commitOverride(row.index, null);

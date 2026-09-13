@@ -164,17 +164,25 @@ public class ShipFilterPanel extends JPanel {
         if (shipEntries == null) return true;
 
         ShipCSVEntry csvEntry = shipEntries.get(entry.getEntityId());
+        if (csvEntry == null) {
+            var gameData = SettingsManager.getGameData();
+            if (gameData != null) {
+                csvEntry = gameData.getOrCreateShipEntry(entry);
+            }
+        }
         if (csvEntry != null) {
             HullSize size = csvEntry.getSize();
             if (size != null && size != HullSize.DEFAULT) {
                 return size == selectedSize;
             }
             Map<String, String> row = csvEntry.getRowData();
-            String sizeStr = row.get("hull size");
-            if (sizeStr != null) {
-                for (HullSize hs : HullSize.values()) {
-                    if (hs.name().equalsIgnoreCase(sizeStr) || hs.getDisplayedName().equalsIgnoreCase(sizeStr)) {
-                        return hs == selectedSize;
+            if (row != null) {
+                String sizeStr = row.get("hull size");
+                if (sizeStr != null) {
+                    for (HullSize hs : HullSize.values()) {
+                        if (hs.name().equalsIgnoreCase(sizeStr) || hs.getDisplayedName().equalsIgnoreCase(sizeStr)) {
+                            return hs == selectedSize;
+                        }
                     }
                 }
             }

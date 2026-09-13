@@ -52,6 +52,7 @@ public class SkinInfoPanel extends LayerPropertiesPanel {
     private Pair<JLabel, JTextField> createHullNameEditor() {
         JTextField hullNameEditor = new JTextField();
         hullNameEditor.setToolTipText(StringManager.getString("ENTER_TO_SAVE_CHANGES"));
+        hullNameEditor.putClientProperty("JTextField.placeholderText", "Skin hull name...");
         hullNameEditor.setColumns(10);
         hullNameEditor.addActionListener(e -> {
             if (isWidgetsReadyForInput()) {

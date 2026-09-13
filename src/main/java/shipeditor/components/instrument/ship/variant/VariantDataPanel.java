@@ -54,6 +54,7 @@ public class VariantDataPanel extends JPanel {
         String editorIDTooltip = Utility.getWithLinebreaks(StringManager.getString("TYPE_AND_PRESS_ENTER_TO_EDIT_ID"),
                 "Original variant will be copied with new ID, old entry reloaded");
         variantIDEditor.setToolTipText(editorIDTooltip);
+        variantIDEditor.putClientProperty("JTextField.placeholderText", "Variant ID...");
 
         variantIDEditor.addActionListener(e -> {
             if (selectedLayer == null || cachedVariant == null) return;
@@ -75,6 +76,7 @@ public class VariantDataPanel extends JPanel {
         variantDisplayNameEditor = new JTextField();
         String editorNameTooltip = Utility.getWithLinebreaks(StringManager.getString("TYPE_AND_PRESS_ENTER_TO_EDIT_ID"));
         variantDisplayNameEditor.setToolTipText(editorNameTooltip);
+        variantDisplayNameEditor.putClientProperty("JTextField.placeholderText", "Display name...");
 
         variantDisplayNameEditor.addActionListener(e -> {
             if (selectedLayer == null || cachedVariant == null) return;

@@ -71,10 +71,12 @@ class ViewMenu extends JMenu {
 
         JMenuItem changeBackground = new JMenuItem(StringManager.getString("CHANGE_BACKGROUND_COLOR"));
         changeBackground.addActionListener(event -> {
-            Color chosen = ColorUtilities.showColorChooser();
             Settings settings = SettingsManager.getSettings();
-            settings.setBackgroundColor(chosen);
-            EventBus.publish(new ViewerBackgroundChanged(chosen));
+            Color chosen = ColorUtilities.showColorChooser(settings.getBackgroundColor());
+            if (chosen != null) {
+                settings.setBackgroundColor(chosen);
+                EventBus.publish(new ViewerBackgroundChanged(chosen));
+            }
         });
         bgSubmenu.add(changeBackground);
 

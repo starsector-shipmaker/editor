@@ -2,7 +2,7 @@
 
 ## 1. Context & Container: `PrimaryViewer`
 
-[PrimaryViewer.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/main/java/shipeditor/components/viewer/PrimaryViewer.java) is the conceptual root of the entire application. It is a `JPanel` (with `BorderLayout`) that hosts an `AWTGLCanvas` from `lwjgl3-awt`, bridging modern OpenGL with the Swing EDT.
+[PrimaryViewer.java](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/main/java/shipeditor/components/viewer/PrimaryViewer.java) is the conceptual root of the entire application. It is a `JPanel` (with `BorderLayout`) that hosts an `AWTGLCanvas` from `lwjgl3-awt`, bridging modern OpenGL with the Swing EDT.
 
 ### Initialization Sequence
 ```java
@@ -31,7 +31,7 @@ Hardcoded to `240×120` pixels. This prevents layout managers from collapsing th
 
 ## 2. Rendering Orchestration: `PaintOrderController`
 
-[PaintOrderController.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/main/java/shipeditor/components/viewer/PaintOrderController.java) implements `OpenGLPainter` and defines the strict drawing order via the painter's algorithm.
+[PaintOrderController.java](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/main/java/shipeditor/components/viewer/PaintOrderController.java) implements `OpenGLPainter` and defines the strict drawing order via the painter's algorithm.
 
 ### Draw Order (Back to Front)
 1. **Checkerboard Background** — Drawn with `ShapeRenderer` using an identity view matrix (screen-space) and a GPU-computed checkerboard pattern via fragment shader uniform `useCheckerboard`.
@@ -57,7 +57,7 @@ The class is annotated `@SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", 
 
 ## 3. Sprite Rendering: `SpriteRenderer`
 
-[SpriteRenderer.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/opengl/SpriteRenderer.java) is the textured quad renderer for ships, weapons, projectiles, and preview ghosts.
+[SpriteRenderer.java](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/opengl/SpriteRenderer.java) is the textured quad renderer for ships, weapons, projectiles, and preview ghosts.
 
 ### Shader (Inline GLSL 330 Core)
 Shaders are defined as inline Java strings (not loaded from resource files).
@@ -118,7 +118,7 @@ Each `drawSprite` call issues its own `glDrawArrays`. There is no instanced rend
 
 ## 4. Shape Rendering: `ShapeRenderer`
 
-[ShapeRenderer.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/opengl/ShapeRenderer.java) handles all untextured geometry: grid lines, bounding boxes, shield circles, weapon arcs, and the background checkerboard.
+[ShapeRenderer.java](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/opengl/ShapeRenderer.java) handles all untextured geometry: grid lines, bounding boxes, shield circles, weapon arcs, and the background checkerboard.
 
 ### Checkerboard via Fragment Shader (Quirk)
 Instead of a texture or CPU-computed pattern, the checkerboard is computed entirely in the GPU fragment shader using `gl_FragCoord`:
@@ -170,7 +170,7 @@ The VBO is initialized with `1024 * Float.BYTES` of `GL_DYNAMIC_DRAW` storage. F
 
 ### AffineTransform ↔ Matrix4f Bridge
 
-[ViewerTransform.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/opengl/ViewerTransform.java) maintains the camera state using Java2D's `AffineTransform` (for compatibility with the legacy point-picking and mouse interaction code), and converts it to a JOML `Matrix4f` for the OpenGL pipeline.
+[ViewerTransform.java](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/opengl/ViewerTransform.java) maintains the camera state using Java2D's `AffineTransform` (for compatibility with the legacy point-picking and mouse interaction code), and converts it to a JOML `Matrix4f` for the OpenGL pipeline.
 
 ### Critical Quirk: `preConcatenate` Not `concatenate`
 All transform operations (`translate`, `zoom`, `rotate`) use `worldToScreen.preConcatenate(tx)` — meaning the new transform is applied in **screen space** before the existing world-to-screen transform. This matches the intuitive behavior where panning moves the view by screen pixels, not world units.
@@ -196,7 +196,7 @@ Java2D's `getMatrix()` returns `[m00, m10, m01, m11, m02, m12]` — note the **i
 ## 6. Texture Management: `Sprite` & `TextureLoader`
 
 ### Lazy Loading Pattern (Quirk)
-[Sprite.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/Sprite.java) uses a lazy-init pattern for `textureId`:
+[Sprite.java](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/Sprite.java) uses a lazy-init pattern for `textureId`:
 ```java
 public int getTextureId() {
     if (textureId == 0 && image != null) {
@@ -210,7 +210,7 @@ The texture is uploaded to the GPU on **first access**, not on construction. Thi
 **Warning**: `getTextureId()` is **not thread-safe**. If called from a non-GL thread, the `glGenTextures` call will segfault. All texture access must happen within `paintGL()` or via the `glRunnables` queue.
 
 ### Pixel Unpacking (Quirk)
-[TextureLoader.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/opengl/TextureLoader.java) manually extracts ARGB pixels from `BufferedImage` and repacks them as RGBA:
+[TextureLoader.java](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/opengl/TextureLoader.java) manually extracts ARGB pixels from `BufferedImage` and repacks them as RGBA:
 ```java
 buffer.put((byte) ((pixel >> 16) & 0xFF));  // R
 buffer.put((byte) ((pixel >> 8)  & 0xFF));  // G
@@ -230,7 +230,7 @@ No mipmaps are generated. This is acceptable because sprites are typically viewe
 
 ## 7. Shader Program Management
 
-[ShaderProgram.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/opengl/ShaderProgram.java) wraps OpenGL shader lifecycle.
+[ShaderProgram.java](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/opengl/ShaderProgram.java) wraps OpenGL shader lifecycle.
 
 ### Quirks
 - **Shader detach after link**: After `glLinkProgram`, shaders are immediately detached (`glDetachShader`). This is correct practice — the compiled shader objects are no longer needed after linking.
@@ -242,7 +242,7 @@ No mipmaps are generated. This is acceptable because sprites are typically viewe
 
 ## 8. `DrawUtilities` — Legacy/GL Hybrid
 
-[DrawUtilities.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/DrawUtilities.java) contains both legacy `Graphics2D` methods (for text rendering, outlined shapes) and the modern GL method `paintInstallableGhostGL()`.
+[DrawUtilities.java](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/main/java/shipeditor/utility/graphics/DrawUtilities.java) contains both legacy `Graphics2D` methods (for text rendering, outlined shapes) and the modern GL method `paintInstallableGhostGL()`.
 
 ### Ghost Rendering
 `paintInstallableGhostGL()` renders a semi-transparent (50% opacity) preview sprite of items being dragged onto the canvas. It computes the sprite center offset, constructs position/size/rotationAnchor vectors, and calls `SpriteRenderer.drawSprite()`.

@@ -161,6 +161,9 @@ public class WeaponEnums {
      */
     @SuppressWarnings("StaticMethodOnlyUsedInOneClass")
     public static boolean isValidForSlot(SlotData slotPoint, CSVEntry entry) {
+        if (slotPoint == null || entry == null) {
+            return false;
+        }
         if (entry instanceof WeaponCSVEntry weaponEntry) {
             return WeaponType.isWeaponFitting(slotPoint, weaponEntry);
         } else {
@@ -174,6 +177,11 @@ public class WeaponEnums {
      */
     @SuppressWarnings({"OverlyComplexBooleanExpression", "RedundantLabeledSwitchRuleCodeBlock", "OverlyComplexMethod"})
     public static boolean isWeaponFitting(SlotData slotPoint, WeaponCSVEntry weaponEntry) {
+        if (slotPoint == null || weaponEntry == null
+                || slotPoint.getWeaponType() == null || slotPoint.getWeaponSize() == null
+                || weaponEntry.getSize() == null || weaponEntry.getType() == null) {
+            return false;
+        }
         WeaponType slotType = slotPoint.getWeaponType();
         WeaponType weaponType = weaponEntry.getType();
 

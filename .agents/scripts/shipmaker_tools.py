@@ -47,7 +47,7 @@ def find_duplicates(min_lines=6):
         print("No significant duplicates found.")
 
 def check_standards():
-    print("Checking against .agents/rules/coding-standards.md...\n")
+    print("Checking against .agents/skills/starsector-coding-standards/SKILL.md...\n")
     violations = 0
     
     for root, _, files in os.walk(SRC_DIR):
@@ -109,7 +109,7 @@ def main():
     subparsers = parser.add_subparsers(dest="command", required=True)
     
     subparsers.add_parser("find-dupes", help="Scan the codebase for duplicate logic blocks")
-    subparsers.add_parser("check-standards", help="Audit the codebase for coding-standards.md violations")
+    subparsers.add_parser("check-standards", help="Audit the codebase for starsector-coding-standards/SKILL.md violations")
     subparsers.add_parser("verify", help="Run a verification build (mvn package)")
     
     patch_parser = subparsers.add_parser("patch", help="Regex find and replace across the codebase")

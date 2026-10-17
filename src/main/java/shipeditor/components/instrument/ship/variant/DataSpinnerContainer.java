@@ -26,8 +26,15 @@ class DataSpinnerContainer<T extends Number> {
 
     void disableSpinner() {
         setter = null;
-        model.setMaximum(0);
-        model.setValue(0);
+        boolean isFloating = model.getStepSize() instanceof Double || model.getStepSize() instanceof Float
+                || model.getValue() instanceof Double || model.getValue() instanceof Float;
+        if (isFloating) {
+            model.setMaximum(0.0d);
+            model.setValue(0.0d);
+        } else {
+            model.setMaximum(0);
+            model.setValue(0);
+        }
         spinner.setEnabled(false);
     }
 

@@ -274,7 +274,7 @@ public class PreferencesDialog extends JDialog {
         card.add(appTitle);
         card.add(Box.createVerticalStrut(4));
 
-        String projectVersion = Main.VERSION != null ? Main.VERSION : "0.0.1f";
+        String projectVersion = Main.VERSION;
         JLabel versionBadge = new JLabel("Version " + projectVersion);
         versionBadge.setFont(versionBadge.getFont().deriveFont(Font.BOLD, 12f));
         versionBadge.setForeground(new Color(90, 180, 255));

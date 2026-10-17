@@ -59,7 +59,7 @@ public final class SkinOverrideEdits {
 
         @Override
         public UtilityEnums.EditCategory getCategory() {
-            return UtilityEnums.EditCategory.VARIANT;
+            return UtilityEnums.EditCategory.SKIN;
         }
     }
 
@@ -105,7 +105,7 @@ public final class SkinOverrideEdits {
 
         @Override
         public UtilityEnums.EditCategory getCategory() {
-            return UtilityEnums.EditCategory.VARIANT;
+            return UtilityEnums.EditCategory.SKIN;
         }
     }
 }

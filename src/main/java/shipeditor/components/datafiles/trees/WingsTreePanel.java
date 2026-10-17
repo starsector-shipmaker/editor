@@ -103,18 +103,20 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
         }
 
         VariantFile variantFile = selected.retrieveMemberVariant();
-        if (variantFile != null && variantFile.getVariantFilePath() != null) {
-            builder.addWrappingPathLabel("Variant file: ", variantFile.getVariantFilePath());
+        if (variantFile != null) {
+            if (variantFile.getVariantFilePath() != null) {
+                builder.addWrappingPathLabel("Variant file: ", variantFile.getVariantFilePath());
+            }
+
+            JPanel variantWrapper = new JPanel();
+            variantWrapper.setLayout(new BoxLayout(variantWrapper, BoxLayout.PAGE_AXIS));
+
+            List<VariantFile> memberVariantFile = Collections.singletonList(variantFile);
+            JPanel variantPanel = DataTreeVariantPanelBuilder.createVariantsPanel(memberVariantFile, false);
+            variantWrapper.add(variantPanel);
+
+            builder.addCustomComponent(variantWrapper);
         }
-
-        JPanel variantWrapper = new JPanel();
-        variantWrapper.setLayout(new BoxLayout(variantWrapper, BoxLayout.PAGE_AXIS));
-
-        List<VariantFile> memberVariantFile = Collections.singletonList(variantFile);
-        JPanel variantPanel = DataTreeVariantPanelBuilder.createVariantsPanel(memberVariantFile, false);
-        variantWrapper.add(variantPanel);
-
-        builder.addCustomComponent(variantWrapper);
 
         infoPanel.add(builder.getPanel());
         infoPanel.add(javax.swing.Box.createVerticalStrut(20));

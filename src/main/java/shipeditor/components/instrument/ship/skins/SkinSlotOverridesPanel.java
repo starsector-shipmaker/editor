@@ -144,9 +144,9 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
         JComboBox<WeaponMount> mountBox = new JComboBox<>(WeaponMount.values());
         JComboBox<WeaponSize> sizeBox = new JComboBox<>(WeaponSize.values());
 
-        SpinnerNumberModel angleModel = new SpinnerNumberModel(0.0, -360.0, 360.0, 1.0);
+        SpinnerNumberModel angleModel = new SpinnerNumberModel(row.baseAngle, -360.0, 360.0, 1.0);
         JSpinner angleSpinner = new JSpinner(angleModel);
-        SpinnerNumberModel arcModel = new SpinnerNumberModel(0.0, 0.0, 360.0, 1.0);
+        SpinnerNumberModel arcModel = new SpinnerNumberModel(row.baseArc, 0.0, 360.0, 1.0);
         JSpinner arcSpinner = new JSpinner(arcModel);
         SpinnerNumberModel renderOrderModel = new SpinnerNumberModel(0, -1000, 1000, 1);
         JSpinner renderOrderSpinner = new JSpinner(renderOrderModel);
@@ -156,8 +156,8 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
             typeBox.setSelectedItem(ov.getWeaponType() != null ? ov.getWeaponType() : row.baseType);
             mountBox.setSelectedItem(ov.getWeaponMount() != null ? ov.getWeaponMount() : row.baseMount);
             sizeBox.setSelectedItem(ov.getWeaponSize() != null ? ov.getWeaponSize() : row.baseSize);
-            angleModel.setValue(ov.getBoxedAngle() != null ? ov.getAngle() : 0.0);
-            arcModel.setValue(ov.getBoxedArc() != null ? ov.getArc() : 0.0);
+            angleModel.setValue(ov.getBoxedAngle() != null ? ov.getAngle() : row.baseAngle);
+            arcModel.setValue(ov.getBoxedArc() != null ? ov.getArc() : row.baseArc);
             renderOrderModel.setValue(ov.getRenderOrderModBoxed() != null ? ov.getRenderOrderMod() : 0);
         } else {
             typeBox.setSelectedItem(row.baseType);
@@ -186,9 +186,9 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
             if (selSize != row.baseSize) builder.weaponSize(selSize);
 
             double angle = ((Number) angleModel.getValue()).doubleValue();
-            if (angle != 0.0) builder.angle(angle);
+            if (Double.compare(angle, row.baseAngle) != 0) builder.angle(angle);
             double arc = ((Number) arcModel.getValue()).doubleValue();
-            if (arc != 0.0) builder.arc(arc);
+            if (Double.compare(arc, row.baseArc) != 0) builder.arc(arc);
             int rom = ((Number) renderOrderModel.getValue()).intValue();
             if (rom != 0) builder.renderOrderMod(rom);
 
@@ -233,6 +233,8 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
         WeaponType baseType;
         WeaponMount baseMount;
         WeaponSize baseSize;
+        double baseAngle;
+        double baseArc;
         boolean hasOverride;
         WeaponSlotOverride override;
 
@@ -241,6 +243,8 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
             this.baseType = slot.getBaseType();
             this.baseMount = slot.getBaseMount();
             this.baseSize = slot.getBaseSize();
+            this.baseAngle = slot.getAngle();
+            this.baseArc = slot.getArc();
             this.hasOverride = (slotOverride != null);
             this.override = slotOverride;
         }

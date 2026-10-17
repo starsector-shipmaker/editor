@@ -136,5 +136,7 @@
     "INPUT_ID_ALREADY_ASSIGNED_TO_SLOT_MSG": "Input ID already assigned to slot.",
     "HULL_HAS_UNSAVED_CHANGES_DO_YOU_WANT_TO_MSG": "Hull has unsaved changes. Do you want to save?",
     "VARIANT_HAS_UNSAVED_CHANGES_DO_YOU_WANT_MSG": "Variant has unsaved changes. Do you want to save?",
-    "IMAGE_FILE_LOADING_FAILED_MSG": "Image file loading failed: "
+    "IMAGE_FILE_LOADING_FAILED_MSG": "Image file loading failed: ",
+    "UNSAVED_MODULES_DETECTED": "Unsaved Modules Detected",
+    "UNSAVED_MODULES_PROMPT_MSG": "There are {0} unsaved module variants associated with this ship.\nDo you want to save them as well?"
 }

@@ -16,14 +16,10 @@ structure:
         - "shipeditor.communication.events"
         - "shipeditor.communication.events.components"
         - "shipeditor.communication.events.files"
-        - "shipeditor.communication.events.files.saving"
         - "shipeditor.communication.events.viewer"
         - "shipeditor.communication.events.viewer.control"
         - "shipeditor.communication.events.viewer.layers"
-        - "shipeditor.communication.events.viewer.layers.ships"
-        - "shipeditor.communication.events.viewer.layers.weapons"
         - "shipeditor.communication.events.viewer.points"
-        - "shipeditor.communication.events.viewer.status"
       components:
         - "shipeditor.components"
         - "shipeditor.components.datafiles"
@@ -110,9 +106,29 @@ structure:
         - "shipeditor.utility.themes"
   test:
     packages:
+      communication:
+        - "shipeditor.communication"
+      components:
+        - "shipeditor.components.datafiles.trees"
+        - "shipeditor.components.dialogs"
+        - "shipeditor.components.viewer.layers"
       parsing:
         - "shipeditor.parsing"
+        - "shipeditor.parsing.loading"
+        - "shipeditor.parsing.serialize"
+      persistence:
+        - "shipeditor.persistence"
+        - "shipeditor.persistence.database"
+      representation:
+        - "shipeditor.representation"
+      ui:
+        - "shipeditor.ui"
+      undo:
+        - "shipeditor.undo"
       utility:
         - "shipeditor.utility"
+        - "shipeditor.utility.components.dialog"
+        - "shipeditor.utility.components.widgets"
+        - "shipeditor.utility.graphics"
         - "shipeditor.utility.text"
 ```

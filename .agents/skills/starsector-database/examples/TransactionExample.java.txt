@@ -9,8 +9,8 @@ public class TransactionExample {
 
     public static void batchInsertFiles(Connection conn, List<IndexedFile> files) throws SQLException {
         String sql = "INSERT OR REPLACE INTO indexed_files " +
-                     "(uuid, mod_id, entity_id, entity_name, entity_type, file_name, file_path, last_modified) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                     "(uuid, mod_id, entity_id, entity_name, entity_type, file_name, file_path, last_modified, file_hash, sprite_path, designation, metadata_json) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         boolean autoCommit = conn.getAutoCommit();
         try {
@@ -20,7 +20,7 @@ public class TransactionExample {
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 int count = 0;
                 for (IndexedFile file : files) {
-                    pstmt.setString(1, file.getUuid());
+                    pstmt.setString(1, file.getUuid().toString());
                     pstmt.setString(2, file.getModId());
                     pstmt.setString(3, file.getEntityId());
                     pstmt.setString(4, file.getEntityName());
@@ -28,6 +28,10 @@ public class TransactionExample {
                     pstmt.setString(6, file.getFileName());
                     pstmt.setString(7, file.getFilePath().toString());
                     pstmt.setLong(8, file.getLastModified());
+                    pstmt.setString(9, file.getFileHash());
+                    pstmt.setString(10, file.getSpritePath());
+                    pstmt.setString(11, file.getDesignation());
+                    pstmt.setString(12, file.getMetadataJson());
 
                     pstmt.addBatch();
                     count++;

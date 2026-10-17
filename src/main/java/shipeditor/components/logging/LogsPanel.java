@@ -7,6 +7,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.Rectangle;
@@ -36,8 +37,15 @@ public class LogsPanel extends JPanel {
 
     public static void append(String formattedMessage) {
         if (LOGGER != null) {
-            LOGGER.append(formattedMessage);
-            LogsPanel.scrollToBottom();
+            if (SwingUtilities.isEventDispatchThread()) {
+                LOGGER.append(formattedMessage);
+                LogsPanel.scrollToBottom();
+            } else {
+                SwingUtilities.invokeLater(() -> {
+                    LOGGER.append(formattedMessage);
+                    LogsPanel.scrollToBottom();
+                });
+            }
         }
     }
 

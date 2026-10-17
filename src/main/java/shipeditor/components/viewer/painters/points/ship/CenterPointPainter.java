@@ -209,7 +209,9 @@ public class CenterPointPainter extends SinglePointPainter {
             float alpha = (float) ((zoomLevel - 20.0) / 20.0);
             alpha = Math.min(alpha, 1.0f);
             Font font = Utility.getOrbitron(14);
+            shapeRenderer.end();
             TextRenderer.drawTextGL(spriteRenderer, projection, coords, font, Color.WHITE, resultAnchorLocation, alpha);
+            shapeRenderer.begin(projection, new Matrix4f());
         }
     }
 

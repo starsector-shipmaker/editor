@@ -98,11 +98,13 @@ public class ShipFilterPanel extends JPanel {
             
             Set<String> techs = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
             
-            Map<String, ShipCSVEntry> shipEntries = SettingsManager.getGameData().getAllShipEntries();
+            var gameData = SettingsManager.getGameData();
+            Map<String, ShipCSVEntry> shipEntries = gameData != null ? gameData.getAllShipEntries() : null;
             if (shipEntries != null) {
                 for (ShipCSVEntry entry : shipEntries.values()) {
+                    if (entry == null) continue;
                     Map<String, String> row = entry.getRowData();
-                    String tech = row.get("tech/manufacturer");
+                    String tech = row != null ? row.get("tech/manufacturer") : null;
                     if (tech == null || tech.trim().isEmpty()) tech = "Unknown";
                     techs.add(tech);
                 }
@@ -143,12 +145,12 @@ public class ShipFilterPanel extends JPanel {
         if (currentTextFilter == null || currentTextFilter.isEmpty()) return true;
         String currentInput = currentTextFilter.toLowerCase(Locale.ROOT);
         
-        if (entry.getEntityName().toLowerCase(Locale.ROOT).contains(currentInput)) return true;
-        if (entry.getEntityId().toLowerCase(Locale.ROOT).contains(currentInput)) return true;
+        if (entry.getEntityName() != null && entry.getEntityName().toLowerCase(Locale.ROOT).contains(currentInput)) return true;
+        if (entry.getEntityId() != null && entry.getEntityId().toLowerCase(Locale.ROOT).contains(currentInput)) return true;
         if (entry.getDesignation() != null && entry.getDesignation().toLowerCase(Locale.ROOT).contains(currentInput)) return true;
 
         // Also search by the ship's display name from CSV
-        if (shipEntries != null) {
+        if (shipEntries != null && entry.getEntityId() != null) {
             ShipCSVEntry csvEntry = shipEntries.get(entry.getEntityId());
             if (csvEntry != null) {
                 String shipName = csvEntry.getShipName();
@@ -193,12 +195,12 @@ public class ShipFilterPanel extends JPanel {
 
     private static boolean shouldDisplayByType(IndexedFile entry, Map<String, ShipCSVEntry> shipEntries) {
         if (selectedTech == null || selectedTech.isEmpty() || "Any".equals(selectedTech)) return true;
-        if (shipEntries == null) return "Unknown".equalsIgnoreCase(selectedTech);
+        if (shipEntries == null || entry.getEntityId() == null) return "Unknown".equalsIgnoreCase(selectedTech);
 
         ShipCSVEntry csvEntry = shipEntries.get(entry.getEntityId());
         if (csvEntry != null) {
             Map<String, String> row = csvEntry.getRowData();
-            String tech = row.get("tech/manufacturer");
+            String tech = row != null ? row.get("tech/manufacturer") : null;
             if (tech == null || tech.trim().isEmpty()) tech = "Unknown";
             return selectedTech.equalsIgnoreCase(tech);
         }

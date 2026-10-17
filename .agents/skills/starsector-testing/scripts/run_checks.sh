@@ -1,14 +1,14 @@
 #!/bin/bash
 # Helper script to execute all verification gates.
-echo "=== Running Maven clean compile ==="
-mvn clean compile
+echo "=== Running Maven package & Checkstyle validation ==="
+mvn clean package -DskipTests
 if [ $? -ne 0 ]; then
-  echo "Compilation failed!"
+  echo "Packaging/Checkstyle failed!"
   exit 1
 fi
 
 echo "=== Running Maven unit and integration tests ==="
-mvn test
+mvn test -DskipTests=false
 if [ $? -ne 0 ]; then
   echo "Tests failed!"
   exit 1

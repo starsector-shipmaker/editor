@@ -9,8 +9,8 @@ fi
 JAVA_VER=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
 echo "Running Java major version: $JAVA_VER"
 
-if [ "$JAVA_VER" -lt 17 ] || [ "$JAVA_VER" -gt 21 ]; then
-  echo "WARNING: starsector-shipmaker requires JDK 17-21 to compile successfully with Lombok 1.18.36."
+if [ "$JAVA_VER" -lt 17 ] || [ "$JAVA_VER" -gt 24 ]; then
+  echo "WARNING: starsector-shipmaker requires JDK 17-24 to compile successfully with Lombok 1.18.46."
 else
   echo "Java version check: OK"
 fi

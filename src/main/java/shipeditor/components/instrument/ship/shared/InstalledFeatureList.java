@@ -165,7 +165,9 @@ public class InstalledFeatureList extends SortableList<InstalledFeature> {
 
     @Override
     protected boolean isSupported(Transferable transferable) {
-        return transferable.getTransferDataFlavors()[0].equals(FEATURE_FLAVOR);
+        DataFlavor[] dataFlavors = transferable.getTransferDataFlavors();
+        if (dataFlavors == null || dataFlavors.length == 0) return false;
+        return dataFlavors[0].equals(FEATURE_FLAVOR);
     }
 
     protected JPopupMenu getContextMenu() {

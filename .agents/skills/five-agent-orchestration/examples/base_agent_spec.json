@@ -3,30 +3,30 @@
     "TypeName": "research",
     "Role": "String Extractor",
     "Model": "inherit",
-    "Prompt": "WAKE UP: Perform a pass on the codebase to extract hardcoded user-facing UI strings (like JLabel or JOptionPane) into the JSON-based StringManager. Strictly follow .agents/rules/coding-standards.md. DO NOT apply changes immediately; report your proposed targets to the central Orchestrator for review."
+    "Prompt": "WAKE UP: Perform a pass on the codebase to extract hardcoded user-facing UI strings (like JLabel or JOptionPane) into the JSON-based StringManager. Strictly follow .agents/skills/starsector-coding-standards/SKILL.md. DO NOT apply changes immediately; report your proposed targets to the central Orchestrator for review."
   },
   {
     "TypeName": "self",
     "Role": "Switch Refactorer",
     "Model": "inherit",
-    "Prompt": "WAKE UP: Perform a pass on the codebase to convert deep if..else if chains evaluating identical variables into modern Java 14+ switch expressions. Strictly follow .agents/rules/coding-standards.md. DO NOT apply changes immediately; report your proposed targets to the central Orchestrator for review."
+    "Prompt": "WAKE UP: Perform a pass on the codebase to convert deep if..else if chains evaluating identical variables into modern Java 14+ switch expressions. Strictly follow .agents/skills/starsector-coding-standards/SKILL.md. DO NOT apply changes immediately; report your proposed targets to the central Orchestrator for review."
   },
   {
     "TypeName": "self",
     "Role": "Loop Optimizer",
     "Model": "inherit",
-    "Prompt": "WAKE UP: Perform a pass on the codebase to modernize clunky loops, BUT strictly avoid over-complicating simple standard iteration per .agents/rules/coding-standards.md. DO NOT apply changes immediately; report your proposed targets to the central Orchestrator for review."
+    "Prompt": "WAKE UP: Perform a pass on the codebase to modernize clunky loops, BUT strictly avoid over-complicating simple standard iteration per .agents/skills/starsector-coding-standards/SKILL.md. DO NOT apply changes immediately; report your proposed targets to the central Orchestrator for review."
   },
   {
     "TypeName": "self",
     "Role": "Duplicate Logic Finder",
     "Model": "inherit",
-    "Prompt": "WAKE UP: Scan for duplicate code blocks (UI layouts, algorithms) and abstract them into reusable helper methods or base classes. Strictly follow .agents/rules/coding-standards.md. DO NOT apply changes immediately; report your proposed targets to the central Orchestrator for review."
+    "Prompt": "WAKE UP: Scan for duplicate code blocks (UI layouts, algorithms) and abstract them into reusable helper methods or base classes. Strictly follow .agents/skills/starsector-coding-standards/SKILL.md. DO NOT apply changes immediately; report your proposed targets to the central Orchestrator for review."
   },
   {
     "TypeName": "self",
     "Role": "Robustness Enhancer",
     "Model": "inherit",
-    "Prompt": "WAKE UP: Hunt for naked I/O or JSON parsers and swallowed stack-traces. Wrap them in safe try-catch blocks utilizing @Log4j2 and trace breakpoints per .agents/rules/coding-standards.md. DO NOT apply changes immediately; report your proposed targets to the central Orchestrator for review."
+    "Prompt": "WAKE UP: Hunt for naked I/O or JSON parsers and swallowed stack-traces. Wrap them in safe try-catch blocks utilizing @Log4j2 and trace breakpoints per .agents/skills/starsector-coding-standards/SKILL.md. DO NOT apply changes immediately; report your proposed targets to the central Orchestrator for review."
   }
 ]

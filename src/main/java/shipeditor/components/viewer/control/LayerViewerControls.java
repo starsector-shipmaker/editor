@@ -123,7 +123,6 @@ public final class LayerViewerControls implements ViewerControl {
         this.parentViewer = parent;
         this.rotationEnabled = true;
         this.initListeners();
-        this.initListeners();
         this.initKeystrokeListener();
     }
 

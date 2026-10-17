@@ -11,6 +11,7 @@ import shipeditor.utility.components.containers.OrdnancedEntryList;
 
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
+import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -59,7 +60,9 @@ public class WingsList extends OrdnancedEntryList<WingCSVEntry> {
 
     @Override
     protected boolean isSupported(Transferable transferable) {
-        return transferable.getTransferDataFlavors()[0].equals(TransferableEntry.TRANSFERABLE_WING);
+        DataFlavor[] dataFlavors = transferable.getTransferDataFlavors();
+        if (dataFlavors == null || dataFlavors.length == 0) return false;
+        return dataFlavors[0].equals(TransferableEntry.TRANSFERABLE_WING);
     }
 
 }

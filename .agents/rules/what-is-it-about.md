@@ -8,7 +8,7 @@ description: "Rules & Skills"
 
 technology_stack:
   language: "Java 17"
-  gui_framework: "Swing with FlatLaf (for modern look, custom components & dark mode) and JavaGL (for Viewer/AffineTransform capabilities)."
+  gui_framework: "Swing with FlatLaf (for modern look, custom components & dark mode) and LWJGL 3 / lwjgl3-awt AWTGLCanvas & JOML (for OpenGL Viewer and matrix/AffineTransform capabilities)."
   icons: "Ikonli (FontAwesome5, FluentUI, Boxicons)."
   build_tool: "Maven."
   data_binding: "Jackson (for both JSON and CSV files)."
@@ -20,8 +20,8 @@ architecture_and_coding_conventions:
     package: "shipeditor.communication"
     rules:
       - "The application relies heavily on an Event Bus system for loose coupling between components."
-      - "Do not pass hard references between distinct UI components or controllers where possible. Instead, fire events and have listeners subscribe to them."
-      - "Always implement proper listener cleanup to avoid memory leaks on layer removal or object destruction."
+      - "Do not pass hard references between distinct UI components or controllers where possible. Instead, fire events and have listeners subscribe via `EventBus.subscribe(lifecycleParent, listener)` or the typed overload `EventBus.subscribe(lifecycleParent, Class<T>, Consumer<T>)`."
+      - "Always implement proper listener cleanup (`EventBus.unsubscribeByParent(this)` or `EventBus.unsubscribe(listener)`) to avoid memory leaks on layer removal or object destruction."
   layer_system:
     package: "shipeditor.components"
     rules:
@@ -32,7 +32,7 @@ architecture_and_coding_conventions:
     package: "shipeditor.representation & parsing"
     rules:
       - "All JSON/CSV data wrappers are encapsulated in representations."
-      - "Handle unconventional JSON structures specific to Starsector gracefully."
+      - "Handle unconventional JSON structures specific to Starsector gracefully, preserving unrecognized custom mod JSON properties via `@JsonAnyGetter`/`@JsonAnySetter` and `SaveActionUtilities.mergeUnrecognizedProperties()`."
       - "Do not hardcode absolute paths; use the Data walker which supports symlinks and game packages."
       - "CSV Editing & Serialization: When modifying Starsector CSV files via Jackson, never overwrite files using standard serializations as this can corrupt Starsector's formatting (like unnecessarily quoting comments). Always cache the raw parsed data maps alongside the original `CsvSchema` in `GameDataRepository` during loading. Upon saving, apply a custom Jackson module with `JsonSerializer<Map<?, ?>>` that bypasses default Jackson behaviors to reconstruct the exact raw structure, rebuilding the schema with `setUseHeader(true)`."
   undo_redo:

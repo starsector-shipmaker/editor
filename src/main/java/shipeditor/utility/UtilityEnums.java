@@ -55,6 +55,7 @@ public class UtilityEnums {
     @Getter public static enum EditCategory {
     HULL,
     VARIANT,
+    SKIN,
     NONE
 }
 

@@ -10,99 +10,85 @@ description: Guidelines for JUnit, jqwik property-based testing, SpotBugs static
 This skill is organized as follows:
 - **`SKILL.md`**: Main instructions (this file).
 - **`resources/`**: Configurations and templates.
-  - [spotbugs-exclude-template.xml](file:///media/lechibang/WORK1/projects/starsector-shipmaker/.agents/skills/starsector-testing/resources/spotbugs-exclude-template.xml): Template for SpotBugs bug suppressions.
+  - [spotbugs-exclude-template.xml](file:///run/media/banglc/work/starsector/starsector-shipmaker/.agents/skills/starsector-testing/resources/spotbugs-exclude-template.xml): Template for SpotBugs bug suppressions.
 - **`examples/`**: Code references.
-  - [SampleJqwikTest.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/.agents/skills/starsector-testing/examples/SampleJqwikTest.java): Reference implementation of jqwik property-based tests.
+  - [SampleJqwikTest.java.txt](file:///run/media/banglc/work/starsector/starsector-shipmaker/.agents/skills/starsector-testing/examples/SampleJqwikTest.java.txt): Reference implementation of jqwik property-based tests.
 - **`scripts/`**: Automation.
-  - [run_checks.sh](file:///media/lechibang/WORK1/projects/starsector-shipmaker/.agents/skills/starsector-testing/scripts/run_checks.sh): Helper script to build, test, and perform static analysis.
+  - [run_checks.sh](file:///run/media/banglc/work/starsector/starsector-shipmaker/.agents/skills/starsector-testing/scripts/run_checks.sh): Helper script to build, test, and perform static analysis.
 
 ## 1. Test Frameworks
 
 | Framework | Version | Scope | Purpose |
 |---|---|---|---|
-| **JUnit Jupiter** | 5.10.3 | `test` | Standard test runner and assertions |
-| **jqwik** | 1.9.0 | `test` | Property-based testing with random input generation |
+| **JUnit Jupiter** | 5.14.4 | `test` | Standard unit/integration test runner and assertions |
+| **jqwik** | 1.10.1 | `test` | Property-based testing with random input generation |
+| **PIT (pitest-maven)** | 1.25.9 | `test` | Mutation testing (`pitest-junit5-plugin` 1.2.3) |
 
-Both are executed via `maven-surefire-plugin` (3.2.5).
+Executed via `maven-surefire-plugin` (3.5.6).
 
 ---
 
 ## 2. Existing Test Suite
 
-The test suite is focused on **mathematical correctness** of utility functions that underpin coordinate transformations and data display. Two test files exist:
+The test suite comprises **39 automated JUnit 5 and jqwik test classes** across 16 packages:
 
-### `UtilityPropertiesTest`
-[UtilityPropertiesTest.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/test/java/shipeditor/utility/UtilityPropertiesTest.java) — Property-based tests for core mathematical utilities.
+### Data Parsing, Loading & Serialization (`shipeditor.parsing.*`)
+- [`JsonProcessorPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/parsing/JsonProcessorPropertiesTest.java) — Property-based tests for `JsonProcessor.straightenMalformed()` (comments, escaped quotes, semicolons, unquoted tokens).
+- [`SpecFileSerializationTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/parsing/SpecFileSerializationTest.java) — 58 unit tests covering `.ship`, `.variant`, `.skin`, `.wpn`, and `.proj` serialization round-trips and `@JsonAnyGetter`/`@JsonAnySetter` custom property preservation.
+- [`CustomSerializersPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/parsing/serialize/CustomSerializersPropertiesTest.java), [`FileUtilitiesPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/parsing/FileUtilitiesPropertiesTest.java), [`CsvLoaderPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/parsing/loading/CsvLoaderPropertiesTest.java), [`DataLoadingPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/parsing/loading/DataLoadingPropertiesTest.java), [`LibModFilterTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/parsing/loading/LibModFilterTest.java).
+- [`GameDataParsingIntegrationTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/parsing/GameDataParsingIntegrationTest.java) & [`DatabaseLoadingIntegrationTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/parsing/DatabaseLoadingIntegrationTest.java) — End-to-end integration tests for game data loading and indexing.
 
-| Property | What It Validates |
-|---|---|
-| `testParseIntegerOrDefault` | `Utility.parseIntegerOrDefault()` returns parsed int for valid strings, default for invalid/empty |
-| `testParseDoubleOrDefault` | `Utility.parseDoubleOrDefault()` returns parsed double for valid strings, default for invalid/empty |
-| `testClampAngleWithRounding` | Result is always in `[0, 360)` for any input in `[-1e9, 1e9]` |
-| `testFlipAngle` | Flipping twice returns the normalized original (within 0.0001 delta) |
-| `testRound` | `Utility.round(value, decimalPlaces)` produces a result for all finite values |
-| `testTransformAngle` | `Utility.transformAngle()` output is always in `[-90, 270)` |
+### Persistence & SQLite Database (`shipeditor.persistence.*`)
+- [`DatabaseQueryServiceTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/persistence/database/DatabaseQueryServiceTest.java), [`DataReferenceQueriesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/persistence/database/DataReferenceQueriesTest.java), [`JsonDatabaseIntegrationTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/persistence/database/JsonDatabaseIntegrationTest.java), [`GameFolderDetectionTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/persistence/GameFolderDetectionTest.java).
 
-**Why jqwik here**: These functions are called thousands of times per frame for coordinate display and point placement. A single edge case (e.g., `NaN`, negative zero, very large values) would corrupt the viewport or produce nonsensical coordinates. Property-based testing with random inputs catches edge cases that handwritten examples miss.
+### Communication, Representation & Undo/Redo (`shipeditor.communication`, `shipeditor.representation`, `shipeditor.undo`)
+- [`EventBusTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/communication/EventBusTest.java) — Lifecycle subscriptions, typed `EventBus.subscribe(parent, Class<T>, Consumer<T>)`, `unsubscribeByParent`, nested event dispatch.
+- [`GameDataRepositoryPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/representation/GameDataRepositoryPropertiesTest.java) & [`UndoOverseerPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/undo/UndoOverseerPropertiesTest.java).
 
-### `CoordinatesFormatterPropertiesTest`
-[CoordinatesFormatterPropertiesTest.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/src/test/java/shipeditor/utility/text/CoordinatesFormatterPropertiesTest.java) — Property-based tests for coordinate rounding.
+### UI Components & Layer Transforms (`shipeditor.components.*`, `shipeditor.utility.components.*`)
+- [`LayerPainterTransformTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/components/viewer/layers/LayerPainterTransformTest.java), [`DataTreePanelTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/components/datafiles/trees/DataTreePanelTest.java), [`ModSelectionDialogTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/components/dialogs/ModSelectionDialogTest.java), [`ModSelectionDialogPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/components/dialogs/ModSelectionDialogPropertiesTest.java), [`DialogHelperTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/components/dialog/DialogHelperTest.java), [`SpinnersPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/components/widgets/SpinnersPropertiesTest.java).
 
-| Property | What It Validates |
-|---|---|
-| `testRoundMaintainsValue` | `CoordinatesFormatter.round()` produces results within 0.005 of input for normal values, handles `NaN` and `Infinity` correctly, and doesn't overflow for very large values |
-| `testRoundPointMaintainsValue` | `CoordinatesFormatter.roundPoint()` preserves `NaN` propagation for both X and Y |
+### Graphics & Geometry (`shipeditor.utility.graphics`)
+- [`PolygonSimplifierTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/PolygonSimplifierTest.java), [`CollisionHullGeneratorTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/CollisionHullGeneratorTest.java), [`SpriteOutlineTracerTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/SpriteOutlineTracerTest.java), [`SocketContourDetectorTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/SocketContourDetectorTest.java), [`RealSpriteRegressionTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/RealSpriteRegressionTest.java), [`ColorSpaceTransformTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/ColorSpaceTransformTest.java), [`ColorUtilitiesPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/ColorUtilitiesPropertiesTest.java), [`DeltaEMathTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/DeltaEMathTest.java), [`GraphicsLibMapGeneratorTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/GraphicsLibMapGeneratorTest.java), [`ImageProcessingTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/ImageProcessingTest.java), [`PaletteAnalyzerTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/PaletteAnalyzerTest.java), [`ShapeUtilitiesPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/ShapeUtilitiesPropertiesTest.java), [`SpriterMaskExporterTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/SpriterMaskExporterTest.java), [`StencilExtractorTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/graphics/StencilExtractorTest.java).
 
-**Quirk — Overflow Guard**: The test explicitly handles the case where `Math.abs(value) >= Long.MAX_VALUE / 1000.0`, because the rounding implementation internally converts to `long` for fixed-point math. For values exceeding this threshold, the test relaxes the precision requirement to 1% of the input value.
-
----
-
-## 3. What Is NOT Tested (and Why)
-
-### No GUI Tests
-There are no automated Swing/AWT UI tests. The `PrimaryViewer`, `PaintOrderController`, and all painter classes require:
-- A live OpenGL context (GPU required)
-- A visible X11/Wayland window
-- Swing EDT initialization
-
-These are impractical in CI environments. Visual verification is done manually.
-
-### No Jackson Parsing Tests
-The `JsonProcessor.straightenMalformed()` pipeline is not unit-tested. This is a gap — the complex regex and character-by-character state machine are prime candidates for property-based testing with fuzzed Starsector JSON inputs.
-
-### No Database Tests
-`DatabaseManager` and `DatabaseQueryService` are not tested in isolation. The schema, PRAGMAs, and query correctness are validated implicitly by the full-application launch test.
+### Core Mathematical & Localization Utilities (`shipeditor.utility`, `shipeditor.utility.text`)
+- [`UtilityPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/UtilityPropertiesTest.java) — Property-based tests for `Utility` parsing, angle clamping, flipping, rounding, and coordinate angle transforms.
+- [`CoordinatesFormatterPropertiesTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/text/CoordinatesFormatterPropertiesTest.java) — Property-based tests for coordinate rounding and overflow guards.
+- [`StringManagerTest`](file:///run/media/banglc/work/starsector/starsector-shipmaker/src/test/java/shipeditor/utility/text/StringManagerTest.java) — Verifies localization resource JSON bundles and key resolution.
 
 ---
 
-## 4. Static Analysis: SpotBugs
+## 3. What Requires Live GPU Verification
 
-**Plugin**: `spotbugs-maven-plugin` 4.8.3.1  
-**Configuration**: `effort=Max`, `threshold=Low`, `xmlOutput=true`
+### Live OpenGL Canvas (`AWTGLCanvas`) Rendering
+While Swing dialogs, trees, spinners, and `LayerPainter` coordinate transforms are covered by automated unit and property-based tests, `PrimaryViewer`, `PaintOrderController`, and GL shader execution require a live OpenGL 3.3 context and display server for visual verification.
 
-This is the strictest possible SpotBugs configuration. It catches:
-- Null pointer dereferences
+---
+
+## 4. Static Analysis: Checkstyle & SpotBugs
+
+### Checkstyle
+- **Plugin**: `maven-checkstyle-plugin` 3.5.0 (`checkstyle.xml`)
+- Bound to the `validate` phase; enforces `PascalCase` types, `camelCase` methods/fields/parameters/local variables, and `UPPER_SNAKE_CASE` `static final` constants (except `log`).
+
+### SpotBugs
+- **Plugin**: `spotbugs-maven-plugin` 4.10.3.0 (`spotbugs-annotations` 4.10.3, filter `spotbugs-exclude.xml`)
+- **Configuration**: `effort=Max`, `threshold=Low`, `xmlOutput=true`
+
+It catches:
+- Null pointer dereferences and redundant null checks
+- Unconfirmed casts (`BC_UNCONFIRMED_CAST`)
 - Unclosed resources (streams, connections)
 - Concurrency issues (race conditions, unsynchronized access)
-- Mutable object exposure
-
-### Annotation-Guided Analysis
-The `spotbugs-annotations` dependency (4.8.3) provides `@NonNull`, `@Nullable`, `@SuppressFBWarnings`, etc.
-
-**Deliberate Suppressions** (Quirks):
-- `@SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})` is used extensively on `PrimaryViewer`, `PaintOrderController`, `UndoOverseer`, and `DrawUtilities`. These classes intentionally expose mutable internal state for performance. SpotBugs would flag every getter that returns a mutable list or map.
+- Mutable object exposure (`@SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})` is used where mutable internal state is intentionally exposed for rendering performance)
 
 ---
 
 ## 5. Build Pipeline as Validation Gate
 
-The command `mvn clean package` acts as the primary validation gate. It executes:
-
-1. **Compile** — Enforces Java 17 language level. Annotation processors run (Lombok, Log4j2).
-2. **Test** — Surefire executes JUnit Jupiter and jqwik tests.
-3. **SpotBugs** — Static analysis runs (if configured in a reporting or verify phase).
-4. **Package** — JAR creation.
-5. **Shade** — Uber-JAR generation with transformer verification.
+- `mvn package -DskipTests` — Runs `enforcer:enforce`, `checkstyle:check`, `compile`, `jar`, and `shade` (creating `ship_editor.jar`).
+- `mvn test -DskipTests=false` — Executes the full JUnit Jupiter and jqwik test suite (since `<skipTests>true</skipTests>` is set by default in `pom.xml` for fast packaging).
+- `mvn spotbugs:check` — Runs SpotBugs static analysis verification.
 
 ### Shade Plugin Validation (Quirk)
 If the `Log4j2PluginCacheFileTransformer` is missing or misconfigured, the shaded JAR will start but Log4j2 will silently fall back to `NullAppender`, producing zero log output. This is a **silent failure** — the application appears to work but cannot be debugged. The transformer merges `Log4j2Plugins.dat` cache files from all dependencies.
@@ -120,9 +106,11 @@ mvn exec:exec
 ```
 or directly:
 ```bash
-java -Xmx512m -XX:+UseG1GC -XX:+UseStringDeduplication \
+java -Xmx4g -XX:+UseG1GC -XX:+UseStringDeduplication \
      -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 \
-     -cp <classpath> shipeditor.Main
+     -Dsun.java2d.opengl=false -Dsun.java2d.d3d=false \
+     -Dsun.java2d.noddraw=true -Dsun.awt.noerasebackground=true \
+     -jar ./ship_editor.jar
 ```
 
 Verification checklist:

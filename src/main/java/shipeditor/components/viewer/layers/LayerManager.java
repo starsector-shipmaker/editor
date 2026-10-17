@@ -121,14 +121,17 @@ public class LayerManager {
         return types != null && !types.isEmpty();
     }
 
-    public boolean isHullDirty(ViewerLayer layer) {
+    public boolean isCategoryDirty(ViewerLayer layer, String category) {
         List<String> types = unsavedChangesRegistry.get(layer);
-        return types != null && types.contains("hull");
+        return types != null && types.contains(category);
+    }
+
+    public boolean isHullDirty(ViewerLayer layer) {
+        return isCategoryDirty(layer, "hull");
     }
 
     public boolean isVariantDirty(ViewerLayer layer) {
-        List<String> types = unsavedChangesRegistry.get(layer);
-        return types != null && types.contains("variant");
+        return isCategoryDirty(layer, "variant");
     }
 
     public void initListeners() {
@@ -142,6 +145,7 @@ public class LayerManager {
     }
 
     public void activateLastLayer() {
+        if (layers.isEmpty()) return;
         ViewerLayer next = layers.get(layers.size() - 1);
         this.setActiveLayer(next);
     }
@@ -237,11 +241,13 @@ public class LayerManager {
     }
 
     private void publishLayerRemoval(ViewerLayer layer) {
+        if (layer == null) return;
+        int index = layers.indexOf(layer);
+        if (index < 0) return;
         if (!shipeditor.utility.components.dialog.DialogHelper.confirmLayerRemoval(this, layer)) {
             return;
         }
         if (layers.size() >= 2) {
-            int index = layers.indexOf(layer);
             // Select the previous layer, or the next one if removing the first.
             ViewerLayer adjacent = (index > 0) ? layers.get(index - 1) : layers.get(index + 1);
             this.setActiveLayer(adjacent);
@@ -286,14 +292,21 @@ public class LayerManager {
                 if (activeLayer != null && activeLayer instanceof ShipLayer checkedLayer) {
                     ShipHull data = checkedLayer.getHull();
                     if (data != null) {
+                        boolean hullWasDirty = isCategoryDirty(checkedLayer, "hull");
+                        boolean variantWasDirty = isCategoryDirty(checkedLayer, "variant");
                         boolean wasPaused = shipeditor.undo.UndoOverseer.isPaused();
                         shipeditor.undo.UndoOverseer.setPaused(true);
                         try {
                             LayerManager.openSkinFile(checkedLayer, data, skinSpecFile, checked.setAsActive());
                         } finally {
                             shipeditor.undo.UndoOverseer.setPaused(wasPaused);
-                            markSaved(checkedLayer, "hull");
-                            markSaved(checkedLayer, "variant");
+                            if (!hullWasDirty) {
+                                markSaved(checkedLayer, "hull");
+                            }
+                            if (!variantWasDirty) {
+                                markSaved(checkedLayer, "variant");
+                            }
+                            markSaved(checkedLayer, "skin");
                         }
                     } else {
                         throw new IllegalStateException("Skin file loaded onto a null ship data!");

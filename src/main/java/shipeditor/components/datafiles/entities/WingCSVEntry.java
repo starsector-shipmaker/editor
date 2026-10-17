@@ -62,17 +62,21 @@ public class WingCSVEntry implements OrdnancedCSVEntry {
 
     @Override
     public String toString() {
-        String name = rowData.get(StringConstants.ID);
-        if (name.isEmpty()) {
+        String name = rowData != null ? rowData.get(StringConstants.ID) : wingID;
+        if (name == null || name.isEmpty()) {
             name = StringManager.getString("UNTITLED");
         }
         return name;
     }
 
     public VariantFile retrieveMemberVariant() {
+        if (rowData == null) return null;
         String variantID = rowData.get(StringConstants.VARIANT);
+        if (variantID == null) return null;
         var gameData = SettingsManager.getGameData();
+        if (gameData == null) return null;
         var allVariants = gameData.getAllVariants();
+        if (allVariants == null) return null;
         return allVariants.get(variantID);
     }
 
@@ -200,20 +204,23 @@ public class WingCSVEntry implements OrdnancedCSVEntry {
         return getIconLabel(32);
     }
 
-    private JLabel cachedIconLabel;
+    private boolean isIconLoaded = false;
     private boolean isIconLoading = false;
 
     @Override
     public JLabel getIconLabel(int maxSize) {
-        if (cachedIconLabel != null && !isIconLoading) {
-            return cachedIconLabel;
+        if (isIconLoaded && !isIconLoading) {
+            if (this.memberSprite != null) {
+                String tooltip = Utility.getTooltipForSprite(this.memberSprite);
+                return ComponentUtilities.createIconFromImage(this.memberSprite.getImage(), tooltip, maxSize);
+            }
+            return new JLabel(StringManager.getString("EMPTY_STRING_1"));
         }
-        if (cachedIconLabel == null) {
-            cachedIconLabel = new JLabel(StringManager.getString("EMPTY_STRING"));
-        }
+        JLabel label = new JLabel(StringManager.getString("EMPTY_STRING"));
         if (!isIconLoading) {
-            if (!SettingsManager.getGameData().isShipDataLoaded()) {
-                return cachedIconLabel;
+            var gameData = SettingsManager.getGameData();
+            if (gameData == null || !gameData.isShipDataLoaded()) {
+                return label;
             }
             isIconLoading = true;
             java.util.concurrent.CompletableFuture.runAsync(() -> {
@@ -222,24 +229,32 @@ public class WingCSVEntry implements OrdnancedCSVEntry {
                     javax.swing.SwingUtilities.invokeLater(() -> {
                         if (sprite != null) {
                             String tooltip = Utility.getTooltipForSprite(sprite);
-                            cachedIconLabel = ComponentUtilities.createIconFromImage(sprite.getImage(), tooltip, maxSize);
+                            JLabel loadedLabel = ComponentUtilities.createIconFromImage(sprite.getImage(), tooltip, maxSize);
+                            label.setIcon(loadedLabel.getIcon());
+                            label.setText(loadedLabel.getText());
+                            label.setToolTipText(loadedLabel.getToolTipText());
+                            label.setBorder(loadedLabel.getBorder());
+                            label.setOpaque(loadedLabel.isOpaque());
+                            label.setBackground(loadedLabel.getBackground());
                         } else {
-                            cachedIconLabel = new JLabel(StringManager.getString("EMPTY_STRING_1"));
+                            label.setText(StringManager.getString("EMPTY_STRING_1"));
                         }
+                        isIconLoaded = true;
                         isIconLoading = false;
                         shipeditor.communication.EventBus.publish(new shipeditor.communication.events.components.ComponentEvents.WindowRepaintQueued());
                     });
                 } catch (Exception ex) {
                     log.error("Failed to load wing icon for: " + this.wingID, ex);
                     javax.swing.SwingUtilities.invokeLater(() -> {
-                        cachedIconLabel = new JLabel(StringManager.getString("EMPTY_STRING_1"));
+                        label.setText(StringManager.getString("EMPTY_STRING_1"));
+                        isIconLoaded = true;
                         isIconLoading = false;
                         shipeditor.communication.EventBus.publish(new shipeditor.communication.events.components.ComponentEvents.WindowRepaintQueued());
                     });
                 }
             });
         }
-        return cachedIconLabel;
+        return label;
     }
 
 }

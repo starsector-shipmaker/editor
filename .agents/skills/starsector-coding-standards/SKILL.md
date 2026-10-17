@@ -18,7 +18,7 @@ When refactoring deep or repetitive `if..else if` chains that evaluate the same 
 
 ## 4. Robustness & Exception Handling
 - Always wrap risky operations (e.g., file I/O, JSON/CSV parsing, complex math transformations) in secure `try-catch` blocks.
-- Exceptions must be logged gracefully using Log4j2 (`log.error("...", e)`). Do not silently swallow exceptions.
+- Exceptions must be logged gracefully using Log4j2 (`log.error("...", e)`). Do not silently swallow exceptions, and never use `System.out.println` in production classes.
 
 ## 5. Trace "Breakpoints"
 Because standard Java lacks inline debugger breakpoints (`debugger;`), you must implement trace points by inserting highly descriptive `log.debug(...)`, `log.trace(...)`, or `assert` statements directly before executing complex logic blocks to aid in runtime debugging.

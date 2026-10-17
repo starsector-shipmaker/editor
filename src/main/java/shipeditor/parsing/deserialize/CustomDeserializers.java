@@ -16,30 +16,36 @@ import java.util.List;
 import java.util.Map;
 import shipeditor.representation.RepresentationEnums.ShipTypeHints;
 
+@lombok.extern.log4j.Log4j2
 public class CustomDeserializers {
 
 
     public static class ColorArrayRGBADeserializer extends JsonDeserializer<Color> {
 
-    @Override
-    public Color deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-        int[] rgbaValues = p.readValueAs(int[].class);
-        if (rgbaValues == null) {
-            return new Color(0, 0, 0, 0);
-        }
-        if (rgbaValues.length < 3) {
-            return new Color(255, 255, 255, 255);
+        @Override
+        public Color deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            try {
+                int[] rgbaValues = p.readValueAs(int[].class);
+                if (rgbaValues == null) {
+                    return new Color(0, 0, 0, 0);
+                }
+                if (rgbaValues.length < 3) {
+                    return Color.WHITE;
+                }
+
+                int red = Math.max(0, Math.min(255, rgbaValues[0]));
+                int green = Math.max(0, Math.min(255, rgbaValues[1]));
+                int blue = Math.max(0, Math.min(255, rgbaValues[2]));
+                int alpha = rgbaValues.length >= 4 ? Math.max(0, Math.min(255, rgbaValues[3])) : 255;
+
+                return new Color(red, green, blue, alpha);
+            } catch (Exception e) {
+                log.error("Failed to deserialize RGBA color array", e);
+                return Color.WHITE;
+            }
         }
 
-        int red = rgbaValues[0];
-        int green = rgbaValues[1];
-        int blue = rgbaValues[2];
-        int alpha = rgbaValues.length >= 4 ? rgbaValues[3] : 255;
-
-        return new Color(red, green, blue, alpha);
     }
-
-}
 
 
     @lombok.extern.log4j.Log4j2

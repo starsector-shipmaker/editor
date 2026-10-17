@@ -23,7 +23,7 @@ import java.sql.Statement;
 public final class DatabaseManager {
 
     private static Path databaseFilePath;
-    private static HikariDataSource dataSource;
+    private static volatile HikariDataSource dataSource;
     
     private static final Object STATIC_LOCK = new Object();
 
@@ -116,24 +116,33 @@ public final class DatabaseManager {
             if (dataSource != null) {
                 return;
             }
-            String dbUrl = "jdbc:sqlite:" + getDatabaseFilePath().toAbsolutePath().toString().replace("\\", "/");
+            Path dbPath = getDatabaseFilePath();
+            try {
+                Path parentDir = dbPath.getParent();
+                if (parentDir != null) {
+                    Files.createDirectories(parentDir);
+                }
+            } catch (IOException e) {
+                log.error("Failed to create database directory: {}", dbPath.getParent(), e);
+            }
+            String dbUrl = "jdbc:sqlite:" + dbPath.toAbsolutePath().toString().replace("\\", "/");
 
-        SQLiteConfig sqliteConfig = new SQLiteConfig();
-        sqliteConfig.enforceForeignKeys(true);
-        sqliteConfig.setSynchronous(SQLiteConfig.SynchronousMode.NORMAL);
-        sqliteConfig.setCacheSize(-64000);
-        sqliteConfig.setTempStore(SQLiteConfig.TempStore.MEMORY);
-        sqliteConfig.setBusyTimeout(5000);
+            SQLiteConfig sqliteConfig = new SQLiteConfig();
+            sqliteConfig.enforceForeignKeys(true);
+            sqliteConfig.setSynchronous(SQLiteConfig.SynchronousMode.NORMAL);
+            sqliteConfig.setCacheSize(-64000);
+            sqliteConfig.setTempStore(SQLiteConfig.TempStore.MEMORY);
+            sqliteConfig.setBusyTimeout(5000);
 
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(dbUrl);
-        config.setPoolName("SQLite-Pool");
-        config.setMaximumPoolSize(10);
-        config.setDataSourceProperties(sqliteConfig.toProperties());
+            HikariConfig config = new HikariConfig();
+            config.setJdbcUrl(dbUrl);
+            config.setPoolName("SQLite-Pool");
+            config.setMaximumPoolSize(10);
+            config.setDataSourceProperties(sqliteConfig.toProperties());
 
-        dataSource = new HikariDataSource(config);
+            dataSource = new HikariDataSource(config);
+            ensureTablesExist();
         }
-        ensureTablesExist();
     }
 
     /**

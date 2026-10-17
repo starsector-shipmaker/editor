@@ -8,6 +8,7 @@ import shipeditor.components.datafiles.entities.transferable.Transferables.Trans
 import shipeditor.utility.components.containers.OrdnancedEntryList;
 
 import javax.swing.DefaultListModel;
+import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.util.List;
 import java.util.function.Consumer;
@@ -55,7 +56,9 @@ public class HullmodsList extends OrdnancedEntryList<HullmodCSVEntry> {
 
     @Override
     protected boolean isSupported(Transferable transferable) {
-        return transferable.getTransferDataFlavors()[0].equals(TransferableEntry.TRANSFERABLE_MOD);
+        DataFlavor[] dataFlavors = transferable.getTransferDataFlavors();
+        if (dataFlavors == null || dataFlavors.length == 0) return false;
+        return dataFlavors[0].equals(TransferableEntry.TRANSFERABLE_MOD);
     }
 
 }

@@ -36,6 +36,7 @@ public final class ModuleList extends InstalledFeatureList {
     @Override
     protected boolean isSupported(Transferable transferable) {
         DataFlavor[] dataFlavors = transferable.getTransferDataFlavors();
+        if (dataFlavors == null || dataFlavors.length < 2) return false;
         boolean isFeature = dataFlavors[0].equals(FEATURE_FLAVOR);
 
         String humanPresentableName = dataFlavors[1].getHumanPresentableName();

@@ -1,4 +1,4 @@
-package oth.shipeditor.utility.graphics.opengl;
+package shipeditor.utility.graphics.opengl;
 
 import lombok.extern.log4j.Log4j2;
 import org.joml.Matrix4f;

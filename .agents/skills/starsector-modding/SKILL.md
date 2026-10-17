@@ -21,7 +21,7 @@ This skill captures comprehensive knowledge, design patterns, and debugging solu
   * **DO NOT compile for Java 7.** The actual cause is bytecode > 61 (e.g., compiled with Java 21). Always compile with `-source 17 -target 17` or `--release 17`.
 * **Standard Compilation Command:**
   ```bash
-  javac -encoding UTF-8 -source 17 -target 17 -d <out_dir> -cp "/media/lechibang/work/starsector/*:/media/lechibang/work/starsector/mods/LazyLib/jars/*:/media/lechibang/work/starsector/mods/GraphicsLib/jars/*:/media/lechibang/work/starsector/mods/MagicLib/jars/*:/media/lechibang/work/starsector/mods/Nexerelin/jars/*:/media/lechibang/work/starsector/mods/LunaLib/jars/*" @sources.txt
+  javac -encoding UTF-8 -source 17 -target 17 -d <out_dir> -cp "/run/media/banglc/work/starsector/*:/run/media/banglc/work/starsector/mods/LazyLib/jars/*:/run/media/banglc/work/starsector/mods/GraphicsLib/jars/*:/run/media/banglc/work/starsector/mods/MagicLib/jars/*:/run/media/banglc/work/starsector/mods/Nexerelin/jars/*:/run/media/banglc/work/starsector/mods/LunaLib/jars/*" @sources.txt
   ```
 * **Decompiler Type-Casting Fixes (Procyon / CFR):**
   Decompilers often inject invalid `(Object)` casts into generic method invocations on newer OpenJDK versions.

@@ -7,6 +7,15 @@ description: Teaches agents how Starsector data files work and how the editor pa
 
 This skill teaches agents how Starsector data files work and how the editor parses/serializes them.
 
+## Skill Directory Structure
+- **`SKILL.md`**: Main instructions (this file).
+- **`resources/`**:
+  - [JacksonConfig.java.txt](file:///run/media/banglc/work/starsector/starsector-shipmaker/.agents/skills/starsector-data-parsing/resources/JacksonConfig.java.txt): Reference Jackson ObjectMapper configuration for relaxed Starsector JSON parsing.
+- **`examples/`**:
+  - [CustomCsvSerializer.java.txt](file:///run/media/banglc/work/starsector/starsector-shipmaker/.agents/skills/starsector-data-parsing/examples/CustomCsvSerializer.java.txt): Reference implementation for preserving Starsector CSV structure and comments.
+- **`scripts/`**:
+  - [verify_json.py](file:///run/media/banglc/work/starsector/starsector-shipmaker/.agents/skills/starsector-data-parsing/scripts/verify_json.py): Helper script to validate Starsector JSON files.
+
 ## .ship File Format
 - JSON with comments (`#` style), parsed by custom `JsonProcessor`
 - Key fields: `hullId`, `hullName`, `hullSize`, `center` [Y,X], `height`, `width`, `spriteName`, `style`, `bounds`, `weaponSlots`, `engineSlots`, `builtInWeapons`, `builtInWings`, `builtInMods`
@@ -24,11 +33,15 @@ This skill teaches agents how Starsector data files work and how the editor pars
 
 ## Serialization Pipeline
 - Jackson ObjectMapper with custom serializers/deserializers.
-- **Robust Parsing**: Deserializers like `CustomDeserializers.java` (e.g., `Point2DArrayDeserializer`, `ModulesDeserializer`) must always use strict `try-catch` blocks, null checks, and `log.error` to prevent `NullPointerException` crashes on corrupted JSON nodes.
+- **Non-Destructive Custom JSON Property Preservation**: `HullSpecFile`, `VariantFile`, `SkinSpecFile`, `WeaponSpecFile`, and `ProjectileSpecFile` use `@JsonAnyGetter` and `@JsonAnySetter` (`unrecognizedProperties` map) paired with `SaveActionUtilities.mergeUnrecognizedProperties()` during save actions (`SaveHullAction`, `SaveVariantAction`, `SaveWeaponAction`, `SaveProjectileAction`) so unrecognized third-party mod JSON fields on disk are preserved across saves.
+- **`JsonProcessor` Escaped Quote & Comment Handling**: `JsonProcessor.straightenMalformed()` tracks backslash escapes (`\"`) inside string literals so `#`, `//`, or `;` characters inside strings are not corrupted, while stripping `#` and `//` / `/* ... */` comments outside strings.
+- **Robust Parsing**: Deserializers like `CustomDeserializers.java` (e.g., `Point2DArrayDeserializer`, `ModulesDeserializer`, `ColorArrayRGBADeserializer`) must always use strict `try-catch` blocks, null/bounds checks, and `log.error` to prevent crashes on malformed JSON nodes.
 - `Point2DArrayDeserializer`: reads flat number arrays as Point2D pairs.
 - `SlotLocationsSerializer` / `Point2DArraySerializer`: writes Point2D[] back as flat arrays.
 - `SaveHullAction.transformSlotsFromBays()`: converts LaunchBay port positions using `SHIP_CENTER` coordinate mode.
 - `SaveHullAction` single-port duplication fix: `if (locations.length == 1) { locations = new Point2D.Double[]{locations[0], locations[0]}; }`
+- **Cascading Module Variant Saves**: `SaveVariantAction.saveVariant()` checks `LayerManager.isVariantDirty()` across all fitted module variants (`variant.getFittedModules()`) and prompts the user to save dirty module variants before saving the parent variant.
+- **CSV Loading & Saving**: `GameDataRepository` filters out blank/comment CSV rows on load and flattens package entries via `flattenPackageEntries()`. `SaveCSVAction` and `CSVIDSyncHandler` use UTF-8 BOM-aware row ID lookup (`findRowId()`, `findRowIdKey()`) and atomic file replacement on save.
 
 ## Coordinate System
 - Ship JSON `center` field: `[Y_offset_from_bottom, X_offset_from_left]`

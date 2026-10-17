@@ -12,12 +12,12 @@ This skill provides comprehensive instructions for agents modifying or adding dr
 This skill is organized as follows:
 - **`SKILL.md`**: Main instructions (this file).
 - **`resources/`**: Documents, assets, and guides.
-  - [rendering_migration_guide.md](file:///media/lechibang/WORK1/projects/starsector-shipmaker/.agents/skills/opengl-rendering/resources/rendering_migration_guide.md): The full details of the OpenGL migration, coordinate spaces, shaders, and quads.
-  - [rendering_pipeline.md](file:///media/lechibang/WORK1/projects/starsector-shipmaker/.agents/skills/opengl-rendering/resources/rendering_pipeline.md): Comprehensive documentation of the rendering pipeline, PaintOrderController, SpriteRenderer, ShapeRenderer, and Transform Math.
+  - [rendering_migration_guide.md](file:///run/media/banglc/work/starsector/starsector-shipmaker/.agents/skills/opengl-rendering/resources/rendering_migration_guide.md): The full details of the OpenGL migration, coordinate spaces, shaders, and quads.
+  - [rendering_pipeline.md](file:///run/media/banglc/work/starsector/starsector-shipmaker/.agents/skills/opengl-rendering/resources/rendering_pipeline.md): Comprehensive documentation of the rendering pipeline, PaintOrderController, SpriteRenderer, ShapeRenderer, and Transform Math.
 - **`examples/`**: Code references.
-  - [RenderingPatternsReference.java](file:///media/lechibang/WORK1/projects/starsector-shipmaker/.agents/skills/opengl-rendering/examples/RenderingPatternsReference.java): Reference implementation of lookup tables, memory buffers, double-pass opacity, and robust state recovery.
+  - [RenderingPatternsReference.java](file:///run/media/banglc/work/starsector/starsector-shipmaker/.agents/skills/opengl-rendering/examples/RenderingPatternsReference.java): Reference implementation of lookup tables, memory buffers, double-pass opacity, and robust state recovery.
 - **`scripts/`**: Tooling.
-  - [rebuild_and_run.sh](file:///media/lechibang/WORK1/projects/starsector-shipmaker/.agents/skills/opengl-rendering/scripts/rebuild_and_run.sh): Script to automate compilation, packaging, and execution.
+  - [rebuild_and_run.sh](file:///run/media/banglc/work/starsector/starsector-shipmaker/.agents/skills/opengl-rendering/scripts/rebuild_and_run.sh): Script to automate compilation, packaging, and execution.
 
 ## Rendering Architecture Overview
 
@@ -26,6 +26,10 @@ The rendering context is integrated within Swing components:
 - **`PaintOrderController.java`**: Orchestrates the draw order (background -> grid axes -> layers -> guides -> hotkeys).
 - **`SpriteRenderer.java`**: Handles textured sprite quads.
 - **`ShapeRenderer.java`**: Handles UI, overlays, grids, lines, rectangles, and circle geometry.
+- **`TextRenderer.java`**: LRU-cached (`MAX_CACHE_SIZE = 256` with `glDeleteTextures` eviction) AWT glyph-outline to OpenGL texture renderer (`drawTextGL`, `drawTextScreenGL`).
+- **`FramebufferUtilities.java`**: Offscreen FBO (`GL_FRAMEBUFFER`) rendering for exporting layers or the viewer canvas to `BufferedImage` / PNG files (`renderLayerToImage`, `printLayerToImage`, `printViewerToImage`).
+- **`PolygonSimplifier.java` & `SpriteContourTracer.java`**: Geometric utilities implementing Douglas-Peucker polygon decimation and Moore-Neighbor boundary tracing (with Jacob's stopping criterion), delegated to by `CollisionHullGenerator` and `SpriteOutlineTracer`.
+- **Animated Weapon Frame Cycling**: `WeaponSprites` evaluates `currentFrame % frames.size()` per sprite part so static 1-frame barrels remain visible while multi-frame parts cycle via the `F6` hotkey.
 
 ## Coordinate & Transformation Math
 

@@ -35,13 +35,22 @@ public final class CSVIDSyncHandler {
         String oldID = changed.oldID();
         String newID = changed.newID();
         CSVEntry entry = changed.entry();
+        if (entry == null) {
+            return;
+        }
         GameDataRepository repo = SettingsManager.getGameData();
 
-        // 1. Patch the raw CSV row's "id" cell
+        // 1. Patch the raw CSV row's "id" cell and update any BOM-prefixed key on the entry
+        Map<String, String> entryRowData = entry.getRowData();
+        if (entryRowData != null) {
+            String entryKey = SaveCSVAction.findRowIdKey(entryRowData);
+            entryRowData.put(entryKey, newID);
+            entryRowData.put("id", newID);
+        }
         updateRawCSVRow(entry.getTableFilePath(), oldID, newID);
 
         // 2. Update mutable ID field + re-index repository
-        if (entry != null) {
+        if (repo != null) {
             switch (entry.getClass().getSimpleName()) {
                 case "ShipCSVEntry" -> {
                     ShipCSVEntry shipEntry = (ShipCSVEntry) entry;
@@ -97,6 +106,9 @@ public final class CSVIDSyncHandler {
 
     private static void updateRawCSVRow(Path tablePath, String oldID, String newID) {
         GameDataRepository repo = SettingsManager.getGameData();
+        if (tablePath == null || repo == null) {
+            return;
+        }
         List<Map<String, String>> rawData = repo.getRawCSVDataForPath(tablePath);
         if (rawData == null) return;
 
@@ -105,6 +117,7 @@ public final class CSVIDSyncHandler {
             if (rowId != null && oldID.equalsIgnoreCase(rowId.trim())) {
                 String key = SaveCSVAction.findRowIdKey(row);
                 row.put(key, newID);
+                row.put("id", newID);
                 return;
             }
         }

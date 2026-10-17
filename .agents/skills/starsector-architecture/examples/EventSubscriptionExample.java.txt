@@ -1,9 +1,10 @@
 package shipeditor.communication;
 
-import shipeditor.communication.events.BusEvent;
-import shipeditor.communication.events.viewer.layers.LayerWasSelected;
+import lombok.extern.log4j.Log4j2;
+import shipeditor.communication.events.viewer.layers.LayerEvents.LayerWasSelected;
 import shipeditor.components.viewer.layers.ViewerLayer;
 
+@Log4j2
 public class EventSubscriptionExample {
 
     private final Object parentComponent;
@@ -13,18 +14,20 @@ public class EventSubscriptionExample {
     }
 
     public void registerListeners() {
-        // Lifecycle-bound subscription. Automatically cleaned up when the parent is GC'd.
-        EventBus.subscribe(parentComponent, event -> {
-            if (event instanceof LayerWasSelected checked) {
-                handleLayerSelected(checked.selected());
-            }
+        // Typed lifecycle-bound subscription. Automatically cleaned up when the parent is GC'd.
+        EventBus.subscribe(parentComponent, LayerWasSelected.class, event -> {
+            handleLayerSelected(event.selected());
         });
+    }
+
+    public void unregisterListeners() {
+        EventBus.unsubscribeByParent(parentComponent);
     }
 
     private void handleLayerSelected(ViewerLayer selected) {
         if (selected == null) {
             return;
         }
-        System.out.println("Selected layer: " + selected.getSprite());
+        log.debug("Selected layer: {}", selected.getSprite());
     }
 }

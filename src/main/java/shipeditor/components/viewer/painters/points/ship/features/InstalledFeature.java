@@ -255,20 +255,20 @@ public final class InstalledFeature implements InstallableEntry {
             }
 
             if (rawVariant != null && !rawVariant.isEmpty()) {
-                ShipLayer loadedFromModule = shipeditor.components.viewer.layers.LayerFactory.createLayerFromVariant(rawVariant);
+                ShipLayer newLayer = shipeditor.components.viewer.layers.LayerFactory.createLayerFromVariant(rawVariant);
 
-                ShipPainter newPainter = loadedFromModule.getPainter();
+                if (newLayer != null) {
+                    ShipPainter newPainter = newLayer.getPainter();
 
-                Point2D anchor = layerPainter.getAnchor();
-                newPainter.setAnchor(new Point2D.Double(anchor.getX(), anchor.getY()));
+                    Point2D anchor = layerPainter.getAnchor();
+                    newPainter.setAnchor(new Point2D.Double(anchor.getX(), anchor.getY()));
 
-                double rotationDegrees = Math.toDegrees(shipPainter.getRotationRadians());
-                newPainter.rotateLayer(rotationDegrees);
+                    double rotationDegrees = Math.toDegrees(shipPainter.getRotationRadians());
+                    newPainter.rotateLayer(rotationDegrees);
 
-                shipeditor.components.viewer.layers.LayerManager layerManager = shipeditor.utility.overseers.StaticController.getLayerManager();
-                layerManager.getLayers().add(loadedFromModule);
-                shipeditor.communication.EventBus.publish(new shipeditor.communication.events.viewer.layers.LayerEvents.ShipLayerCreated(loadedFromModule));
-                layerManager.setActiveLayer(loadedFromModule);
+                    shipeditor.components.viewer.layers.LayerManager layerManager = shipeditor.utility.overseers.StaticController.getLayerManager();
+                    layerManager.setActiveLayer(newLayer);
+                }
             }
         } else {
             throw new IllegalStateException("Can only load modules as separate layers!");

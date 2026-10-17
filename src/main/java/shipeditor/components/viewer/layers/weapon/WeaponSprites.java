@@ -41,57 +41,53 @@ public class WeaponSprites {
 
     public void setTurretSprite(Sprite sprite) {
         this.turretSprite = sprite;
-        if (turretSpriteFrames.isEmpty() && sprite != null) {
-            turretSpriteFrames.add(sprite);
-        }
+        updateSingleFrameList(turretSpriteFrames, sprite);
     }
 
     public void setTurretUnderSprite(Sprite sprite) {
         this.turretUnderSprite = sprite;
-        if (turretUnderSpriteFrames.isEmpty() && sprite != null) {
-            turretUnderSpriteFrames.add(sprite);
-        }
+        updateSingleFrameList(turretUnderSpriteFrames, sprite);
     }
 
     public void setTurretGunSprite(Sprite sprite) {
         this.turretGunSprite = sprite;
-        if (turretGunSpriteFrames.isEmpty() && sprite != null) {
-            turretGunSpriteFrames.add(sprite);
-        }
+        updateSingleFrameList(turretGunSpriteFrames, sprite);
     }
 
     public void setTurretGlowSprite(Sprite sprite) {
         this.turretGlowSprite = sprite;
-        if (turretGlowSpriteFrames.isEmpty() && sprite != null) {
-            turretGlowSpriteFrames.add(sprite);
-        }
+        updateSingleFrameList(turretGlowSpriteFrames, sprite);
     }
 
     public void setHardpointSprite(Sprite sprite) {
         this.hardpointSprite = sprite;
-        if (hardpointSpriteFrames.isEmpty() && sprite != null) {
-            hardpointSpriteFrames.add(sprite);
-        }
+        updateSingleFrameList(hardpointSpriteFrames, sprite);
     }
 
     public void setHardpointUnderSprite(Sprite sprite) {
         this.hardpointUnderSprite = sprite;
-        if (hardpointUnderSpriteFrames.isEmpty() && sprite != null) {
-            hardpointUnderSpriteFrames.add(sprite);
-        }
+        updateSingleFrameList(hardpointUnderSpriteFrames, sprite);
     }
 
     public void setHardpointGunSprite(Sprite sprite) {
         this.hardpointGunSprite = sprite;
-        if (hardpointGunSpriteFrames.isEmpty() && sprite != null) {
-            hardpointGunSpriteFrames.add(sprite);
-        }
+        updateSingleFrameList(hardpointGunSpriteFrames, sprite);
     }
 
     public void setHardpointGlowSprite(Sprite sprite) {
         this.hardpointGlowSprite = sprite;
-        if (hardpointGlowSpriteFrames.isEmpty() && sprite != null) {
-            hardpointGlowSpriteFrames.add(sprite);
+        updateSingleFrameList(hardpointGlowSpriteFrames, sprite);
+    }
+
+    private static void updateSingleFrameList(List<Sprite> frames, Sprite sprite) {
+        if (sprite == null) {
+            if (frames.size() == 1) {
+                frames.clear();
+            }
+        } else if (frames.isEmpty()) {
+            frames.add(sprite);
+        } else if (frames.size() == 1) {
+            frames.set(0, sprite);
         }
     }
 
@@ -159,6 +155,8 @@ public class WeaponSprites {
         max = Math.max(max, hardpointGunSpriteFrames.size());
         max = Math.max(max, turretUnderSpriteFrames.size());
         max = Math.max(max, hardpointUnderSpriteFrames.size());
+        max = Math.max(max, turretGlowSpriteFrames.size());
+        max = Math.max(max, hardpointGlowSpriteFrames.size());
         return max;
     }
 

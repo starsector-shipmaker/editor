@@ -14,7 +14,8 @@ import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.components.viewer.layers.ship.data.ShipSkin;
 import shipeditor.components.viewer.painters.points.ship.EngineSlotPainter;
 import shipeditor.persistence.SettingsManager;
-import shipeditor.representation.ship.HullStyle;
+import shipeditor.representation.GameDataRepository;
+import shipeditor.representation.ship.EngineStyle;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.UIConstants;
 import shipeditor.utility.components.UIFactory;
@@ -129,7 +130,8 @@ public class SkinEngineOverridesPanel extends AbstractSkinOverridesPanel<SkinEng
                 0.0, 1000.0, 1.0);
         JSpinner widthSpinner = new JSpinner(widthModel);
 
-        Map<String, HullStyle> allStyles = SettingsManager.getGameData().getAllHullStyles();
+        GameDataRepository gameData = SettingsManager.getGameData();
+        Map<String, EngineStyle> allStyles = gameData != null ? gameData.getAllEngineStyles() : null;
         Vector<String> styleIds = new Vector<>();
         styleIds.add(""); // Empty means no override
         if (allStyles != null) {

@@ -90,7 +90,7 @@ public abstract class AbstractQAReportDialog extends JDialog {
         worker.execute();
     }
 
-    protected abstract List<QAIssue> performAnalysis() throws Exception;
+    protected abstract List<QAIssue> performAnalysis();
 
     protected static class QATableModel extends AbstractTableModel {
         private final String[] columns;

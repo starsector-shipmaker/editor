@@ -117,7 +117,7 @@ public class VariantOrdnancePanel extends JPanel {
 
             int maxVentsCaps = 0;
             ShipHull shipHull = shipLayer.getHull();
-            if (shipHull != null) {
+            if (shipHull != null && shipHull.getHullSize() != null) {
                 maxVentsCaps = shipHull.getHullSize().getMaxFluxRegulators();
             }
 

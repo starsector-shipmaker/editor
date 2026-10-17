@@ -20,6 +20,7 @@ import shipeditor.utility.text.StringConstants;
 import shipeditor.components.viewer.layers.ViewerLayer;
 import shipeditor.components.viewer.layers.LayerManager;
 import shipeditor.components.viewer.layers.ship.ShipLayer;
+import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.utility.overseers.StaticController;
 
 import javax.swing.JFileChooser;
@@ -30,8 +31,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Log4j2
@@ -41,14 +44,17 @@ final class SaveVariantAction {
     }
 
     static void saveVariant(ShipVariant variant) {
+        if (variant == null) {
+            return;
+        }
         // --- Cascading Save Check ---
         LayerManager manager = StaticController.getViewer().getLayerManager();
-        List<ShipVariant> dirtyModules = new ArrayList<>();
+        Set<ShipVariant> dirtyModules = new LinkedHashSet<>();
         if (variant.getFittedModules() != null) {
             for (InstalledFeature module : variant.getFittedModules().values()) {
-                if (module.getFeaturePainter() instanceof shipeditor.components.viewer.layers.ship.ShipPainter shipPainter) {
+                if (module != null && module.getFeaturePainter() instanceof ShipPainter shipPainter) {
                     ShipVariant modVariant = shipPainter.getActiveVariant();
-                    if (modVariant != null) {
+                    if (modVariant != null && modVariant != variant) {
                         for (ViewerLayer layer : manager.getLayers()) {
                             if (layer instanceof ShipLayer sl && sl.getActiveVariant() == modVariant) {
                                 if (manager.isVariantDirty(layer)) {
@@ -63,8 +69,9 @@ final class SaveVariantAction {
         
         if (!dirtyModules.isEmpty()) {
             int result = JOptionPane.showConfirmDialog(shipeditor.PrimaryWindow.getInstance(),
-                    "There are " + dirtyModules.size() + " unsaved module variants associated with this ship.\nDo you want to save them as well?",
-                    "Unsaved Modules Detected", JOptionPane.YES_NO_OPTION);
+                    StringManager.getString("UNSAVED_MODULES_PROMPT_MSG", dirtyModules.size()),
+                    StringManager.getString("UNSAVED_MODULES_DETECTED"),
+                    JOptionPane.YES_NO_OPTION);
             if (result == JOptionPane.YES_OPTION) {
                 for (ShipVariant dirtyMod : dirtyModules) {
                     // For simplicity, just invoke the normal save flow which prompts the user for each.
@@ -77,8 +84,9 @@ final class SaveVariantAction {
 
         JFileChooser fileChooser = SaveVariantAction.getSaveVariantFileChooser();
 
+        String varId = variant.getVariantId() != null ? variant.getVariantId() : "unnamed_variant";
         File currentDirectory = fileChooser.getCurrentDirectory();
-        File initial = new File(currentDirectory, variant.getVariantId());
+        File initial = new File(currentDirectory, varId);
         fileChooser.setSelectedFile(initial);
 
         VariantFile existing = GameDataRepository.getVariantByID(variant.getVariantId());
@@ -116,13 +124,13 @@ final class SaveVariantAction {
                 SaveActionUtilities.mergeUnrecognizedProperties(result, toSerialize.getUnrecognizedProperties(), VariantFile.class);
                 toSerialize.setVariantFilePath(result.toPath());
                 objectMapper.writeValue(result, toSerialize);
+                variant.setVariantFilePath(result.toPath());
                 GameDataRepository.putVariant(toSerialize);
                 LayerManager layerManager = StaticController.getViewer().getLayerManager();
                 for (ViewerLayer layer : layerManager.getLayers()) {
                     if (layer instanceof ShipLayer shipLayer) {
                         if (shipLayer.getLoadedVariants().containsValue(variant) || shipLayer.getActiveVariant() == variant) {
                             layerManager.markSaved(shipLayer, "variant");
-                            break;
                         }
                     }
                 }
@@ -151,11 +159,17 @@ final class SaveVariantAction {
         result.setQuality(shipVariant.getQuality());
 
         List<HullmodCSVEntry> hullMods = shipVariant.getHullMods();
-        result.setHullMods(hullMods.stream().map(a -> a.getHullmodID()).collect(Collectors.toList()));
+        result.setHullMods(hullMods != null
+                ? hullMods.stream().map(HullmodCSVEntry::getHullmodID).collect(Collectors.toList())
+                : new ArrayList<>());
         List<HullmodCSVEntry> permaMods = shipVariant.getPermaMods();
-        result.setPermaMods(permaMods.stream().map(a -> a.getHullmodID()).collect(Collectors.toList()));
+        result.setPermaMods(permaMods != null
+                ? permaMods.stream().map(HullmodCSVEntry::getHullmodID).collect(Collectors.toList())
+                : new ArrayList<>());
         List<HullmodCSVEntry> sMods = shipVariant.getSMods();
-        result.setSMods(sMods.stream().map(a -> a.getHullmodID()).collect(Collectors.toList()));
+        result.setSMods(sMods != null
+                ? sMods.stream().map(HullmodCSVEntry::getHullmodID).collect(Collectors.toList())
+                : new ArrayList<>());
 
         List<String> suppressedMods = shipVariant.getSuppressedMods();
         if (suppressedMods != null && !suppressedMods.isEmpty()) {
@@ -166,14 +180,25 @@ final class SaveVariantAction {
         result.setWeaponGroups(specWeaponGroups);
 
         List<WingCSVEntry> wings = shipVariant.getWings();
-        result.setWings(wings.stream().map(a -> a.getWingID()).collect(Collectors.toList()));
+        result.setWings(wings != null
+                ? wings.stream().map(WingCSVEntry::getWingID).collect(Collectors.toList())
+                : new ArrayList<>());
 
         Map<String, String> modules = new LinkedHashMap<>();
         Map<String, InstalledFeature> fittedModules = shipVariant.getFittedModules();
         if (fittedModules != null) {
             fittedModules.forEach((slotID, moduleFeature) -> {
-                String moduleHullID = moduleFeature.getFeatureID();
-                modules.put(slotID, moduleHullID);
+                if (moduleFeature == null) {
+                    return;
+                }
+                String moduleVariantID = moduleFeature.getFeatureID();
+                if (moduleFeature.getFeaturePainter() instanceof ShipPainter sp
+                        && sp.getActiveVariant() != null
+                        && sp.getActiveVariant().getVariantId() != null
+                        && !sp.getActiveVariant().isEmpty()) {
+                    moduleVariantID = sp.getActiveVariant().getVariantId();
+                }
+                modules.put(slotID, moduleVariantID);
             });
         }
         result.setModules(modules);
@@ -190,18 +215,28 @@ final class SaveVariantAction {
         List<FittedWeaponGroup> weaponGroups = shipVariant.getWeaponGroups();
 
         List<SpecWeaponGroup> specWeaponGroups = new ArrayList<>();
+        if (weaponGroups == null) {
+            return specWeaponGroups;
+        }
         weaponGroups.forEach(fittedWeaponGroup -> {
+            if (fittedWeaponGroup == null) {
+                return;
+            }
             SpecWeaponGroup specWeaponGroup = new SpecWeaponGroup();
             FireMode mode = fittedWeaponGroup.getMode();
-            specWeaponGroup.setMode(mode.toString());
+            specWeaponGroup.setMode(mode != null ? mode.toString() : FireMode.LINKED.toString());
             specWeaponGroup.setAutofire(fittedWeaponGroup.isAutofire());
 
             Map<String, String> specGroupWeapons = new LinkedHashMap<>();
             ListOrderedMap<String, InstalledFeature> groupWeapons = fittedWeaponGroup.getWeapons();
-            groupWeapons.forEach((slotID, feature) -> {
-                String weaponID = feature.getFeatureID();
-                specGroupWeapons.put(slotID, weaponID);
-            });
+            if (groupWeapons != null) {
+                groupWeapons.forEach((slotID, feature) -> {
+                    if (feature != null) {
+                        String weaponID = feature.getFeatureID();
+                        specGroupWeapons.put(slotID, weaponID);
+                    }
+                });
+            }
 
             specWeaponGroup.setWeapons(specGroupWeapons);
             specWeaponGroups.add(specWeaponGroup);

@@ -8,7 +8,7 @@
 
     <!-- Exclude rendering controllers returning mutable state -->
     <Match>
-        <Class name="shipeditor.components.viewer.painters.PaintOrderController" />
+        <Class name="shipeditor.components.viewer.PaintOrderController" />
         <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2" />
     </Match>
 </FindBugsFilter>

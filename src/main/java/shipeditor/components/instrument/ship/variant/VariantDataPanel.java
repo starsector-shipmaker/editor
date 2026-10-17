@@ -154,10 +154,12 @@ public class VariantDataPanel extends JPanel {
         if (shipHull == null) return;
 
         HullSize hullSize = shipHull.getHullSize();
-        int maxFluxRegulators = hullSize.getMaxFluxRegulators();
+        int maxFluxRegulators = hullSize != null ? hullSize.getMaxFluxRegulators() : 0;
+        int fluxVents = variant.getFluxVents();
+        int fluxCapacitors = variant.getFluxCapacitors();
 
-        ventsSpinner.enableSpinner(layer, variant.getFluxVents(), maxFluxRegulators, val -> variant.setFluxVents(val != null ? val : 0));
-        capacitorsSpinner.enableSpinner(layer, variant.getFluxCapacitors(), maxFluxRegulators, val -> variant.setFluxCapacitors(val != null ? val : 0));
+        ventsSpinner.enableSpinner(layer, fluxVents, Math.max(maxFluxRegulators, fluxVents), val -> variant.setFluxVents(val != null ? val : 0));
+        capacitorsSpinner.enableSpinner(layer, fluxCapacitors, Math.max(maxFluxRegulators, fluxCapacitors), val -> variant.setFluxCapacitors(val != null ? val : 0));
         qualitySpinner.enableSpinner(layer, variant.getQuality(), 1.0d, val -> variant.setQuality(val != null ? val : 0.0d));
 
         shipHullIDLabel.setText(variant.getShipHullId());

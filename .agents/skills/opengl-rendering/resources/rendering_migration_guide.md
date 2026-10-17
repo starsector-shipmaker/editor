@@ -193,7 +193,7 @@ The rendering pipeline has been fully migrated. Direct usage of AWT `Graphics2D`
 - **`BoundPointsPainter.java` / `ShipCenterPoint.java`**: Fixed missing OpenGL imports and typed color parameters to allow extraction of components for uniform binding.
 
 ### E. Dragged Preview & Text Rendering
-- **`DraggedObjectsPainter.java` / `DrawUtilities.java`**: Implemented a screen-space dynamic cached text texture system (`TextTexture`) created from AWT Font outlines, enabling high-performance text rendering without re-uploading textures.
+- **`TextRenderer.java` / `DraggedObjectsPainter.java` / `DrawUtilities.java`**: Implemented a screen-space dynamic LRU-cached text texture system (`TextRenderer` with `TextTexture` entries created from AWT Font outlines), enabling high-performance text rendering (`drawTextGL`, `drawTextScreenGL`) without re-uploading textures every frame.
 - **`ShipCSVEntry.java` / `WeaponCSVEntry.java`**: Refactored entry painting to delegate to `DrawUtilities.paintInstallableGhostGL` at 0.5f opacity.
 
 ### F. Center Point Painter, Weapon Painter, and Projectiles

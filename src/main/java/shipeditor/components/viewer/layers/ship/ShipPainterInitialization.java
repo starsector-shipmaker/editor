@@ -210,37 +210,41 @@ public final class ShipPainterInitialization {
     }
 
     private static void initBuiltIns(ShipPainter shipPainter, HullSpecFile hullSpecFile) {
-        var specBuiltIns = hullSpecFile.getBuiltInWeapons();
-        if (specBuiltIns == null || specBuiltIns.isEmpty()) return;
-
         var runtimeBuiltIns = shipPainter.getBuiltInWeapons();
         runtimeBuiltIns.clear();
 
-        specBuiltIns.forEach((slotID, weaponID) -> {
-            WeaponCSVEntry weaponEntry = GameDataRepository.getWeaponByID(weaponID);
-            if (weaponEntry != null) {
-                WeaponSpecFile specFile = weaponEntry.getSpecFile();
-                WeaponPainter weaponPainter = weaponEntry.createPainterFromEntry(null, specFile);
-                InstalledFeature feature = InstalledFeature.of(slotID, weaponID, weaponPainter, weaponEntry);
-                feature.setContainedInBuiltIns(true);
-                runtimeBuiltIns.put(slotID, feature);
-            } else {
-                if (SettingsManager.areFileErrorPopupsEnabled()) {
-                    String message = "Weapon entry for initialized ship (" + shipPainter.getBaseHullId() + ") not found: " + weaponID;
-                    Errors.showFileError(message, new NoSuchElementException(message));
+        var specBuiltIns = hullSpecFile.getBuiltInWeapons();
+        if (specBuiltIns != null && !specBuiltIns.isEmpty()) {
+            specBuiltIns.forEach((slotID, weaponID) -> {
+                WeaponCSVEntry weaponEntry = GameDataRepository.getWeaponByID(weaponID);
+                if (weaponEntry != null) {
+                    WeaponSpecFile specFile = weaponEntry.getSpecFile();
+                    WeaponPainter weaponPainter = weaponEntry.createPainterFromEntry(null, specFile);
+                    InstalledFeature feature = InstalledFeature.of(slotID, weaponID, weaponPainter, weaponEntry);
+                    feature.setContainedInBuiltIns(true);
+                    runtimeBuiltIns.put(slotID, feature);
+                } else {
+                    if (SettingsManager.areFileErrorPopupsEnabled()) {
+                        String message = "Weapon entry for initialized ship (" + shipPainter.getBaseHullId() + ") not found: " + weaponID;
+                        Errors.showFileError(message, new NoSuchElementException(message));
+                    }
                 }
-            }
-
-        });
+            });
+        }
 
         var builtInModules = hullSpecFile.getBuiltInModules();
         if (builtInModules != null) {
             Map<String, InstalledFeature> runtimeModules = new ListOrderedMap<>();
-            builtInModules.forEach((slotID, variantID) -> {
+            for (Map.Entry<String, String> entry : builtInModules.entrySet()) {
+                String slotID = entry.getKey();
+                String variantID = entry.getValue();
                 VariantFile variant = GameDataRepository.getVariantByID(variantID);
+                if (variant == null) continue;
                 InstalledFeature moduleFeature = shipeditor.components.viewer.layers.LayerFactory.createModuleFromVariant(slotID, variant);
-                runtimeModules.put(slotID, moduleFeature);
-            });
+                if (moduleFeature != null) {
+                    runtimeModules.put(slotID, moduleFeature);
+                }
+            }
 
             shipPainter.setBuiltInModules(runtimeModules);
         }

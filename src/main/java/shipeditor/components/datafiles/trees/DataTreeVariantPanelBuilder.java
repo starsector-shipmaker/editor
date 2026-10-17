@@ -44,20 +44,21 @@ public class DataTreeVariantPanelBuilder {
         if (variantFiles.isEmpty()) throw new IllegalArgumentException("Empty variants list!");
 
         ButtonGroup group = new ButtonGroup();
-        variantFiles.forEach(variant -> {
+        for (VariantFile variantFile : variantFiles) {
+            if (variantFile == null) continue;
             JPanel variantLine = new JPanel(new java.awt.BorderLayout());
             variantLine.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-            javax.swing.JTextArea variantFileLabel = createVariantFileLabel(variant);
+            javax.swing.JTextArea variantFileLabel = createVariantFileLabel(variantFile);
             if (withSelector) {
                 JPanel selectorPanel = new JPanel(new java.awt.BorderLayout());
-                outfitVariantLabelWithSelector(variant, selectorPanel, group, variantFileLabel);
+                outfitVariantLabelWithSelector(variantFile, selectorPanel, group, variantFileLabel);
                 variantLine.add(selectorPanel, java.awt.BorderLayout.WEST);
             }
             variantLine.add(variantFileLabel, java.awt.BorderLayout.CENTER);
             labelContainer.add(variantLine, gbc);
             gbc.gridy++;
-        });
+        }
 
         if (withSelector) {
             Enumeration<AbstractButton> elements = group.getElements();

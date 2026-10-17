@@ -165,26 +165,32 @@ public final class DatabaseQueryService {
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
-            
+
             conn.setAutoCommit(false);
-            
-            for (IndexedFile file : files) {
-                pstmt.setString(1, file.getUuid().toString());
-                pstmt.setString(2, file.getModId());
-                pstmt.setString(3, file.getEntityId());
-                pstmt.setString(4, file.getEntityName());
-                pstmt.setString(5, file.getEntityType());
-                pstmt.setString(6, file.getFileName());
-                pstmt.setString(7, file.getFilePath().toString());
-                pstmt.setLong(8, file.getLastModified());
-                pstmt.setString(9, file.getFileHash());
-                pstmt.setString(10, file.getSpritePath());
-                pstmt.setString(11, file.getDesignation());
-                pstmt.setString(12, file.getMetadataJson());
-                pstmt.addBatch();
+            try {
+                for (IndexedFile file : files) {
+                    pstmt.setString(1, file.getUuid().toString());
+                    pstmt.setString(2, file.getModId());
+                    pstmt.setString(3, file.getEntityId());
+                    pstmt.setString(4, file.getEntityName());
+                    pstmt.setString(5, file.getEntityType());
+                    pstmt.setString(6, file.getFileName());
+                    pstmt.setString(7, file.getFilePath().toString());
+                    pstmt.setLong(8, file.getLastModified());
+                    pstmt.setString(9, file.getFileHash());
+                    pstmt.setString(10, file.getSpritePath());
+                    pstmt.setString(11, file.getDesignation());
+                    pstmt.setString(12, file.getMetadataJson());
+                    pstmt.addBatch();
+                }
+                pstmt.executeBatch();
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
             }
-            pstmt.executeBatch();
-            conn.commit();
         } catch (SQLException e) {
             log.error("Failed to upsert indexed files", e);
         }

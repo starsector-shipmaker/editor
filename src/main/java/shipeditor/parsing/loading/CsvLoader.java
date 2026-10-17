@@ -90,12 +90,14 @@ public final class CsvLoader {
                 }
                 Map<String, String> optimizedRow = new java.util.LinkedHashMap<>(row.size());
                 for (Map.Entry<String, String> entry : row.entrySet()) {
-                    String key = entry.getKey() != null ? entry.getKey().intern() : "";
+                    String cleanKey = entry.getKey() != null
+                            ? entry.getKey().replace("\uFEFF", "").replace("\u00EF\u00BB\u00BF", "").intern()
+                            : "";
                     String value = entry.getValue();
                     if (value != null) {
                         value = value.intern();
                     }
-                    optimizedRow.put(key, value);
+                    optimizedRow.put(cleanKey, value);
                 }
                 rawData.add(optimizedRow);
                 if (validationPredicate != null && validationPredicate.test(optimizedRow)) {

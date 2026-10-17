@@ -221,7 +221,7 @@ public final class LayerEdits {
         public void cleanupReferences() {
             Deque<Edit> subEdits = this.getSubEdits();
             subEdits.forEach(edit -> {
-                if (edit instanceof AnchorOffsetEdit checked) {
+                if (edit instanceof ModuleAnchorEdit checked) {
                     checked.cleanupReferences();
                 }
             });

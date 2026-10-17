@@ -55,12 +55,21 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
 
     private ModuleAnchorPanel moduleAnchorWidget;
 
+    private JComboBox<VariantFile> variantPicker;
+
+    private boolean updatingVariants = false;
+
+    private Runnable refreshVariantsAction;
+
     ModuleControlPanel(ModuleList list) {
         this.moduleList = list;
     }
 
     @Override
     public void refreshContent(LayerPainter layerPainter) {
+        if (refreshVariantsAction != null && variantPicker != null && variantPicker.getItemCount() == 0) {
+            refreshVariantsAction.run();
+        }
         if (!(layerPainter instanceof ShipPainter shipPainter) || shipPainter.isUninitialized()) {
             fireClearingListeners(layerPainter);
 
@@ -71,7 +80,7 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
 
         fireRefresherListeners(layerPainter);
 
-        moduleAnchorWidget.setCenterPainter(((ShipPainter) layerPainter).getCenterPointPainter());
+        moduleAnchorWidget.setCenterPainter(shipPainter.getCenterPointPainter());
         moduleAnchorWidget.refresh(layerPainter);
     }
 
@@ -200,8 +209,10 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
         if (moduleList == null) return;
         List<InstalledFeature> selectedValuesList = moduleList.getSelectedValuesList();
         if (selectedValuesList != null && !selectedValuesList.isEmpty()) {
-            for (InstalledFeature feature : selectedValuesList) {
-                action.accept((ShipPainter) feature.getFeaturePainter());
+            for (InstalledFeature selectedModule : selectedValuesList) {
+                if (selectedModule != null && selectedModule.getFeaturePainter() instanceof ShipPainter sp) {
+                    action.accept(sp);
+                }
             }
         }
     }
@@ -294,62 +305,64 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
         // Action row: Variant Combobox + Install Button + Clear Button
         JPanel controlsRow = new JPanel(new BorderLayout(4, 0));
 
-        JComboBox<VariantFile> variantPicker = new JComboBox<>();
+        variantPicker = new JComboBox<>();
         variantPicker.setEnabled(false);
 
         Runnable refreshVariants = () -> {
-            String search = searchField.getText().toLowerCase(Locale.ROOT).trim();
-            boolean stationOnly = stationOnlyCheckBox.isSelected();
+            updatingVariants = true;
+            try {
+                String search = searchField.getText().toLowerCase(Locale.ROOT).trim();
+                boolean stationOnly = stationOnlyCheckBox.isSelected();
 
-            VariantFile prevSelected = (VariantFile) variantPicker.getSelectedItem();
-            variantPicker.removeAllItems();
+                VariantFile prevSelected = (VariantFile) variantPicker.getSelectedItem();
+                variantPicker.removeAllItems();
 
-            GameDataRepository dataRepository = SettingsManager.getGameData();
-            int totalCount = 0;
-            if (dataRepository != null) {
-                Map<String, VariantFile> allVariants = dataRepository.getAllVariants();
-                if (allVariants != null) {
-                    for (VariantFile variant : allVariants.values()) {
-                        if (stationOnly && !isStationModuleVariant(variant)) {
-                            continue;
-                        }
-                        if (!search.isEmpty()) {
-                            String displayName = variant.getDisplayName() != null ? variant.getDisplayName().toLowerCase(Locale.ROOT) : "";
-                            String varId = variant.getVariantId() != null ? variant.getVariantId().toLowerCase(Locale.ROOT) : "";
-                            String hullId = variant.getHullId() != null ? variant.getHullId().toLowerCase(Locale.ROOT) : "";
-                            String toString = variant.toString().toLowerCase(Locale.ROOT);
-                            if (!displayName.contains(search) && !varId.contains(search) && !hullId.contains(search) && !toString.contains(search)) {
+                GameDataRepository dataRepository = SettingsManager.getGameData();
+                int totalCount = 0;
+                if (dataRepository != null) {
+                    Map<String, VariantFile> allVariants = dataRepository.getAllVariants();
+                    if (allVariants != null) {
+                        for (VariantFile variant : allVariants.values()) {
+                            if (stationOnly && !isStationModuleVariant(variant)) {
                                 continue;
                             }
+                            if (!search.isEmpty()) {
+                                String displayName = variant.getDisplayName() != null ? variant.getDisplayName().toLowerCase(Locale.ROOT) : "";
+                                String varId = variant.getVariantId() != null ? variant.getVariantId().toLowerCase(Locale.ROOT) : "";
+                                String hullId = variant.getHullId() != null ? variant.getHullId().toLowerCase(Locale.ROOT) : "";
+                                String toString = variant.toString().toLowerCase(Locale.ROOT);
+                                if (!displayName.contains(search) && !varId.contains(search) && !hullId.contains(search) && !toString.contains(search)) {
+                                    continue;
+                                }
+                            }
+                            variantPicker.addItem(variant);
+                            totalCount++;
                         }
-                        variantPicker.addItem(variant);
-                        totalCount++;
                     }
                 }
-            }
 
-            variantPicker.setEnabled(totalCount > 0);
-            if (totalCount > 0) {
-                if (prevSelected != null && variantPicker.getItemCount() > 0) {
-                    variantPicker.setSelectedItem(prevSelected);
+                variantPicker.setEnabled(totalCount > 0);
+                if (totalCount > 0) {
+                    if (prevSelected != null && variantPicker.getItemCount() > 0) {
+                        variantPicker.setSelectedItem(prevSelected);
+                    }
+                    countLabel.setText("(" + totalCount + " available)");
+                } else {
+                    countLabel.setText("(0 available)");
                 }
-                countLabel.setText("(" + totalCount + " available)");
-            } else {
-                countLabel.setText("(0 available)");
+            } finally {
+                updatingVariants = false;
             }
         };
+        this.refreshVariantsAction = refreshVariants;
 
-        searchField.getDocument().addDocumentListener(new DocumentListener() {
-            @Override public void insertUpdate(DocumentEvent e) { refreshVariants.run(); }
-            @Override public void removeUpdate(DocumentEvent e) { refreshVariants.run(); }
-            @Override public void changedUpdate(DocumentEvent e) { refreshVariants.run(); }
-        });
+        searchField.getDocument().addDocumentListener(new SimpleDocumentListener(refreshVariants));
 
         stationOnlyCheckBox.addActionListener(e -> refreshVariants.run());
 
         variantPicker.addActionListener(e -> {
             VariantFile selected = (VariantFile) variantPicker.getSelectedItem();
-            if (selected != null) {
+            if (!updatingVariants && selected != null) {
                 EventBus.publish(new shipeditor.communication.events.components.ComponentEvents.ShipEntryPicked(selected));
             }
         });
@@ -403,6 +416,23 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
         refreshVariants.run();
 
         return panel;
+    }
+
+    private record SimpleDocumentListener(Runnable callback) implements DocumentListener {
+        @Override
+        public void insertUpdate(DocumentEvent e) {
+            callback.run();
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent e) {
+            callback.run();
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent e) {
+            callback.run();
+        }
     }
 
 }

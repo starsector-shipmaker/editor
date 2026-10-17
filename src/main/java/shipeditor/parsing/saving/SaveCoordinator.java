@@ -36,20 +36,15 @@ public final class SaveCoordinator {
     }
 
     public static void saveLayer(ViewerLayer layer) {
-        if (layer == null) {
-            return;
-        }
-        switch (layer.getClass().getSimpleName()) {
-            case "ShipLayer" -> {
-                ShipLayer shipLayer = (ShipLayer) layer;
-                EventBus.publish(new HullSaveQueued(shipLayer));
-                if (shipLayer.getPainter() != null && shipLayer.getPainter().getActiveVariant() != null && !shipLayer.getPainter().getActiveVariant().isEmpty()) {
-                    EventBus.publish(new VariantSaveQueued(shipLayer.getPainter().getActiveVariant()));
-                }
+        if (layer instanceof ShipLayer shipLayer) {
+            EventBus.publish(new HullSaveQueued(shipLayer));
+            if (shipLayer.getPainter() != null && shipLayer.getPainter().getActiveVariant() != null && !shipLayer.getPainter().getActiveVariant().isEmpty()) {
+                EventBus.publish(new VariantSaveQueued(shipLayer.getPainter().getActiveVariant()));
             }
-            case "WeaponLayer" -> EventBus.publish(new WeaponSaveQueued((WeaponLayer) layer));
-            case "ProjectileLayer" -> EventBus.publish(new ProjectileSaveQueued((ProjectileLayer) layer));
-            default -> {}
+        } else if (layer instanceof WeaponLayer weaponLayer) {
+            EventBus.publish(new WeaponSaveQueued(weaponLayer));
+        } else if (layer instanceof ProjectileLayer projectileLayer) {
+            EventBus.publish(new ProjectileSaveQueued(projectileLayer));
         }
     }
 

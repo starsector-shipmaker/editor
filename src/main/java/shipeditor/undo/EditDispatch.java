@@ -327,6 +327,7 @@ public final class EditDispatch {
         Edit hullmodAddEdit = new HullmodAddEdit(index, shipLayer, hullmod);
         UndoOverseer.post(hullmodAddEdit);
         index.add(hullmod);
+        EventBus.publish(new ActiveLayerUpdated(shipLayer));
     }
 
     public static void postHullmodsSorted(List<HullmodCSVEntry> old, List<HullmodCSVEntry> updated, ShipLayer shipLayer,

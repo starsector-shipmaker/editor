@@ -139,16 +139,17 @@ public class WeaponSlotPainter extends AbstractSlotPainter {
         
         EventBus.subscribe(this, event -> {
             if (event instanceof shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawMousePressed checked) {
-                if (!isInteractionEnabled()) return;
                 java.awt.event.MouseEvent me = checked.mouseEvent();
-                if (javax.swing.SwingUtilities.isRightMouseButton(me) && 
-                    shipeditor.utility.overseers.StaticController.getEditorMode() == shipeditor.components.ComponentEnums.EditorInstrument.VARIANT_MODULES) {
-                    
+                boolean isModuleRightClick = javax.swing.SwingUtilities.isRightMouseButton(me)
+                        && StaticController.getEditorMode() == EditorInstrument.VARIANT_MODULES
+                        && getParentLayer() != null && getParentLayer().isLayerActive();
+                if (!isInteractionEnabled() && !isModuleRightClick) return;
+                if (isModuleRightClick) {
                     Point2D worldTarget = computeWorldTarget(me);
                     WeaponSlotPoint closest = (WeaponSlotPoint) findClosestPoint(worldTarget);
                     
-                    if (closest != null && closest.getWeaponType() == shipeditor.representation.weapon.WeaponEnums.WeaponType.STATION_MODULE) {
-                        java.awt.geom.Point2D screenLoc = shipeditor.utility.overseers.StaticController.getViewer().getWorldToScreen().transform(closest.getPosition(), null);
+                    if (closest != null && closest.getWeaponType() == WeaponType.STATION_MODULE) {
+                        Point2D screenLoc = StaticController.getViewer().getWorldToScreen().transform(closest.getPosition(), null);
                         if (me.getPoint().distanceSq(screenLoc) <= 144.0) {
                             javax.swing.JPopupMenu contextMenu = createModuleContextMenu(closest);
                             contextMenu.show(me.getComponent(), me.getX(), me.getY());

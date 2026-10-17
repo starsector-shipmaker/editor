@@ -44,12 +44,14 @@ public class ShieldPanel extends AbstractCenterPanel {
 
     @Override
     protected double getCurrentRadius(BaseWorldPoint centerPoint) {
-        return ((ShieldCenterPoint) centerPoint).getShieldRadius();
+        return centerPoint instanceof ShieldCenterPoint shieldCenter ? shieldCenter.getShieldRadius() : 0.0;
     }
 
     @Override
     protected void postRadiusChanged(BaseWorldPoint centerPoint, float radius) {
-        EditDispatch.postShieldRadiusChanged((ShieldCenterPoint) centerPoint, radius);
+        if (centerPoint instanceof ShieldCenterPoint shieldCenter) {
+            EditDispatch.postShieldRadiusChanged(shieldCenter, radius);
+        }
     }
 
     @Override

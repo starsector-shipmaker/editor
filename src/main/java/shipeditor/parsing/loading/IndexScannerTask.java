@@ -299,6 +299,7 @@ public final class IndexScannerTask {
                 log.debug("Mod package is up to date, skipping scan: {}", modId);
             }
         }
+        DatabaseQueryService.clearTypeCache();
         long scanElapsed = System.currentTimeMillis() - scanStartTime;
         log.info("Background mod indexing completed in {}ms", scanElapsed);
     }
@@ -490,31 +491,30 @@ public final class IndexScannerTask {
     public static EntityMetadata extractEntityMetadata(File file, String type, ObjectMapper mapper) {
         String keyToFind;
         String spriteKey = null;
-        String designationKey = "designation";
+        String designationKey = null;
         String hullNameKey = null;
-        
+
         switch (type) {
-            case StringConstants.SHIP_TYPE:
+            case StringConstants.SHIP_TYPE -> {
                 keyToFind = "hullId";
                 spriteKey = "spriteName";
                 hullNameKey = "hullName";
-                break;
-            case StringConstants.SKIN_TYPE:
+            }
+            case StringConstants.SKIN_TYPE -> {
                 keyToFind = "skinHullId";
                 spriteKey = "spriteName";
                 hullNameKey = "hullName";
-                break;
-            case StringConstants.VARIANT_TYPE:
+                designationKey = "hullDesignation";
+            }
+            case StringConstants.VARIANT_TYPE -> {
                 keyToFind = "variantId";
                 hullNameKey = "displayName";
-                break;
-            case StringConstants.WEAPON_TYPE:
+            }
+            case StringConstants.WEAPON_TYPE -> {
                 keyToFind = "id";
                 spriteKey = "turretSprite";
-                break;
-            default:
-                keyToFind = "id";
-                break;
+            }
+            default -> keyToFind = "id";
         }
 
         String id = null;
@@ -524,7 +524,9 @@ public final class IndexScannerTask {
 
         try (com.fasterxml.jackson.core.JsonParser parser = mapper.getFactory().createParser(shipeditor.parsing.JsonProcessor.straightenMalformed(file))) {
             while (parser.nextToken() != null) {
-                if (parser.currentToken() == com.fasterxml.jackson.core.JsonToken.FIELD_NAME) {
+                if (parser.currentToken() == com.fasterxml.jackson.core.JsonToken.FIELD_NAME
+                        && parser.getParsingContext().getParent() != null
+                        && parser.getParsingContext().getParent().inRoot()) {
                     String currentName = parser.currentName();
                     if (keyToFind.equals(currentName) && id == null) {
                         parser.nextToken();
@@ -532,7 +534,7 @@ public final class IndexScannerTask {
                     } else if (spriteKey != null && spriteKey.equals(currentName) && spritePath == null) {
                         parser.nextToken();
                         spritePath = parser.getText();
-                    } else if (designationKey.equals(currentName) && designation == null) {
+                    } else if (((designationKey != null && designationKey.equals(currentName)) || "designation".equals(currentName)) && designation == null) {
                         parser.nextToken();
                         designation = parser.getText();
                     } else if (hullNameKey != null && hullNameKey.equals(currentName) && hullName == null) {
@@ -541,7 +543,8 @@ public final class IndexScannerTask {
                     }
                 }
                 // Early exit once all needed fields are found
-                if (id != null && (spriteKey == null || spritePath != null) && designation != null
+                if (id != null && (spriteKey == null || spritePath != null)
+                        && (designationKey == null || designation != null)
                         && (hullNameKey == null || hullName != null)) {
                     break;
                 }
@@ -578,7 +581,7 @@ public final class IndexScannerTask {
                         String name = fileNamePath.toString();
                         int dotIndex = name.lastIndexOf('.');
                         if (dotIndex > 0 && dotIndex < name.length() - 1) {
-                            String fileExt = name.substring(dotIndex + 1);
+                            String fileExt = name.substring(dotIndex + 1).toLowerCase(Locale.ROOT);
                             if (exts.contains(fileExt)) {
                                 filesMap.get(fileExt).add(path.toFile());
                             }

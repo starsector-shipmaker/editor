@@ -12,8 +12,12 @@ import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.undo.edits.LayerEdit;
 import shipeditor.undo.edits.points.PointEdits.PointDragEdit;
 
+import shipeditor.components.viewer.layers.LayerManager;
 import shipeditor.components.viewer.layers.ViewerLayer;
 import shipeditor.components.viewer.layers.ship.ShipLayer;
+import shipeditor.components.viewer.layers.ship.data.ShipVariant;
+import shipeditor.components.viewer.layers.weapon.ProjectileLayer;
+import shipeditor.components.viewer.layers.weapon.WeaponLayer;
 import shipeditor.utility.overseers.StaticController;
 
 import javax.swing.AbstractAction;
@@ -218,16 +222,17 @@ public final class UndoOverseer {
     private static void markActiveLayerDirty(Edit edit) {
         EditCategory category = edit.getCategory();
         if (category == EditCategory.NONE) return;
+        if (StaticController.getViewer() == null) return;
+        LayerManager layerManager = StaticController.getViewer().getLayerManager();
+        if (layerManager == null) return;
 
         Object targetEntity = edit.getTargetEntity();
-        if (targetEntity instanceof shipeditor.components.viewer.layers.ship.data.ShipVariant variant) {
-            String type = category == EditCategory.VARIANT ? "variant" : "hull";
-            // Find which layer holds this variant. 
-            // If it's a module, maybe it's not directly in a layer but we want to mark the variant dirty.
-            // But LayerManager tracks unsaved by ViewerLayer. We might need to track it differently,
-            // or we just mark the active layer as dirty, AND the variant as dirty internally.
-            // Wait, LayerManager currently tracks by ViewerLayer. We should update LayerManager
-            // to be able to track ShipVariants as well, or we just keep it simple for now.
+        if (targetEntity instanceof ShipVariant variant) {
+            for (ViewerLayer layer : layerManager.getLayers()) {
+                if (layer instanceof ShipLayer sl && sl.getActiveVariant() == variant) {
+                    layerManager.markUnsaved(sl, "variant");
+                }
+            }
         }
 
         // Determine the target layer from the edit itself, not the currently active layer.
@@ -244,8 +249,16 @@ public final class UndoOverseer {
         }
 
         if (target instanceof ShipLayer) {
-            String type = category == EditCategory.VARIANT ? "variant" : "hull";
-            StaticController.getViewer().getLayerManager().markUnsaved(target, type);
+            String type = switch (category) {
+                case VARIANT -> "variant";
+                case SKIN -> "skin";
+                default -> "hull";
+            };
+            layerManager.markUnsaved(target, type);
+        } else if (target instanceof WeaponLayer) {
+            layerManager.markUnsaved(target, "weapon");
+        } else if (target instanceof ProjectileLayer) {
+            layerManager.markUnsaved(target, "projectile");
         }
     }
 

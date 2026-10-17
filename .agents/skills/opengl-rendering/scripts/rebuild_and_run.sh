@@ -17,18 +17,21 @@ else
     exit 1
 fi
 
-# 2. Copy the shaded JAR to the root directory
-echo "[2/3] Updating root ship_editor.jar..."
-if [ -f "target/ship_editor-0.0.1c.jar" ]; then
-    cp target/ship_editor-0.0.1c.jar ship_editor.jar
-    echo "✔ Root jar updated successfully."
+# 2. Verify the shaded JAR in the root directory
+echo "[2/3] Verifying root ship_editor.jar..."
+if [ -f "ship_editor.jar" ]; then
+    echo "✔ Root ship_editor.jar verified successfully."
 else
-    echo "❌ Could not locate build jar: target/ship_editor-0.0.1c.jar"
+    echo "❌ Could not locate build jar: ship_editor.jar"
     exit 1
 fi
 
 # 3. Launching
-echo "[3/3] Launching JVM with 1GB memory limit..."
-java -Xmx1g -XX:+UseG1GC -XX:+UseStringDeduplication -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 -jar ./ship_editor.jar
+echo "[3/3] Launching JVM with 4GB memory limit and OpenGL/X11 flags..."
+java -Xmx4g -XX:+UseG1GC -XX:+UseStringDeduplication \
+     -XX:MinHeapFreeRatio=10 -XX:MaxHeapFreeRatio=20 \
+     -Dsun.java2d.opengl=false -Dsun.java2d.d3d=false \
+     -Dsun.java2d.noddraw=true -Dsun.awt.noerasebackground=true \
+     -jar ./ship_editor.jar
 
 echo "Application terminated."

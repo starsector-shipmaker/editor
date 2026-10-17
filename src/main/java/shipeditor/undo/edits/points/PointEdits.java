@@ -101,8 +101,8 @@ public final class PointEdits {
 
         @Override
         public void redo() {
-            redoSubEdits();
             parentPoint.setCollisionRadius(newRadius);
+            redoSubEdits();
             var repainter = StaticController.getScheduler();
             repainter.queueViewerRepaint();
             repainter.queueCenterPanelsRepaint();
@@ -415,8 +415,8 @@ public final class PointEdits {
 
         @Override
         public void redo() {
-            redoSubEdits();
             parentPoint.setShieldRadius(newRadius);
+            redoSubEdits();
             var repainter = StaticController.getScheduler();
             repainter.queueViewerRepaint();
             repainter.queueCenterPanelsRepaint();

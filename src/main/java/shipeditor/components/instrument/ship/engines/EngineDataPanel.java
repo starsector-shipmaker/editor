@@ -80,6 +80,7 @@ public class EngineDataPanel extends LayerPropertiesPanel {
     @Override
     protected void populateContent() {
         this.removeAll();
+        clearAllWidgetListeners();
 
         this.setLayout(new BorderLayout());
 
@@ -209,7 +210,7 @@ public class EngineDataPanel extends LayerPropertiesPanel {
 
                 if (selectedEngine != null) {
                     EngineDataOverride skinOverride = selectedEngine.getSkinOverride();
-                    if (skinOverride != null && skinOverride.getStyle() != null) {
+                    if (skinOverride != null && (skinOverride.getStyle() != null || skinOverride.getStyleID() != null)) {
                         styleSelector.setToolTipText(StringManager.getString("LOCKED_STYLE_OVERRIDDEN_BY_SKIN"));
                         styleSelector.setEnabled(false);
                     } else {
@@ -248,7 +249,7 @@ public class EngineDataPanel extends LayerPropertiesPanel {
 
                 if (selectedEngine != null) {
                     EngineDataOverride skinOverride = selectedEngine.getSkinOverride();
-                    if (skinOverride != null && skinOverride.getStyle() != null) {
+                    if (skinOverride != null && (skinOverride.getStyle() != null || skinOverride.getStyleID() != null)) {
                         idField.setToolTipText(StringManager.getString("LOCKED_STYLE_OVERRIDDEN_BY_SKIN"));
                         idField.setEnabled(false);
                     } else {

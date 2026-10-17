@@ -50,12 +50,14 @@ public class CollisionPanel extends AbstractCenterPanel {
 
     @Override
     protected double getCurrentRadius(BaseWorldPoint centerPoint) {
-        return ((ShipCenterPoint) centerPoint).getCollisionRadius();
+        return centerPoint instanceof ShipCenterPoint shipCenter ? shipCenter.getCollisionRadius() : 0.0;
     }
 
     @Override
     protected void postRadiusChanged(BaseWorldPoint centerPoint, float radius) {
-        EditDispatch.postCollisionRadiusChanged((ShipCenterPoint) centerPoint, radius);
+        if (centerPoint instanceof ShipCenterPoint shipCenter) {
+            EditDispatch.postCollisionRadiusChanged(shipCenter, radius);
+        }
     }
 
     @Override

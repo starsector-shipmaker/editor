@@ -177,6 +177,13 @@ public final class FileLoading {
                 }).whenComplete((runnables, ex) -> {
                     if (ex != null) {
                         log.error(StringManager.getString("ERROR_LOADING_GAME_DATA"), ex);
+                        FileLoading.setLoadingInProgress(false);
+                        clearDirectoryCache();
+                        if (java.awt.GraphicsEnvironment.isHeadless()) {
+                            EventBus.publish(new LoadingActionFired(false));
+                        } else {
+                            SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingActionFired(false)));
+                        }
                     } else if (runnables != null) {
                         Runnable completionTasks = () -> {
                             clearDirectoryCache();

@@ -155,8 +155,10 @@ public final class ShipSkin {
     public void invalidateBuiltIns() {
         log.info("Invalidating built-ins of {}: cleaning up features.",
                 "#" + this.hashCode() + " [" + this + "]");
-        initializedBuiltIns.forEach((s, feature) -> feature.cleanupForRemoval());
-        initializedBuiltIns = null;
+        if (initializedBuiltIns != null) {
+            initializedBuiltIns.forEach((s, feature) -> feature.cleanupForRemoval());
+            initializedBuiltIns = null;
+        }
     }
 
     public void setBuiltInWeapons(Map<String, WeaponCSVEntry> entryMap) {
@@ -168,14 +170,16 @@ public final class ShipSkin {
         if (initializedBuiltIns == null) {
             initializedBuiltIns = new LinkedHashMap<>();
 
-            builtInWeapons.forEach((slotID, weaponEntry) -> {
-                WeaponSpecFile specFile = weaponEntry.getSpecFile();
-                WeaponPainter weaponPainter = weaponEntry.createPainterFromEntry(null, specFile);
-                InstalledFeature feature = InstalledFeature.of(slotID, weaponEntry.getWeaponID(),
-                        weaponPainter, weaponEntry);
-                feature.setContainedInBuiltIns(true);
-                initializedBuiltIns.put(slotID, feature);
-            });
+            if (builtInWeapons != null) {
+                builtInWeapons.forEach((slotID, weaponEntry) -> {
+                    WeaponSpecFile specFile = weaponEntry.getSpecFile();
+                    WeaponPainter weaponPainter = weaponEntry.createPainterFromEntry(null, specFile);
+                    InstalledFeature feature = InstalledFeature.of(slotID, weaponEntry.getWeaponID(),
+                            weaponPainter, weaponEntry);
+                    feature.setContainedInBuiltIns(true);
+                    initializedBuiltIns.put(slotID, feature);
+                });
+            }
         }
         return initializedBuiltIns;
     }
@@ -491,6 +495,8 @@ public final class ShipSkin {
                         .weaponType(type)
                         .weaponSize(size)
                         .weaponMount(mount)
+                        .angle(weaponSlot.getAngle())
+                        .arc(weaponSlot.getArc())
                         .build();
                 overrides.put(slotID, override);
             });

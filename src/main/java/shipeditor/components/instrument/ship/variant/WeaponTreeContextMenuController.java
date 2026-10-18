@@ -14,6 +14,7 @@ import shipeditor.communication.events.components.ComponentEvents.SelectWeaponDa
 
 import shipeditor.components.viewer.entities.weapon.WeaponSlotPoint;
 import shipeditor.components.viewer.layers.ship.ShipLayer;
+import shipeditor.components.viewer.layers.ship.data.ShipVariant;
 import shipeditor.utility.components.dialog.DialogUtilities;
 import shipeditor.utility.overseers.StaticController;
 
@@ -26,6 +27,7 @@ import javax.swing.tree.TreePath;
 import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.List;
 
 public class WeaponTreeContextMenuController extends MouseAdapter {
     private final VariantWeaponsTree tree;
@@ -93,6 +95,32 @@ public class WeaponTreeContextMenuController extends MouseAdapter {
         }
 
         if (!feature.isContainedInBuiltIns()) {
+            FittedWeaponGroup currentGroup = feature.getParentGroup();
+            ShipVariant variant = currentGroup != null ? currentGroup.getParent() : null;
+            if (variant != null) {
+                JMenu moveSubmenu = new JMenu("Move to Weapon Group");
+                List<FittedWeaponGroup> groups = variant.getWeaponGroups();
+                for (int i = 0; i < groups.size(); i++) {
+                    FittedWeaponGroup targetGroup = groups.get(i);
+                    JMenuItem groupItem = new JMenuItem("Group #" + (i + 1) + " (" + targetGroup.getMode().name() + ")");
+                    if (targetGroup == currentGroup) {
+                        groupItem.setEnabled(false);
+                    } else {
+                        groupItem.addActionListener(e -> tree.moveWeaponToGroup(feature, targetGroup));
+                    }
+                    moveSubmenu.add(groupItem);
+                }
+                if (groups.size() < 7) {
+                    if (!groups.isEmpty()) {
+                        moveSubmenu.addSeparator();
+                    }
+                    JMenuItem newGroupItem = new JMenuItem("New Weapon Group");
+                    newGroupItem.addActionListener(e -> tree.moveWeaponToNewGroup(feature));
+                    moveSubmenu.add(newGroupItem);
+                }
+                contextMenu.add(moveSubmenu);
+            }
+
             JMenuItem uninstallFeature = new JMenuItem(StringManager.getString("UNINSTALL_FEATURE"));
             uninstallFeature.addActionListener(e -> {
                 var group = feature.getParentGroup();
@@ -141,6 +169,7 @@ public class WeaponTreeContextMenuController extends MouseAdapter {
         autofire.setSelected(weaponGroup.isAutofire());
         autofire.addActionListener(e -> {
             weaponGroup.setAutofire(autofire.isSelected());
+            markVariantUnsaved();
             tree.repaint();
         });
         contextMenu.add(autofire);
@@ -160,6 +189,7 @@ public class WeaponTreeContextMenuController extends MouseAdapter {
         linkedMode.setSelected(weaponGroup.getMode() == FireMode.LINKED);
         linkedMode.addActionListener(e -> {
             weaponGroup.setMode(FireMode.LINKED);
+            markVariantUnsaved();
             tree.repaint();
         });
         modeSubmenu.add(linkedMode);
@@ -168,9 +198,16 @@ public class WeaponTreeContextMenuController extends MouseAdapter {
         alternatingMode.setSelected(weaponGroup.getMode() == FireMode.ALTERNATING);
         alternatingMode.addActionListener(e -> {
             weaponGroup.setMode(FireMode.ALTERNATING);
+            markVariantUnsaved();
             tree.repaint();
         });
         modeSubmenu.add(alternatingMode);
         return modeSubmenu;
+    }
+
+    private static void markVariantUnsaved() {
+        if (StaticController.getActiveLayer() instanceof ShipLayer sl && StaticController.getLayerManager() != null) {
+            StaticController.getLayerManager().markUnsaved(sl, "variant");
+        }
     }
 }

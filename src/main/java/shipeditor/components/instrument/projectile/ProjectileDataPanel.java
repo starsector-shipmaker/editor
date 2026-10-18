@@ -2,6 +2,7 @@ package shipeditor.components.instrument.projectile;
 
 import shipeditor.utility.text.StringManager;
 
+import lombok.extern.log4j.Log4j2;
 import shipeditor.communication.EventBus;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.components.viewer.layers.weapon.ProjectileLayer;
@@ -12,7 +13,10 @@ import javax.swing.JLabel;
 import javax.swing.JTextField;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 
+@Log4j2
 public class ProjectileDataPanel extends AbstractProjectilePropertiesPanel {
 
     private ProjectileLayer cachedLayer;
@@ -49,37 +53,32 @@ public class ProjectileDataPanel extends AbstractProjectilePropertiesPanel {
     }
 
     private void addSpecClassPanel() {
-        JLabel label = new JLabel(StringManager.getString("SPEC_CLASS"));
-        specClassEditor = new JTextField();
-        specClassEditor.setColumns(10);
-        specClassEditor.addActionListener(e -> {
-            if (readyForInput && cachedLayer != null) {
-                ProjectileSpecFile spec = cachedLayer.getSpecFile();
-                if (spec != null) {
-                    String text = specClassEditor.getText();
-                    if (!java.util.Objects.equals(spec.getSpecClass(), text)) {
-                        spec.setSpecClass(text);
-                        EventBus.publish(new shipeditor.communication.events.components.ComponentEvents.LayerTabUpdated(cachedLayer));
-                        processChange();
-                    }
-                }
-            }
-        });
-
-        ComponentUtilities.addLabelAndComponent(this, label, specClassEditor, 1);
+        specClassEditor = createSpecTextEditor("SPEC_CLASS", 1,
+                ProjectileSpecFile::getSpecClass, ProjectileSpecFile::setSpecClass);
     }
 
     private void addMissileTypePanel() {
-        JLabel label = new JLabel(StringManager.getString("MISSILE_TYPE"));
-        missileTypeEditor = new JTextField();
-        missileTypeEditor.setColumns(10);
-        missileTypeEditor.addActionListener(e -> {
+        missileTypeEditor = createSpecTextEditor("MISSILE_TYPE", 2,
+                ProjectileSpecFile::getMissileType, ProjectileSpecFile::setMissileType);
+    }
+
+    /**
+     * Adds a labelled text field editing one string property of the projectile spec file, committing on enter.
+     */
+    private JTextField createSpecTextEditor(String labelKey, int row,
+                                            Function<ProjectileSpecFile, String> getter,
+                                            BiConsumer<ProjectileSpecFile, String> setter) {
+        JLabel label = new JLabel(StringManager.getString(labelKey));
+        JTextField editor = new JTextField();
+        editor.setColumns(10);
+        editor.addActionListener(e -> {
             if (readyForInput && cachedLayer != null) {
                 ProjectileSpecFile spec = cachedLayer.getSpecFile();
                 if (spec != null) {
-                    String text = missileTypeEditor.getText();
-                    if (!java.util.Objects.equals(spec.getMissileType(), text)) {
-                        spec.setMissileType(text);
+                    String text = editor.getText();
+                    if (!java.util.Objects.equals(getter.apply(spec), text)) {
+                        log.debug("Committing projectile spec property {} = {}", labelKey, text);
+                        setter.accept(spec, text);
                         EventBus.publish(new shipeditor.communication.events.components.ComponentEvents.LayerTabUpdated(cachedLayer));
                         processChange();
                     }
@@ -87,7 +86,8 @@ public class ProjectileDataPanel extends AbstractProjectilePropertiesPanel {
             }
         });
 
-        ComponentUtilities.addLabelAndComponent(this, label, missileTypeEditor, 2);
+        ComponentUtilities.addLabelAndComponent(this, label, editor, row);
+        return editor;
     }
 
     @Override

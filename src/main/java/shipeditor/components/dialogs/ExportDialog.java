@@ -127,19 +127,14 @@ public class ExportDialog extends JDialog {
             Color c = JColorChooser.showDialog(this, StringManager.getString("SELECT_BACKGROUND_COLOR_TITLE"), vsBgColor);
             if (c != null) {
                 vsBgColor = new Color(c.getRed(), c.getGreen(), c.getBlue(), 255);
-                vsColorButton.setBackground(vsBgColor);
-                vsColorButton.setForeground(isDark(vsBgColor) ? Color.WHITE : Color.BLACK);
+                styleColorButton(vsColorButton, vsBgColor);
             }
         });
         vsColorButton.setEnabled(false); // Disabled initially since transparent is checked
         ComponentUtilities.addLabelAndComponent(panel, new JLabel(StringManager.getString("SOLID_COLOR")), vsColorButton, row++);
         
         // Add a push-to-top glue
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = row;
-        gbc.weighty = 1.0;
-        panel.add(Box.createVerticalGlue(), gbc);
+        addVerticalGlue(panel, row);
 
         return panel;
     }
@@ -259,12 +254,7 @@ public class ExportDialog extends JDialog {
         int pad = (Integer) spPaddingSpinner.getValue();
         boolean drawMounts = spRenderMountsCheck.isSelected();
         
-        int bgIdx = spBgCombo.getSelectedIndex();
-        Color bgCol = new Color(0,0,0,0);
-        if (bgIdx == 1) bgCol = Color.BLACK;
-        if (bgIdx == 2) bgCol = Color.WHITE;
-        if (bgIdx == 3) bgCol = Color.GRAY;
-        final Color finalBgCol = bgCol;
+        final Color finalBgCol = getSpritePrintBackground();
 
         Rectangle2D bounds = painter.getVisualBounds();
         int baseW = (int) Math.ceil(bounds.getWidth());
@@ -333,18 +323,13 @@ public class ExportDialog extends JDialog {
             Color c = JColorChooser.showDialog(this, StringManager.getString("SELECT_BACKGROUND_COLOR_TITLE"), scBgColor);
             if (c != null) {
                 scBgColor = c;
-                scColorButton.setBackground(scBgColor);
-                scColorButton.setForeground(isDark(scBgColor) ? Color.WHITE : Color.BLACK);
+                styleColorButton(scColorButton, scBgColor);
             }
         });
         ComponentUtilities.addLabelAndComponent(panel, new JLabel(StringManager.getString("BACKGROUND_COLOR")), scColorButton, row++);
         
         // Glue
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = row;
-        gbc.weighty = 1.0;
-        panel.add(Box.createVerticalGlue(), gbc);
+        addVerticalGlue(panel, row);
 
         return panel;
     }
@@ -430,12 +415,7 @@ public class ExportDialog extends JDialog {
             int pad = (Integer) spPaddingSpinner.getValue();
             boolean renderMounts = spRenderMountsCheck.isSelected();
             
-            Color bgCol = new Color(0,0,0,0);
-            int bgIdx = spBgCombo.getSelectedIndex();
-            if (bgIdx == 1) bgCol = Color.BLACK;
-            if (bgIdx == 2) bgCol = Color.WHITE;
-            if (bgIdx == 3) bgCol = Color.GRAY;
-            final Color finalBgCol = bgCol;
+            final Color finalBgCol = getSpritePrintBackground();
 
             log.info("Commencing sprite printing: {}", result);
             StaticController.getViewer().queueGLTask(() -> FramebufferUtilities.printLayerToImage(activeLayer, width, height, tempScale, pad, result, finalBgCol, renderMounts));
@@ -488,6 +468,28 @@ public class ExportDialog extends JDialog {
             return layerManager.getActiveLayer();
         }
         return null;
+    }
+
+    private Color getSpritePrintBackground() {
+        int bgIdx = spBgCombo.getSelectedIndex();
+        Color bgCol = new Color(0,0,0,0);
+        if (bgIdx == 1) bgCol = Color.BLACK;
+        if (bgIdx == 2) bgCol = Color.WHITE;
+        if (bgIdx == 3) bgCol = Color.GRAY;
+        return bgCol;
+    }
+
+    private void styleColorButton(JButton button, Color background) {
+        button.setBackground(background);
+        button.setForeground(isDark(background) ? Color.WHITE : Color.BLACK);
+    }
+
+    private static void addVerticalGlue(JPanel panel, int row) {
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.gridy = row;
+        gbc.weighty = 1.0;
+        panel.add(Box.createVerticalGlue(), gbc);
     }
 
     private boolean isDark(Color color) {

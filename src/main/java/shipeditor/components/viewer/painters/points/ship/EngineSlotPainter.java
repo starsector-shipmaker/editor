@@ -145,6 +145,17 @@ public class EngineSlotPainter extends AbstractSlotPainter {
         return EditorInstrument.ENGINES;
     }
 
+    private static EnginePoint createDefaultEngine(Point2D position, ShipPainter parentLayer) {
+        log.debug("Creating engine at {} with default dimensions and low tech style", position);
+        EnginePoint created = new EnginePoint(position, parentLayer);
+        created.setAngle(180);
+        created.setLength(10);
+        created.setWidth(2);
+        created.setContrailSize(12);
+        created.setStyleID(StringConstants.LOW_TECH);
+        return created;
+    }
+
     @Override
     protected void handleCreation(PointCreationQueued event) {
         if (!isCreationHotkeyPressed()) return;
@@ -156,28 +167,15 @@ public class EngineSlotPainter extends AbstractSlotPainter {
         EnginePoint created;
         EnginePoint counterpart = null;
 
-        String lowTech = StringConstants.LOW_TECH;
         if (enginePoints.isEmpty()) {
-            created = new EnginePoint(position, parentLayer);
-
-            created.setAngle(180);
-            created.setLength(10);
-            created.setWidth(2);
-            created.setContrailSize(12);
-            created.setStyleID(lowTech);
+            created = createDefaultEngine(position, parentLayer);
 
         } else {
             EnginePoint closest = (EnginePoint) findClosestPoint(position);
             if (closest != null) {
                 created = new EnginePoint(position, parentLayer, closest);
             } else {
-                created = new EnginePoint(position, parentLayer);
-
-                created.setAngle(180);
-                created.setLength(10);
-                created.setWidth(2);
-                created.setContrailSize(12);
-                created.setStyleID(lowTech);
+                created = createDefaultEngine(position, parentLayer);
             }
         }
 

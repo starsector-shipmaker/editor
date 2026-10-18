@@ -412,8 +412,9 @@ public class WeaponsTreePanel extends DataTreePanel {
                     if (layer instanceof shipeditor.components.viewer.layers.ship.ShipLayer shipLayer) {
                         var slotPainter = shipLayer.getPainter() != null ? shipLayer.getPainter().getWeaponSlotPainter() : null;
                         var selectedSlot = slotPainter != null ? slotPainter.getSelected() : null;
-                        if (selectedSlot != null) {
-                            shipLayer.getFeaturesOverseer().addWeaponToSelectedSlot(entry);
+                        if (selectedSlot != null && selectedSlot.isFittable()
+                                && shipeditor.representation.weapon.WeaponEnums.WeaponType.isWeaponFitting(selectedSlot, entry)) {
+                            shipLayer.getFeaturesOverseer().installWeapon(selectedSlot, entry);
                         }
                     }
                 }

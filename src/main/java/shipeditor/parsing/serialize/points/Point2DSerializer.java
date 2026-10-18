@@ -27,8 +27,7 @@ public class Point2DSerializer extends JsonSerializer<Point2D.Double> {
     }
 
     protected void writeClosingIndentation(JsonGenerator gen) throws IOException {
-        gen.writeRaw(BasicPrettyPrinter.LINEFEED);
-        gen.writeRaw(BasicPrettyPrinter.INDENT);
+        BasicPrettyPrinter.writeLineFeedAndIndent(gen, 1);
     }
 
 }

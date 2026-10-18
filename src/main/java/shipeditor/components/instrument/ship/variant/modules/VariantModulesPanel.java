@@ -4,6 +4,7 @@ import shipeditor.communication.EventBus;
 import shipeditor.communication.events.viewer.points.PointEvents.PointSelectedConfirmed;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.instrument.ship.AbstractShipPropertiesPanel;
+import shipeditor.components.instrument.ship.variant.EmptyVariantBanner;
 import shipeditor.components.viewer.entities.weapon.WeaponSlotPoint;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.components.viewer.layers.ship.ShipPainter;
@@ -38,16 +39,24 @@ public class VariantModulesPanel extends AbstractShipPropertiesPanel {
 
     private javax.swing.JLabel slotSummaryLabel;
 
+    private EmptyVariantBanner emptyBanner;
+
     @SuppressWarnings({"OverlyComplexBooleanExpression", "ChainedMethodCall"})
     @Override
     public void refreshContent(LayerPainter layerPainter) {
         DefaultListModel<InstalledFeature> newModel = new DefaultListModel<>();
+        refreshEmptyBanner(layerPainter);
 
         if (!(layerPainter instanceof ShipPainter shipPainter)
                 || shipPainter.isUninitialized()
                 || shipPainter.getActiveVariant() == null) {
             this.model = newModel;
             this.moduleList.setModel(newModel);
+
+            if (this.slotSummaryLabel != null) {
+                this.slotSummaryLabel.setText("Modules: 0/0 slots filled");
+                this.slotSummaryLabel.setForeground(Themes.getDisabledTextColor());
+            }
 
             fireClearingListeners(layerPainter);
             this.controlPanel.refresh(null);
@@ -59,10 +68,10 @@ public class VariantModulesPanel extends AbstractShipPropertiesPanel {
 
         this.model = newModel;
         this.moduleList.setModel(newModel);
-        
+
         List<InstalledFeature> allFeatures = getAllModuleFeatures(shipPainter);
         newModel.addAll(allFeatures);
-        
+
         updateSlotSummary(shipPainter);
 
         this.moduleList.setEnabled(true);
@@ -81,22 +90,27 @@ public class VariantModulesPanel extends AbstractShipPropertiesPanel {
 
         JPanel northContainer = new JPanel(new BorderLayout());
 
+        this.emptyBanner = new EmptyVariantBanner();
+        northContainer.add(emptyBanner, BorderLayout.PAGE_START);
+
         JPanel buttonContainer = new JPanel(new BorderLayout());
         buttonContainer.setBorder(new EmptyBorder(4, 4, 0, 4));
-        
+
         this.slotSummaryLabel = UIFactory.createLabel("Modules: 0/0 slots filled");
         this.slotSummaryLabel.setBorder(new EmptyBorder(0, 0, 4, 0));
-        
+
         JPanel topContainer = new JPanel(new BorderLayout());
         topContainer.add(slotSummaryLabel, BorderLayout.PAGE_START);
         topContainer.add(getLoadModulesButton(), BorderLayout.CENTER);
-        
+
         buttonContainer.add(topContainer, BorderLayout.CENTER);
 
-        northContainer.add(buttonContainer, BorderLayout.PAGE_START);
+        JPanel controlsStack = new JPanel(new BorderLayout());
+        controlsStack.add(buttonContainer, BorderLayout.PAGE_START);
 
         ComponentUtilities.outfitPanelWithTitle(controlPanel, "Selected module");
-        northContainer.add(controlPanel, BorderLayout.CENTER);
+        controlsStack.add(controlPanel, BorderLayout.CENTER);
+        northContainer.add(controlsStack, BorderLayout.CENTER);
 
         this.refreshModuleControlPane();
 
@@ -104,6 +118,15 @@ public class VariantModulesPanel extends AbstractShipPropertiesPanel {
 
         this.add(northContainer, BorderLayout.PAGE_START);
         this.add(scrollableContainer, BorderLayout.CENTER);
+
+        this.handleRefreshFromLayer(StaticController.getActiveLayer());
+    }
+
+    private void refreshEmptyBanner(LayerPainter layerPainter) {
+        if (this.emptyBanner == null) {
+            return;
+        }
+        this.emptyBanner.refresh(layerPainter != null ? layerPainter.getParentLayer() : null);
     }
 
     private JButton getLoadModulesButton() {
@@ -156,10 +179,10 @@ public class VariantModulesPanel extends AbstractShipPropertiesPanel {
         List<InstalledFeature> features = new ArrayList<>();
         ShipVariant activeVariant = shipPainter.getActiveVariant();
         if (activeVariant == null) return features;
-        
+
         java.util.Map<String, InstalledFeature> fittedModules = activeVariant.getFittedModules();
         if (fittedModules == null) fittedModules = java.util.Collections.emptyMap();
-        
+
         shipeditor.components.viewer.painters.points.ship.WeaponSlotPainter slotPainter = shipPainter.getWeaponSlotPainter();
         if (slotPainter != null) {
             for (shipeditor.components.viewer.entities.weapon.WeaponSlotPoint slot : slotPainter.getSlotPoints()) {
@@ -178,15 +201,15 @@ public class VariantModulesPanel extends AbstractShipPropertiesPanel {
 
     private void updateSlotSummary(ShipPainter shipPainter) {
         if (this.slotSummaryLabel == null) return;
-        
+
         int totalSlots = 0;
         int filledSlots = 0;
-        
+
         ShipVariant activeVariant = shipPainter.getActiveVariant();
         if (activeVariant != null) {
             java.util.Map<String, InstalledFeature> fittedModules = activeVariant.getFittedModules();
             if (fittedModules == null) fittedModules = java.util.Collections.emptyMap();
-            
+
             shipeditor.components.viewer.painters.points.ship.WeaponSlotPainter slotPainter = shipPainter.getWeaponSlotPainter();
             if (slotPainter != null) {
                 for (shipeditor.components.viewer.entities.weapon.WeaponSlotPoint slot : slotPainter.getSlotPoints()) {
@@ -199,7 +222,7 @@ public class VariantModulesPanel extends AbstractShipPropertiesPanel {
                 }
             }
         }
-        
+
         this.slotSummaryLabel.setText(String.format("Modules: %d/%d slots filled", filledSlots, totalSlots));
         if (totalSlots == 0) {
             this.slotSummaryLabel.setForeground(Themes.getDisabledTextColor());
@@ -233,7 +256,7 @@ public class VariantModulesPanel extends AbstractShipPropertiesPanel {
                         ShipVariant activeVariant = shipPainter.getActiveVariant();
                         java.util.Map<String, InstalledFeature> fittedModules = activeVariant != null ? activeVariant.getFittedModules() : java.util.Collections.emptyMap();
                         if (fittedModules == null) fittedModules = java.util.Collections.emptyMap();
-                        
+
                         for (shipeditor.components.viewer.entities.weapon.WeaponSlotPoint slot : shipPainter.getWeaponSlotPainter().getSlotPoints()) {
                             if (slot.getWeaponType() == shipeditor.representation.weapon.WeaponEnums.WeaponType.STATION_MODULE) {
                                 if (!fittedModules.containsKey(slot.getId())) {
@@ -256,20 +279,25 @@ public class VariantModulesPanel extends AbstractShipPropertiesPanel {
         });
         EventBus.subscribe(this, event -> {
             if (event instanceof InstrumentRepaintQueued checked) {
-                if (checked.editorMode() != EditorInstrument.VARIANT_MODULES) {
+                if (checked.editorMode() != EditorInstrument.VARIANT_MODULES
+                        && checked.editorMode() != EditorInstrument.VARIANT_DATA) {
                     return;
                 }
                 ShipPainter shipPainter = getCachedLayerPainter();
+                refreshEmptyBanner(shipPainter);
                 if (shipPainter != null) {
                     java.util.List<InstalledFeature> currentFeatures = getAllModuleFeatures(shipPainter);
                     updateSlotSummary(shipPainter);
-                    
+                    fireRefresherListeners(shipPainter);
+
                     boolean modelsEqual = true;
                     if (this.model.getSize() == currentFeatures.size()) {
                         for (int i = 0; i < this.model.getSize(); i++) {
                             InstalledFeature mFeat = this.model.getElementAt(i);
                             InstalledFeature cFeat = currentFeatures.get(i);
-                            if (!mFeat.getSlotID().equals(cFeat.getSlotID()) || mFeat.getDataEntry() != cFeat.getDataEntry()) {
+                            if (!mFeat.getSlotID().equals(cFeat.getSlotID())
+                                    || mFeat.getDataEntry() != cFeat.getDataEntry()
+                                    || !java.util.Objects.equals(mFeat.getFeatureID(), cFeat.getFeatureID())) {
                                 modelsEqual = false;
                                 break;
                             }

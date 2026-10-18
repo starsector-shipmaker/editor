@@ -1,5 +1,6 @@
 package shipeditor.components.instrument.ship.variant;
 
+import lombok.extern.log4j.Log4j2;
 import shipeditor.utility.text.StringManager;
 
 import shipeditor.communication.EventBus;
@@ -12,7 +13,10 @@ import shipeditor.components.viewer.layers.ship.ShipLayer;
 import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.components.viewer.layers.ship.data.ShipHull;
 import shipeditor.components.viewer.layers.ship.data.ShipVariant;
+import shipeditor.components.viewer.ViewerEnums.FireMode;
+import shipeditor.components.viewer.painters.points.ship.features.FittedWeaponGroup;
 import shipeditor.components.viewer.painters.points.ship.features.InstalledFeature;
+import shipeditor.undo.EditDispatch;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.dialog.DialogUtilities;
 import shipeditor.utility.components.rendering.CustomTreeNode;
@@ -27,14 +31,18 @@ import javax.swing.ToolTipManager;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.kordamp.ikonli.boxicons.BoxiconsRegular;
 import org.kordamp.ikonli.swing.FontIcon;
 import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 import shipeditor.communication.events.components.ComponentEvents.WeaponEntryPicked;
 import shipeditor.utility.themes.Themes;
 
+@Log4j2
 public class VariantWeaponsPanel extends AbstractVariantPanel {
 
     private final VariantWeaponsTree weaponsTree;
@@ -42,6 +50,8 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
     private final JPanel contentPanel;
 
     private final JPanel northPanel;
+
+    private final EmptyVariantBanner emptyBanner;
 
     private JPanel pickedWeaponPanel;
 
@@ -58,7 +68,12 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
 
         northPanel = new JPanel();
         northPanel.setLayout(new BorderLayout());
-        this.add(northPanel, BorderLayout.PAGE_START);
+
+        emptyBanner = new EmptyVariantBanner();
+        JPanel topStack = new JPanel(new BorderLayout());
+        topStack.add(emptyBanner, BorderLayout.PAGE_START);
+        topStack.add(northPanel, BorderLayout.CENTER);
+        this.add(topStack, BorderLayout.PAGE_START);
 
         contentPanel = new JPanel();
         contentPanel.setLayout(new BorderLayout());
@@ -246,6 +261,7 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
     public void refreshPanel(ViewerLayer selected) {
         weaponsTree.clearRoot();
         northPanel.removeAll();
+        emptyBanner.refresh(selected);
 
         if (!(selected instanceof ShipLayer checkedLayer)) {
             return;
@@ -256,13 +272,17 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
             return;
         }
         ShipPainter painter = checkedLayer.getPainter();
+        if (painter.getWeaponSlotPainter() != null) {
+            this.cachedSelectedSlot = painter.getWeaponSlotPainter().getSelected();
+        }
 
         ShipVariant activeVariant = painter.getActiveVariant();
         if (activeVariant != null) {
             weaponsTree.setSlotPainter(painter.getWeaponSlotPainter());
             weaponsTree.repopulateTree(activeVariant, checkedLayer);
+            this.weaponsTree.selectNode(this.cachedSelectedSlot);
 
-            JPanel buttonContainer = new JPanel(new BorderLayout());
+            JPanel buttonContainer = new JPanel(new BorderLayout(0, 4));
             buttonContainer.setBorder(new EmptyBorder(4, 4, 0, 4));
 
             JButton rearrangeGroups = new JButton(StringManager.getString("REARRANGE_WEAPONS"),
@@ -275,7 +295,50 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
 
             rearrangeGroups.addActionListener(e -> DialogUtilities.showWeaponGroupsDialog(activeVariant));
 
+            JButton addGroupButton = new JButton("Add Group",
+                    FontIcon.of(BoxiconsRegular.LIST_PLUS, 16, Themes.getIconColor()));
+            addGroupButton.setEnabled(activeVariant.isEmpty() || activeVariant.getWeaponGroups().size() < 7);
+            addGroupButton.addActionListener(e -> {
+                ShipVariant targetVariant = activeVariant;
+                if (targetVariant.isEmpty()) {
+                    log.debug("Add Group on empty variant: auto-creating editable variant for '{}'", checkedLayer.getShipID());
+                    targetVariant = StaticController.getOrCreateEditableVariant(checkedLayer);
+                    if (targetVariant == null) {
+                        return;
+                    }
+                }
+                if (targetVariant.getWeaponGroups().size() < 7) {
+                    FittedWeaponGroup newGroup = new FittedWeaponGroup(targetVariant, false, FireMode.LINKED);
+                    targetVariant.getWeaponGroups().add(newGroup);
+                    if (StaticController.getLayerManager() != null) {
+                        StaticController.getLayerManager().markUnsaved(checkedLayer, "variant");
+                    }
+                    this.refreshPanel(checkedLayer);
+                }
+            });
+
+            JButton clearAllButton = new JButton("Clear All",
+                    FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
+            clearAllButton.setEnabled(!allFittedWeaponsList.isEmpty());
+            clearAllButton.addActionListener(e -> {
+                for (FittedWeaponGroup group : activeVariant.getWeaponGroups()) {
+                    Map<String, InstalledFeature> weaponsCopy = new LinkedHashMap<>(group.getWeapons());
+                    for (Map.Entry<String, InstalledFeature> entry : weaponsCopy.entrySet()) {
+                        InstalledFeature feature = entry.getValue();
+                        if (feature != null && !feature.isContainedInBuiltIns()) {
+                            EditDispatch.postFeatureUninstalled(group.getWeapons(), entry.getKey(), feature, null);
+                        }
+                    }
+                }
+                this.refreshPanel(checkedLayer);
+            });
+
+            JPanel secondaryButtons = new JPanel(new GridLayout(1, 2, 4, 0));
+            secondaryButtons.add(addGroupButton);
+            secondaryButtons.add(clearAllButton);
+
             buttonContainer.add(rearrangeGroups, BorderLayout.PAGE_START);
+            buttonContainer.add(secondaryButtons, BorderLayout.PAGE_END);
 
             northPanel.add(buttonContainer, BorderLayout.PAGE_START);
 

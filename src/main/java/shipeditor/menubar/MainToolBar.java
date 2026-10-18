@@ -20,6 +20,7 @@ import shipeditor.utility.themes.Themes;
 import javax.swing.JButton;
 import javax.swing.JToolBar;
 import javax.swing.JToggleButton;
+import java.awt.event.ActionListener;
 
 import shipeditor.communication.events.viewer.layers.LayerEvents.ShipLayerCreationQueued;
 import shipeditor.communication.events.viewer.layers.LayerEvents.WeaponLayerCreationQueued;
@@ -35,11 +36,8 @@ public class MainToolBar extends JToolBar {
 
     private void initUI() {
         // --- FILE ACTIONS ---
-        JButton saveButton = new JButton();
-        this.styleToolbarButton(saveButton, BoxiconsRegular.SAVE);
-        saveButton.setToolTipText(StringManager.getString("SAVE_ACTIVE_LAYER_CTRL_S"));
-        saveButton.addActionListener(e -> shipeditor.parsing.saving.SaveCoordinator.saveActiveLayer());
-        this.add(saveButton);
+        this.add(createToolbarButton(BoxiconsRegular.SAVE, "SAVE_ACTIVE_LAYER_CTRL_S",
+                e -> shipeditor.parsing.saving.SaveCoordinator.saveActiveLayer()));
 
         this.addSeparator();
 
@@ -61,22 +59,14 @@ public class MainToolBar extends JToolBar {
         this.addSeparator();
 
         // --- LAYER MANAGEMENT ---
-        JButton createShipLayerButton = new JButton();
-        this.styleToolbarButton(createShipLayerButton, BoxiconsRegular.ROCKET);
-        createShipLayerButton.setToolTipText(StringManager.getString("CREATE_NEW_SHIP_LAYER_CTRL_N"));
-        createShipLayerButton.addActionListener(event -> EventBus.publish(new ShipLayerCreationQueued()));
-        this.add(createShipLayerButton);
+        this.add(createToolbarButton(BoxiconsRegular.ROCKET, "CREATE_NEW_SHIP_LAYER_CTRL_N",
+                event -> EventBus.publish(new ShipLayerCreationQueued())));
         
-        JButton createWeaponLayerButton = new JButton();
-        this.styleToolbarButton(createWeaponLayerButton, BoxiconsRegular.CROSSHAIR);
-        createWeaponLayerButton.setToolTipText(StringManager.getString("CREATE_NEW_WEAPON_LAYER_CTRL_SHIFT_N"));
-        createWeaponLayerButton.addActionListener(event -> EventBus.publish(new WeaponLayerCreationQueued()));
-        this.add(createWeaponLayerButton);
+        this.add(createToolbarButton(BoxiconsRegular.CROSSHAIR, "CREATE_NEW_WEAPON_LAYER_CTRL_SHIFT_N",
+                event -> EventBus.publish(new WeaponLayerCreationQueued())));
 
-        JButton removeLayerButton = new JButton();
-        this.styleToolbarButton(removeLayerButton, BoxiconsRegular.MINUS);
-        removeLayerButton.setToolTipText(StringManager.getString("REMOVE_ACTIVE_LAYER_CTRL_DELETE"));
-        removeLayerButton.addActionListener(event -> EventBus.publish(new ActiveLayerRemovalQueued()));
+        JButton removeLayerButton = createToolbarButton(BoxiconsRegular.MINUS, "REMOVE_ACTIVE_LAYER_CTRL_DELETE",
+                event -> EventBus.publish(new ActiveLayerRemovalQueued()));
         removeLayerButton.setEnabled(false);
 
         EventBus.subscribe(this, event -> {
@@ -108,20 +98,14 @@ public class MainToolBar extends JToolBar {
         });
         this.add(snapButton);
 
-        JButton centerViewButton = new JButton();
-        this.styleToolbarButton(centerViewButton, BoxiconsRegular.TARGET_LOCK);
-        centerViewButton.setToolTipText(StringManager.getString("RESET_VIEW_CENTER_CTRL_0"));
-        centerViewButton.addActionListener(event -> EventBus.publish(new ViewerTransformsReset()));
-        this.add(centerViewButton);
+        this.add(createToolbarButton(BoxiconsRegular.TARGET_LOCK, "RESET_VIEW_CENTER_CTRL_0",
+                event -> EventBus.publish(new ViewerTransformsReset())));
 
         this.addSeparator();
 
         // --- UTILITY ---
-        JButton reloadDataButton = new JButton();
-        this.styleToolbarButton(reloadDataButton, BoxiconsRegular.REFRESH);
-        reloadDataButton.setToolTipText(StringManager.getString("RELOAD_GAME_DATA_F5"));
-        reloadDataButton.addActionListener(event -> FileLoading.loadGameData());
-        this.add(reloadDataButton);
+        this.add(createToolbarButton(BoxiconsRegular.REFRESH, "RELOAD_GAME_DATA_F5",
+                event -> FileLoading.loadGameData()));
         
         this.addSeparator();
         
@@ -133,14 +117,18 @@ public class MainToolBar extends JToolBar {
 
         this.addSeparator();
 
-        JButton prefsButton = new JButton();
-        this.styleToolbarButton(prefsButton, BoxiconsRegular.COG);
-        prefsButton.setToolTipText(StringManager.getString("PREFERENCES_CTRL"));
-        prefsButton.addActionListener(event -> {
+        this.add(createToolbarButton(BoxiconsRegular.COG, "PREFERENCES_CTRL", event -> {
             PreferencesDialog dialog = new PreferencesDialog(shipeditor.PrimaryWindow.getInstance());
             dialog.setVisible(true);
-        });
-        this.add(prefsButton);
+        }));
+    }
+
+    private JButton createToolbarButton(org.kordamp.ikonli.Ikon icon, String tooltipKey, ActionListener action) {
+        JButton button = new JButton();
+        this.styleToolbarButton(button, icon);
+        button.setToolTipText(StringManager.getString(tooltipKey));
+        button.addActionListener(action);
+        return button;
     }
 
     private void styleToolbarButton(JButton button, org.kordamp.ikonli.Ikon icon) {

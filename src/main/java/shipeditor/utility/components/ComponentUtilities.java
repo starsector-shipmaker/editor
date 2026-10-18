@@ -151,6 +151,38 @@ public final class ComponentUtilities {
         return imageLabel;
     }
 
+    /**
+     * Creates a non-opaque panel that lays out its children left-to-right.
+     */
+    public static JPanel createTransparentBoxPanel() {
+        JPanel panel = new JPanel();
+        panel.setOpaque(false);
+        panel.setLayout(new BoxLayout(panel, BoxLayout.LINE_AXIS));
+        return panel;
+    }
+
+    /**
+     * Wraps a component in a centered flow-layout panel.
+     */
+    public static JPanel createCenteredPanel(JComponent content) {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panel.add(content);
+        return panel;
+    }
+
+    /**
+     * Copies the icon, text, tooltip, border and background settings of a freshly built label onto an
+     * existing label, so already-displayed placeholder labels can be updated in place.
+     */
+    public static void copyLabelAppearance(JLabel target, JLabel source) {
+        target.setIcon(source.getIcon());
+        target.setText(source.getText());
+        target.setToolTipText(source.getToolTipText());
+        target.setBorder(source.getBorder());
+        target.setOpaque(source.isOpaque());
+        target.setBackground(source.getBackground());
+    }
+
     @SuppressWarnings("WeakerAccess")
     public static Image resizeImageToSquareLimit(Image iconImage, int limit) {
         int originalWidth = iconImage.getWidth(null);
@@ -566,6 +598,34 @@ public final class ComponentUtilities {
         return label;
     }
 
+    /**
+     * Titles the base, added-by-skin, and removed-by-skin list panes and stacks them inside a scroll pane.
+     */
+    public static javax.swing.JScrollPane createBuiltInListsScroller(JPanel baseList, JPanel addedBySkinList,
+                                                                     JPanel removedBySkinList) {
+        outfitPanelWithTitle(baseList, StringManager.getString("BASE_BUILT_INS"));
+        outfitPanelWithTitle(addedBySkinList, StringManager.getString("ADDED_BY_SKIN"));
+        outfitPanelWithTitle(removedBySkinList, StringManager.getString("REMOVED_BY_SKIN"));
+
+        JPanel container = new JPanel(new java.awt.GridBagLayout());
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.fill = GridBagConstraints.BOTH;
+        constraints.weighty = 0.33;
+        constraints.weightx = 1;
+        constraints.ipady = 40;
+        constraints.gridy = 0;
+
+        container.add(baseList, constraints);
+        constraints.gridy = 1;
+        container.add(addedBySkinList, constraints);
+        constraints.gridy = 2;
+        container.add(removedBySkinList, constraints);
+
+        javax.swing.JScrollPane scroller = new javax.swing.JScrollPane(container);
+        scroller.getVerticalScrollBar().setUnitIncrement(16);
+        return scroller;
+    }
+
     public static class InfoPanelBuilder {
         private final JPanel panel;
         private final GridBagConstraints gbc;
@@ -589,8 +649,7 @@ public final class ComponentUtilities {
             if (sprite != null) {
                 String tooltip = Utility.getTooltipForSprite(sprite);
                 JLabel spriteIcon = ComponentUtilities.createIconFromImage(sprite.getImage(), tooltip, 128);
-                JPanel spriteWrapper = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER));
-                spriteWrapper.add(spriteIcon);
+                JPanel spriteWrapper = ComponentUtilities.createCenteredPanel(spriteIcon);
                 panel.add(spriteWrapper, gbc);
                 gbc.gridy++;
                 row++;

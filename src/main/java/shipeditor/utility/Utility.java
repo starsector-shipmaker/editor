@@ -323,18 +323,34 @@ public final class Utility {
     }
 
     public static String computeRelativePathFromPackage(Path fullPath) {
+        if (fullPath == null) {
+            return "";
+        }
         Path coreDataFolder = SettingsManager.getCoreFolderPath();
         List<Path> otherModFolders = SettingsManager.getAllModFolders();
-        String relativePathFromCore = Utility.findRelativePath(coreDataFolder, fullPath);
 
-        if (relativePathFromCore != null) {
-            return relativePathFromCore;
+        if (otherModFolders != null) {
+            for (Path modFolder : otherModFolders) {
+                if (modFolder == null) {
+                    continue;
+                }
+                String relativePathFromMod = Utility.findRelativePath(modFolder, fullPath);
+                if (relativePathFromMod != null) {
+                    return relativePathFromMod;
+                }
+            }
         }
 
-        for (Path modFolder : otherModFolders) {
-            String relativePathFromMod = Utility.findRelativePath(modFolder, fullPath);
-            if (relativePathFromMod != null) {
-                return relativePathFromMod;
+        if (coreDataFolder != null) {
+            Path starsectorCoreSubfolder = coreDataFolder.resolve("starsector-core");
+            String relativeFromSubfolder = Utility.findRelativePath(starsectorCoreSubfolder, fullPath);
+            if (relativeFromSubfolder != null) {
+                return relativeFromSubfolder;
+            }
+
+            String relativePathFromCore = Utility.findRelativePath(coreDataFolder, fullPath);
+            if (relativePathFromCore != null) {
+                return relativePathFromCore;
             }
         }
 

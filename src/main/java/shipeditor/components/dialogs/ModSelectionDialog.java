@@ -180,14 +180,14 @@ public class ModSelectionDialog extends JDialog {
         JPanel toolsBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         JButton selectAllBtn = new JButton(StringManager.getString("SELECT_ALL_1"));
         selectAllBtn.addActionListener(e -> {
-            modCheckboxes.values().forEach(cb -> cb.setSelected(true));
+            setAllModsSelected(true);
             updateStatusLabel();
         });
         toolsBar.add(selectAllBtn);
 
         JButton deselectAllBtn = new JButton(StringManager.getString("DESELECT_ALL_1"));
         deselectAllBtn.addActionListener(e -> {
-            modCheckboxes.values().forEach(cb -> cb.setSelected(false));
+            setAllModsSelected(false);
             updateStatusLabel();
         });
         toolsBar.add(deselectAllBtn);
@@ -338,6 +338,10 @@ public class ModSelectionDialog extends JDialog {
         checkboxContainer.repaint();
     }
 
+    private void setAllModsSelected(boolean selected) {
+        modCheckboxes.values().forEach(cb -> cb.setSelected(selected));
+    }
+
     private void updateStatusLabel() {
         if (statusLabel == null) return;
         long selectedCount = modCheckboxes.values().stream().filter(cb -> cb.isSelected()).count();
@@ -422,7 +426,7 @@ public class ModSelectionDialog extends JDialog {
             protected void done() {
                 try {
                     List<String> foldersToEnable = get();
-                    modCheckboxes.values().forEach(cb -> cb.setSelected(false));
+                    setAllModsSelected(false);
                     for (String folderName : foldersToEnable) {
                         JCheckBox cb = modCheckboxes.get(folderName);
                         if (cb != null) {

@@ -1,6 +1,5 @@
 package shipeditor.components.instrument.ship.bays;
 
-import shipeditor.utility.text.StringManager;
 
 import shipeditor.communication.EventBus;
 import shipeditor.components.ComponentEnums.EditorInstrument;
@@ -9,24 +8,14 @@ import shipeditor.components.viewer.entities.bays.LaunchPortPoint;
 import shipeditor.components.viewer.entities.weapon.SlotPoint;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.components.viewer.layers.ship.ShipPainter;
-import shipeditor.components.viewer.ViewerEnums.PainterVisibility;
 import shipeditor.components.viewer.painters.points.ship.LaunchBayPainter;
 import shipeditor.utility.components.ComponentUtilities;
-import shipeditor.utility.objects.Pair;
 
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.awt.BorderLayout;
-import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 import shipeditor.communication.events.viewer.points.PointEvents.PointAddConfirmed;
 import shipeditor.communication.events.viewer.points.PointEvents.LaunchBayRemoveConfirmed;
@@ -123,10 +112,7 @@ public class LaunchBaysPanel extends AbstractShipPropertiesPanel {
 
         JPanel northContainer = new JPanel(new BorderLayout());
         northContainer.setBorder(new EmptyBorder(0, 0, 4, 0));
-        var visibilityWidget = createBaysVisibilityWidget();
-        Map<JLabel, JComponent> visibilityWidgetMap = Map.of(visibilityWidget.getFirst(), visibilityWidget.getSecond());
-        JPanel visibilityWidgetContainer = this.createWidgetsPanel(visibilityWidgetMap);
-        visibilityWidgetContainer.setBorder(new EmptyBorder(4, 0, 3, 0));
+        JPanel visibilityWidgetContainer = createShipVisibilityPanel(ShipPainter::getBayPainter, "BAYS_VIEW");
         northContainer.add(visibilityWidgetContainer, BorderLayout.PAGE_START);
 
         this.bayDataPanel = new BayDataControlPane();
@@ -136,36 +122,6 @@ public class LaunchBaysPanel extends AbstractShipPropertiesPanel {
         this.add(northContainer, BorderLayout.PAGE_START);
 
         this.add(scrollableContainer, BorderLayout.CENTER);
-    }
-
-    private Pair<JLabel, JComboBox<PainterVisibility>> createBaysVisibilityWidget() {
-        BooleanSupplier readinessChecker = this::isWidgetsReadyForInput;
-        Consumer<PainterVisibility> visibilitySetter = changedValue -> {
-            LayerPainter cachedLayerPainter = getCachedLayerPainter();
-            if (cachedLayerPainter != null) {
-                LaunchBayPainter bayPainter = ((ShipPainter) cachedLayerPainter).getBayPainter();
-                bayPainter.setVisibilityMode(changedValue);
-                processChange();
-            }
-        };
-
-        BiConsumer<JComponent, Consumer<LayerPainter>> clearerListener = this::registerWidgetClearer;
-        BiConsumer<JComponent, Consumer<LayerPainter>> refresherListener = this::registerWidgetRefresher;
-
-        Function<LayerPainter, PainterVisibility> visibilityGetter = layerPainter -> {
-            LaunchBayPainter bayPainter = ((ShipPainter) layerPainter).getBayPainter();
-            return bayPainter.getVisibilityMode();
-        };
-
-        var opacityWidget = PainterVisibility.createVisibilityWidget(
-                readinessChecker, visibilityGetter, visibilitySetter,
-                clearerListener, refresherListener
-        );
-
-        JLabel opacityLabel = opacityWidget.getFirst();
-        opacityLabel.setText(StringManager.getString("BAYS_VIEW"));
-
-        return opacityWidget;
     }
 
 }

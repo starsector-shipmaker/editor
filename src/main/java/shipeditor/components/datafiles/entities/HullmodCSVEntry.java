@@ -54,11 +54,7 @@ public class HullmodCSVEntry implements OrdnancedCSVEntry {
 
     @Override
     public String toString() {
-        String displayedName = rowData.get(StringConstants.NAME);
-        if (displayedName == null || displayedName.isEmpty()) {
-            displayedName = StringManager.getString("UNTITLED");
-        }
-        return displayedName;
+        return CSVEntry.nameOrUntitled(rowData);
     }
 
     @Override
@@ -152,12 +148,7 @@ public class HullmodCSVEntry implements OrdnancedCSVEntry {
                     BufferedImage iconImage = FileLoading.loadSpriteAsImage(imageFile);
                     javax.swing.SwingUtilities.invokeLater(() -> {
                         JLabel newLabel = ComponentUtilities.createIconFromImage(iconImage, name, maxSize);
-                        cachedIconLabel.setIcon(newLabel.getIcon());
-                        cachedIconLabel.setText(newLabel.getText());
-                        cachedIconLabel.setToolTipText(newLabel.getToolTipText());
-                        cachedIconLabel.setBorder(newLabel.getBorder());
-                        cachedIconLabel.setOpaque(newLabel.isOpaque());
-                        cachedIconLabel.setBackground(newLabel.getBackground());
+                        ComponentUtilities.copyLabelAppearance(cachedIconLabel, newLabel);
                         isIconLoading = false;
                         shipeditor.communication.EventBus.publish(new shipeditor.communication.events.components.ComponentEvents.WindowRepaintQueued());
                     });

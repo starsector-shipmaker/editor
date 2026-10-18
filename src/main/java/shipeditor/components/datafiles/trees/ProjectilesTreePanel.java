@@ -10,7 +10,6 @@ import shipeditor.components.viewer.layers.weapon.ProjectileLayerPainter;
 import shipeditor.parsing.FileUtilities;
 import shipeditor.parsing.loading.FileLoading;
 import shipeditor.persistence.GameDataPackage;
-import shipeditor.persistence.Settings;
 import shipeditor.persistence.SettingsManager;
 import shipeditor.representation.GameDataRepository;
 import shipeditor.representation.weapon.ProjectileSpecFile;
@@ -27,13 +26,10 @@ import javax.swing.JTree;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreePath;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.GridBagConstraints;
-import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -107,19 +103,9 @@ public class ProjectilesTreePanel extends DataTreePanel {
 
     private static DefaultMutableTreeNode createPackageNode(Map.Entry<String, List<shipeditor.persistence.database.IndexedFile>> folder) {
         String modId = folder.getKey();
-        Settings settings = SettingsManager.getSettings();
 
-        DefaultMutableTreeNode result;
-        if (SettingsManager.isCoreFolder(modId)) {
-            GameDataPackage corePackage = SettingsManager.getCorePackage();
-            result = new DefaultMutableTreeNode(corePackage);
-        } else {
-            GameDataPackage dataPackage = settings.getPackage(modId);
-            if (dataPackage == null) {
-                dataPackage = new GameDataPackage(modId, false, false);
-            }
-            result = new DefaultMutableTreeNode(dataPackage);
-        }
+        DefaultMutableTreeNode result = DataTreeSupport.createPackageRootNode(modId,
+                SettingsManager.isCoreFolder(modId));
 
         for (shipeditor.persistence.database.IndexedFile entry : folder.getValue()) {
             MutableTreeNode node = new DefaultMutableTreeNode(entry);
@@ -504,15 +490,7 @@ public class ProjectilesTreePanel extends DataTreePanel {
     private class DoubleClickLayerLoader extends MouseAdapter {
         @Override
         public void mousePressed(MouseEvent e) {
-            if (e.getButton() != MouseEvent.BUTTON1 || e.getClickCount() != 2) return;
-            JTree tree = getTree();
-            Point eventPoint = e.getPoint();
-            TreePath pathForLocation = tree.getPathForLocation(eventPoint.x, eventPoint.y);
-            TreePath selectionPath = tree.getSelectionPath();
-            TreePath targetPath = pathForLocation != null ? pathForLocation : selectionPath;
-            if (targetPath == null) return;
-            
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) targetPath.getLastPathComponent();
+            DefaultMutableTreeNode node = DataTreeSupport.getDoubleClickedNode(getTree(), e);
             if (node != null && node.getUserObject() instanceof shipeditor.persistence.database.IndexedFile checked) {
                 ProjectileSpecFile parsed = GameDataRepository.getProjectileByID(checked.getEntityId());
                 if (parsed != null) {
@@ -554,23 +532,12 @@ public class ProjectilesTreePanel extends DataTreePanel {
         return custom;
     }
 
-    private static class ProjectilesTreeCellRenderer extends DefaultTreeCellRenderer {
+    private static class ProjectilesTreeCellRenderer extends TreeEntryRenderer {
         @Override
-        public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel,
-                boolean expanded, boolean leaf, int row, boolean hasFocus) {
-            super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus);
-            if (!(value instanceof DefaultMutableTreeNode treeNode)) {
-                return this;
-            }
-            Object object = treeNode.getUserObject();
-            if (object == null) {
-                return this;
-            }
-            DataTreePanel.configureCellRendererColors(object, this);
+        protected void customizeEntry(Object object, boolean leaf) {
             if (object instanceof shipeditor.persistence.database.IndexedFile checked && leaf) {
                 setText(checked.getEntityId());
             }
-            return this;
         }
     }
 

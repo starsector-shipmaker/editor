@@ -34,6 +34,34 @@ public final class DatabaseQueryService {
     public record FileInfo(long lastModified, String fileHash) {}
     public record FileDbInfo(long lastModified, String fileHash, UUID uuid) {}
 
+    /** SQL shared by every writer that upserts a row into the {@code mods} table. */
+    public static final String UPSERT_MOD_SQL = """
+            INSERT INTO mods (id, name, folder_path, last_scanned)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                folder_path = excluded.folder_path,
+                last_scanned = excluded.last_scanned;
+            """;
+
+    /** SQL shared by every writer that upserts a row into the {@code indexed_files} table. */
+    public static final String UPSERT_INDEXED_FILE_SQL = """
+            INSERT INTO indexed_files (uuid, mod_id, entity_id, entity_name, entity_type, file_name, file_path, last_modified, file_hash, sprite_path, designation, metadata_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(uuid) DO UPDATE SET
+                mod_id = excluded.mod_id,
+                entity_id = excluded.entity_id,
+                entity_name = excluded.entity_name,
+                entity_type = excluded.entity_type,
+                file_name = excluded.file_name,
+                file_path = excluded.file_path,
+                last_modified = excluded.last_modified,
+                file_hash = excluded.file_hash,
+                sprite_path = excluded.sprite_path,
+                designation = excluded.designation,
+                metadata_json = excluded.metadata_json;
+            """;
+
     private static boolean isModActive(String modId) {
         return SettingsManager.isModActive(modId);
     }
@@ -58,14 +86,7 @@ public final class DatabaseQueryService {
         if (id == null || folderPath == null) {
             return;
         }
-        String sql = """
-            INSERT INTO mods (id, name, folder_path, last_scanned)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                name = excluded.name,
-                folder_path = excluded.folder_path,
-                last_scanned = excluded.last_scanned;
-            """;
+        String sql = UPSERT_MOD_SQL;
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -148,22 +169,7 @@ public final class DatabaseQueryService {
     }
 
     public static void upsertFiles(List<IndexedFile> files) {
-        String query = """
-            INSERT INTO indexed_files (uuid, mod_id, entity_id, entity_name, entity_type, file_name, file_path, last_modified, file_hash, sprite_path, designation, metadata_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(uuid) DO UPDATE SET
-                mod_id = excluded.mod_id,
-                entity_id = excluded.entity_id,
-                entity_name = excluded.entity_name,
-                entity_type = excluded.entity_type,
-                file_name = excluded.file_name,
-                file_path = excluded.file_path,
-                last_modified = excluded.last_modified,
-                file_hash = excluded.file_hash,
-                sprite_path = excluded.sprite_path,
-                designation = excluded.designation,
-                metadata_json = excluded.metadata_json;
-            """;
+        String query = UPSERT_INDEXED_FILE_SQL;
 
         try (Connection conn = DatabaseManager.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(query)) {
@@ -405,13 +411,7 @@ public final class DatabaseQueryService {
 
         Map<String, IndexedFile> deduplicated = new LinkedHashMap<>();
         for (IndexedFile coreFile : CoreIndexManager.getFilesByType(type)) {
-            if (coreFile != null && coreFile.getFilePath() != null) {
-                try {
-                    deduplicated.put(coreFile.getFilePath().toFile().getCanonicalPath(), coreFile);
-                } catch (java.io.IOException e) {
-                    deduplicated.put(coreFile.getFilePath().toAbsolutePath().normalize().toString(), coreFile);
-                }
-            }
+            putDeduplicatedByPath(deduplicated, coreFile);
         }
 
         List<String> activeMods = getActiveModIds();
@@ -431,14 +431,7 @@ public final class DatabaseQueryService {
 
                 try (ResultSet rs = pstmt.executeQuery()) {
                     while (rs.next()) {
-                        IndexedFile file = mapRowToIndexedFile(rs);
-                        if (file != null && file.getFilePath() != null) {
-                            try {
-                                deduplicated.put(file.getFilePath().toFile().getCanonicalPath(), file);
-                            } catch (java.io.IOException e) {
-                                deduplicated.put(file.getFilePath().toAbsolutePath().normalize().toString(), file);
-                            }
-                        }
+                        putDeduplicatedByPath(deduplicated, mapRowToIndexedFile(rs));
                     }
                 }
             } catch (SQLException e) {
@@ -528,6 +521,21 @@ public final class DatabaseQueryService {
     }
 
     // --- Helper Methods ---
+
+    /**
+     * Registers a file in the map keyed by its canonical path (falling back to the normalized absolute path),
+     * so that a later file with the same physical path replaces an earlier one.
+     */
+    private static void putDeduplicatedByPath(Map<String, IndexedFile> deduplicated, IndexedFile file) {
+        if (file == null || file.getFilePath() == null) {
+            return;
+        }
+        try {
+            deduplicated.put(file.getFilePath().toFile().getCanonicalPath(), file);
+        } catch (java.io.IOException e) {
+            deduplicated.put(file.getFilePath().toAbsolutePath().normalize().toString(), file);
+        }
+    }
 
     private static IndexedFile mapRowToIndexedFile(ResultSet rs) throws SQLException {
         return IndexedFile.builder()

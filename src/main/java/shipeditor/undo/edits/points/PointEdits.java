@@ -21,18 +21,22 @@ import shipeditor.components.viewer.painters.points.MirrorablePointPainter;
 import shipeditor.components.viewer.painters.points.ship.BoundPointsPainter;
 import shipeditor.components.viewer.painters.points.ship.LaunchBayPainter;
 import shipeditor.undo.AbstractEdit;
-import shipeditor.undo.Edit;
 import shipeditor.utility.Utility;
 import shipeditor.utility.overseers.StaticController;
 
 import java.awt.geom.Point2D;
-import java.util.Deque;
 import java.util.List;
 
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
 public final class PointEdits {
 
     private PointEdits() {
+    }
+
+    private static void queueViewerAndCenterPanelsRepaint() {
+        var repainter = StaticController.getScheduler();
+        repainter.queueViewerRepaint();
+        repainter.queueCenterPanelsRepaint();
     }
 
     public static class BoundsListEdit extends AbstractEdit {
@@ -94,18 +98,14 @@ public final class PointEdits {
         public void undo() {
             undoSubEdits();
             parentPoint.setCollisionRadius(oldRadius);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueCenterPanelsRepaint();
+            queueViewerAndCenterPanelsRepaint();
         }
 
         @Override
         public void redo() {
             parentPoint.setCollisionRadius(newRadius);
             redoSubEdits();
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueCenterPanelsRepaint();
+            queueViewerAndCenterPanelsRepaint();
         }
 
         @Override
@@ -222,12 +222,7 @@ public final class PointEdits {
 
         @Override
         public void cleanupReferences() {
-            Deque<Edit> subEdits = this.getSubEdits();
-            subEdits.forEach(edit -> {
-                if (edit instanceof PointAdditionEdit checked) {
-                    checked.cleanupReferences();
-                }
-            });
+            this.cleanupSubEditsOfType(PointAdditionEdit.class);
             this.pointPainter = null;
             this.point = null;
         }
@@ -295,12 +290,7 @@ public final class PointEdits {
 
         @Override
         public void cleanupReferences() {
-            Deque<Edit> subEdits = this.getSubEdits();
-            subEdits.forEach(edit -> {
-                if (edit instanceof PointDragEdit checked) {
-                    checked.cleanupReferences();
-                }
-            });
+            this.cleanupSubEditsOfType(PointDragEdit.class);
             this.point = null;
         }
     }
@@ -345,12 +335,7 @@ public final class PointEdits {
 
         @Override
         public void cleanupReferences() {
-            Deque<Edit> subEdits = this.getSubEdits();
-            subEdits.forEach(edit -> {
-                if (edit instanceof PointRemovalEdit checked) {
-                    checked.cleanupReferences();
-                }
-            });
+            this.cleanupSubEditsOfType(PointRemovalEdit.class);
             this.painter = null;
             this.removed = null;
         }
@@ -408,18 +393,14 @@ public final class PointEdits {
         public void undo() {
             undoSubEdits();
             parentPoint.setShieldRadius(oldRadius);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueCenterPanelsRepaint();
+            queueViewerAndCenterPanelsRepaint();
         }
 
         @Override
         public void redo() {
             parentPoint.setShieldRadius(newRadius);
             redoSubEdits();
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueCenterPanelsRepaint();
+            queueViewerAndCenterPanelsRepaint();
         }
 
         @Override

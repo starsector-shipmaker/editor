@@ -7,9 +7,7 @@ import shipeditor.components.datafiles.entities.ShipSystemCSVEntry;
 import shipeditor.persistence.SettingsManager;
 import shipeditor.representation.GameDataRepository;
 
-import javax.swing.Action;
 import javax.swing.JPanel;
-import javax.swing.tree.DefaultMutableTreeNode;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -20,11 +18,6 @@ class ShipSystemsTreePanel extends CSVDataTreePanel<ShipSystemCSVEntry>{
 
     public ShipSystemsTreePanel() {
         super("Shipsystem file packages");
-    }
-
-    @Override
-    protected Action getLoadDataAction() {
-        return new javax.swing.AbstractAction("Reload") { @Override public void actionPerformed(java.awt.event.ActionEvent e) { reload(); } };
     }
 
     @Override
@@ -66,9 +59,7 @@ class ShipSystemsTreePanel extends CSVDataTreePanel<ShipSystemCSVEntry>{
 
     @Override
     protected void updateEntryPanel(ShipSystemCSVEntry selected) {
-        JPanel leftPanel = getLeftInfoPanel();
-        leftPanel.removeAll();
-        leftPanel.setLayout(new javax.swing.BoxLayout(leftPanel, javax.swing.BoxLayout.Y_AXIS));
+        JPanel leftPanel = DataTreeSupport.prepareInfoPanel(getLeftInfoPanel());
 
         shipeditor.utility.components.ComponentUtilities.InfoPanelBuilder builder = new shipeditor.utility.components.ComponentUtilities.InfoPanelBuilder("Shipsystem Info");
         
@@ -96,13 +87,6 @@ class ShipSystemsTreePanel extends CSVDataTreePanel<ShipSystemCSVEntry>{
         leftPanel.repaint();
 
         createRightPanelDataTable(selected);
-    }
-
-    @Override
-    protected ShipSystemCSVEntry getObjectFromNode(DefaultMutableTreeNode node) {
-        Object userObject = node.getUserObject();
-        if (!(userObject instanceof ShipSystemCSVEntry checked)) return null;
-        return checked;
     }
 
     @Override

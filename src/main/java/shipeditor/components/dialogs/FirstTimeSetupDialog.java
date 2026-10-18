@@ -58,31 +58,13 @@ public class FirstTimeSetupDialog extends JDialog {
         if (candidatePaths != null) {
             for (String cand : candidatePaths) {
                 if (cand != null && !cand.isEmpty()) {
-                    boolean exists = false;
-                    for (int i = 0; i < pathComboBox.getItemCount(); i++) {
-                        if (cand.equals(pathComboBox.getItemAt(i))) {
-                            exists = true;
-                            break;
-                        }
-                    }
-                    if (!exists) {
-                        pathComboBox.addItem(cand);
-                    }
+                    addItemIfAbsent(pathComboBox, cand);
                 }
             }
         }
 
         if (detectedPath != null && !detectedPath.isEmpty()) {
-            boolean exists = false;
-            for (int i = 0; i < pathComboBox.getItemCount(); i++) {
-                if (detectedPath.equals(pathComboBox.getItemAt(i))) {
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) {
-                pathComboBox.addItem(detectedPath);
-            }
+            addItemIfAbsent(pathComboBox, detectedPath);
             pathComboBox.setSelectedItem(detectedPath);
         } else if (pathComboBox.getItemCount() > 0) {
             pathComboBox.setSelectedIndex(0);
@@ -114,16 +96,7 @@ public class FirstTimeSetupDialog extends JDialog {
             int returnVal = folderChooser.showOpenDialog(this);
             if (returnVal == JFileChooser.APPROVE_OPTION) {
                 String selected = folderChooser.getSelectedFile().getAbsolutePath();
-                boolean exists = false;
-                for (int i = 0; i < pathComboBox.getItemCount(); i++) {
-                    if (selected.equals(pathComboBox.getItemAt(i))) {
-                        exists = true;
-                        break;
-                    }
-                }
-                if (!exists) {
-                    pathComboBox.addItem(selected);
-                }
+                addItemIfAbsent(pathComboBox, selected);
                 pathComboBox.setSelectedItem(selected);
             }
         });
@@ -172,6 +145,15 @@ public class FirstTimeSetupDialog extends JDialog {
                 confirmedPath = null;
             }
         });
+    }
+
+    private static void addItemIfAbsent(JComboBox<String> comboBox, String item) {
+        for (int i = 0; i < comboBox.getItemCount(); i++) {
+            if (item.equals(comboBox.getItemAt(i))) {
+                return;
+            }
+        }
+        comboBox.addItem(item);
     }
 
     public static String promptForGameFolder(String detectedPath, Settings settings) {

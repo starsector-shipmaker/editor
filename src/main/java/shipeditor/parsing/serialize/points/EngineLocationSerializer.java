@@ -10,8 +10,7 @@ public class EngineLocationSerializer extends Point2DSerializer {
     @Override
     protected void writeClosingIndentation(JsonGenerator gen) throws IOException {
         super.writeClosingIndentation(gen);
-        gen.writeRaw(BasicPrettyPrinter.INDENT);
-        gen.writeRaw(BasicPrettyPrinter.INDENT);
+        BasicPrettyPrinter.writeIndentation(gen, 2);
     }
 
 }

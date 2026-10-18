@@ -103,45 +103,22 @@ public class SlotDataControlPane extends AbstractSlotValuesPanel {
 
     @Override
     protected Consumer<Double> getAngleSetter() {
-        return angle -> {
-            ShipPainter slotParent = getCachedLayerPainter();
-            if (slotParent == null) return;
-            WeaponSlotPainter weaponSlotPainter = slotParent.getWeaponSlotPainter();
-            if (weaponSlotPainter == null) return;
-            WeaponSlotPoint selectedFromLayer = getSelectedFromLayer(slotParent);
-            if (selectedFromLayer != null) {
-                weaponSlotPainter.changePointAngleWithMirrorCheck(selectedFromLayer, angle);
-            }
-        };
+        return angle -> actOnSelectedFromLayer((weaponSlotPainter, selectedFromLayer) ->
+                weaponSlotPainter.changePointAngleWithMirrorCheck(selectedFromLayer, angle));
     }
 
     @Override
     protected Consumer<Double> getArcSetter() {
-        return arc -> {
-            ShipPainter slotParent = getCachedLayerPainter();
-            if (slotParent == null) return;
-            WeaponSlotPainter weaponSlotPainter = slotParent.getWeaponSlotPainter();
-            if (weaponSlotPainter == null) return;
-            WeaponSlotPoint selectedFromLayer = getSelectedFromLayer(slotParent);
-            if (selectedFromLayer != null) {
-                weaponSlotPainter.changeArcWithMirrorCheck(selectedFromLayer, arc);
-            }
-        };
+        return arc -> actOnSelectedFromLayer((weaponSlotPainter, selectedFromLayer) ->
+                weaponSlotPainter.changeArcWithMirrorCheck(selectedFromLayer, arc));
     }
 
     @Override
     protected Consumer<Double> getRenderOrderSetter() {
-        return renderOrder -> {
-            ShipPainter slotParent = getCachedLayerPainter();
-            if (slotParent == null) return;
-            WeaponSlotPainter weaponSlotPainter = slotParent.getWeaponSlotPainter();
-            if (weaponSlotPainter == null) return;
-            WeaponSlotPoint selectedFromLayer = getSelectedFromLayer(slotParent);
-            if (selectedFromLayer != null) {
-                int renderOrderValue = renderOrder.intValue();
-                weaponSlotPainter.changeRenderOrderWithMirrorCheck(selectedFromLayer, renderOrderValue);
-            }
-        };
+        return renderOrder -> actOnSelectedFromLayer((weaponSlotPainter, selectedFromLayer) -> {
+            int renderOrderValue = renderOrder.intValue();
+            weaponSlotPainter.changeRenderOrderWithMirrorCheck(selectedFromLayer, renderOrderValue);
+        });
     }
 
     @Override
@@ -259,6 +236,20 @@ public class SlotDataControlPane extends AbstractSlotValuesPanel {
         panel.add(content, BorderLayout.CENTER);
 
         return panel;
+    }
+
+    /**
+     * Runs the action for the slot selected on the cached ship painter, if both painter and selection exist.
+     */
+    private void actOnSelectedFromLayer(BiConsumer<WeaponSlotPainter, WeaponSlotPoint> action) {
+        ShipPainter slotParent = getCachedLayerPainter();
+        if (slotParent == null) return;
+        WeaponSlotPainter weaponSlotPainter = slotParent.getWeaponSlotPainter();
+        if (weaponSlotPainter == null) return;
+        WeaponSlotPoint selectedFromLayer = getSelectedFromLayer(slotParent);
+        if (selectedFromLayer != null) {
+            action.accept(weaponSlotPainter, selectedFromLayer);
+        }
     }
 
     private void actOnSelectedValues(BiConsumer<WeaponSlotPainter, List<WeaponSlotPoint>> action) {

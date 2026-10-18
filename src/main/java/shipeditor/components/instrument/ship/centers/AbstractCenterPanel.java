@@ -14,7 +14,6 @@ import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.components.viewer.painters.points.AbstractPointPainter;
 import shipeditor.undo.EditDispatch;
 import shipeditor.utility.UtilityEnums.IncrementType;
-import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.widgets.PointLocationWidget;
 import shipeditor.utility.components.widgets.Spinners;
 import shipeditor.utility.objects.Pair;
@@ -39,10 +38,6 @@ import java.awt.geom.Point2D;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 public abstract class AbstractCenterPanel extends AbstractShipPropertiesPanel {
 
@@ -182,52 +177,11 @@ public abstract class AbstractCenterPanel extends AbstractShipPropertiesPanel {
     }
 
     private Pair<JLabel, JSlider> createCenterOpacityWidget() {
-        BooleanSupplier readinessChecker = this::isWidgetsReadyForInput;
-        Consumer<Float> opacitySetter = changedValue -> {
-            LayerPainter cachedLayerPainter = getCachedLayerPainter();
-            if (cachedLayerPainter instanceof ShipPainter shipPainter) {
-                AbstractPointPainter pointPainter = getPointPainter(shipPainter);
-                if (pointPainter != null) {
-                    pointPainter.setPaintOpacity(changedValue);
-                    processChange();
-                }
-            }
-        };
-
-        BiConsumer<JComponent, Consumer<LayerPainter>> clearerListener = this::registerWidgetClearer;
-        BiConsumer<JComponent, Consumer<LayerPainter>> refresherListener = this::registerWidgetRefresher;
-
-        Function<LayerPainter, Float> opacityGetter = layerPainter -> {
-            if (layerPainter instanceof ShipPainter shipPainter) {
-                AbstractPointPainter pointPainter = getPointPainter(shipPainter);
-                return pointPainter != null ? pointPainter.getPaintOpacity() : 1.0f;
-            }
-            return 1.0f;
-        };
-
-        Pair<JLabel, JSlider> opacityWidget = ComponentUtilities.createOpacityWidget(readinessChecker,
-                opacityGetter, opacitySetter, clearerListener, refresherListener);
-
-        JLabel opacityLabel = opacityWidget.getFirst();
-        opacityLabel.setText(StringManager.getString(getOpacityLabelKey()));
-
-        return opacityWidget;
+        return createShipOpacityWidget(this::getPointPainter, getOpacityLabelKey());
     }
 
     private Pair<JLabel, JComboBox<PainterVisibility>> createCenterVisibilityWidget() {
-        Function<LayerPainter, AbstractPointPainter> painterGetter = layerPainter -> {
-            if (layerPainter instanceof ShipPainter shipPainter) {
-                return getPointPainter(shipPainter);
-            }
-            return null;
-        };
-
-        var visibilityWidget = createVisibilityWidget(painterGetter);
-
-        JLabel visibilityLabel = visibilityWidget.getFirst();
-        visibilityLabel.setText(StringManager.getString(getVisibilityLabelKey()));
-
-        return visibilityWidget;
+        return createShipVisibilityWidget(this::getPointPainter, getVisibilityLabelKey());
     }
 
     private Pair<JLabel, JSpinner> createCenterRadiusSpinner() {

@@ -87,17 +87,21 @@ public final class EditDispatch {
     public static void postBoundsRearranged(BoundPointsPainter pointPainter,
                                             List<BoundPoint> old,
                                             List<BoundPoint> changed) {
-        Edit rearrangeEdit = new BoundsListEdit(pointPainter, old, changed, "Sort Bounds");
-        UndoOverseer.post(rearrangeEdit);
-        pointPainter.setBoundPoints(changed);
-        Events.repaintShipView();
+        postBoundsListChanged(pointPainter, old, changed, "Sort Bounds");
     }
 
     public static void postBoundsReplaced(BoundPointsPainter pointPainter,
                                           List<BoundPoint> old,
                                           List<BoundPoint> changed) {
-        Edit replaceEdit = new BoundsListEdit(pointPainter, old, changed, "Auto-Generate Bounds");
-        UndoOverseer.post(replaceEdit);
+        postBoundsListChanged(pointPainter, old, changed, "Auto-Generate Bounds");
+    }
+
+    private static void postBoundsListChanged(BoundPointsPainter pointPainter,
+                                              List<BoundPoint> old,
+                                              List<BoundPoint> changed,
+                                              String actionName) {
+        Edit boundsEdit = new BoundsListEdit(pointPainter, old, changed, actionName);
+        UndoOverseer.post(boundsEdit);
         pointPainter.setBoundPoints(changed);
         Events.repaintShipView();
     }
@@ -385,6 +389,7 @@ public final class EditDispatch {
         } else {
             repainter.queueBuiltInRelatedRepaints();
             repainter.queueVariantsRepaint();
+            repainter.queueSlotsPanelRepaint();
         }
     }
 
@@ -411,6 +416,7 @@ public final class EditDispatch {
         } else {
             repainter.queueBuiltInRelatedRepaints();
             repainter.queueVariantsRepaint();
+            repainter.queueSlotsPanelRepaint();
         }
     }
 

@@ -18,6 +18,13 @@ public final class SlotEdits {
     private SlotEdits() {
     }
 
+    private static void queueSlotAndBayRepaint() {
+        var repainter = StaticController.getScheduler();
+        repainter.queueViewerRepaint();
+        repainter.queueSlotsPanelRepaint();
+        repainter.queueBaysPanelRepaint();
+    }
+
     public static class RenderOrderChangeEdit extends AbstractEdit {
         private final SlotData slotPoint;
         private final int oldOrder;
@@ -34,20 +41,14 @@ public final class SlotEdits {
         public void undo() {
             undoSubEdits();
             slotPoint.setRenderOrderMod(oldOrder);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueSlotsPanelRepaint();
-            repainter.queueBaysPanelRepaint();
+            queueSlotAndBayRepaint();
         }
 
         @Override
         public void redo() {
             slotPoint.setRenderOrderMod(updatedOrder);
             redoSubEdits();
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueSlotsPanelRepaint();
-            repainter.queueBaysPanelRepaint();
+            queueSlotAndBayRepaint();
         }
 
         @Override
@@ -72,20 +73,14 @@ public final class SlotEdits {
         public void undo() {
             undoSubEdits();
             slotPoint.setAngle(oldAngle);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueSlotsPanelRepaint();
-            repainter.queueBaysPanelRepaint();
+            queueSlotAndBayRepaint();
         }
 
         @Override
         public void redo() {
             slotPoint.setAngle(updatedAngle);
             redoSubEdits();
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueSlotsPanelRepaint();
-            repainter.queueBaysPanelRepaint();
+            queueSlotAndBayRepaint();
         }
 
         @Override
@@ -110,20 +105,14 @@ public final class SlotEdits {
         public void undo() {
             undoSubEdits();
             slotPoint.setArc(oldArc);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueSlotsPanelRepaint();
-            repainter.queueBaysPanelRepaint();
+            queueSlotAndBayRepaint();
         }
 
         @Override
         public void redo() {
             slotPoint.setArc(updatedArc);
             redoSubEdits();
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueSlotsPanelRepaint();
-            repainter.queueBaysPanelRepaint();
+            queueSlotAndBayRepaint();
         }
 
         @Override
@@ -173,19 +162,13 @@ public final class SlotEdits {
         @Override
         public void undo() {
             slot.setWeaponMount(old);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueSlotsPanelRepaint();
-            repainter.queueBaysPanelRepaint();
+            queueSlotAndBayRepaint();
         }
 
         @Override
         public void redo() {
             slot.setWeaponMount(updated);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueSlotsPanelRepaint();
-            repainter.queueBaysPanelRepaint();
+            queueSlotAndBayRepaint();
         }
 
         @Override
@@ -208,23 +191,15 @@ public final class SlotEdits {
         @Override
         public void undo() {
             slot.setWeaponSize(old);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueSlotsPanelRepaint();
-            repainter.queueBaysPanelRepaint();
-            repainter.queueBuiltInsRepaint();
-            repainter.queueBaysPanelRepaint();
+            queueSlotAndBayRepaint();
+            StaticController.getScheduler().queueBuiltInsRepaint();
         }
 
         @Override
         public void redo() {
             slot.setWeaponSize(updated);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueSlotsPanelRepaint();
-            repainter.queueBaysPanelRepaint();
-            repainter.queueBuiltInsRepaint();
-            repainter.queueBaysPanelRepaint();
+            queueSlotAndBayRepaint();
+            StaticController.getScheduler().queueBuiltInsRepaint();
         }
 
         @Override

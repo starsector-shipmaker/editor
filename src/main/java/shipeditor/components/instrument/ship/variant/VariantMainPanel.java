@@ -20,6 +20,7 @@ public class VariantMainPanel extends AbstractVariantPanel {
     private final VariantChooserPanel chooserPanel;
     private final VariantDataPanel dataPanel;
     private final VariantOrdnancePanel ordnancePanel;
+    private final EmptyVariantBanner emptyBanner;
     private ShipLayer selectedLayer;
 
     public VariantMainPanel() {
@@ -34,8 +35,13 @@ public class VariantMainPanel extends AbstractVariantPanel {
 
         ordnancePanel = new VariantOrdnancePanel();
         dataPanel = new VariantDataPanel(() -> ordnancePanel.refreshOrdnanceInfo(selectedLayer));
+        emptyBanner = new EmptyVariantBanner();
 
-        contentPanel.add(dataPanel, BorderLayout.PAGE_START);
+        JPanel northContent = new JPanel(new BorderLayout());
+        northContent.add(emptyBanner, BorderLayout.PAGE_START);
+        northContent.add(dataPanel, BorderLayout.CENTER);
+
+        contentPanel.add(northContent, BorderLayout.PAGE_START);
         contentPanel.add(ordnancePanel, BorderLayout.CENTER);
 
         ViewerLayer layer = StaticController.getActiveLayer();
@@ -48,6 +54,7 @@ public class VariantMainPanel extends AbstractVariantPanel {
         EventBus.subscribe(this, event -> {
             if (event instanceof InstrumentRepaintQueued checked) {
                 if (checked.editorMode() == EditorInstrument.VARIANT_DATA) {
+                    emptyBanner.refresh(selectedLayer);
                     ordnancePanel.refreshOrdnanceInfo(selectedLayer);
                 }
             }
@@ -57,6 +64,7 @@ public class VariantMainPanel extends AbstractVariantPanel {
     @Override
     public void refreshPanel(ViewerLayer selected) {
         selectedLayer = null;
+        emptyBanner.refresh(selected);
 
         if (!(selected instanceof ShipLayer checkedLayer) || checkedLayer.getHull() == null) {
             chooserPanel.installPlaceholders();

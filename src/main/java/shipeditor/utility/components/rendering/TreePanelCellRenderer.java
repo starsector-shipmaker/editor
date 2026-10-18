@@ -83,12 +83,8 @@ public class TreePanelCellRenderer extends JPanel implements TreeCellRenderer {
         setBorder(DEFAULT_NO_FOCUS_BORDER);
         setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 
-        leftContainer = new JPanel();
-        leftContainer.setOpaque(false);
-        leftContainer.setLayout(new BoxLayout(leftContainer, BoxLayout.LINE_AXIS));
-        rightContainer = new JPanel();
-        rightContainer.setOpaque(false);
-        rightContainer.setLayout(new BoxLayout(rightContainer, BoxLayout.LINE_AXIS));
+        leftContainer = ComponentUtilities.createTransparentBoxPanel();
+        rightContainer = ComponentUtilities.createTransparentBoxPanel();
 
         Border border = new EmptyBorder(0, 2, 0, 0);
         rightContainer.setBorder(border);

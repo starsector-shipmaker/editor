@@ -40,8 +40,8 @@ class JsonDatabaseIntegrationTest {
         DatabaseQueryService.clearTypeCache();
         CoreIndexManager.reset();
 
-        DatabaseManager.deleteDatabase();
         setDatabaseManagerField("databaseFilePath", dbPath);
+        DatabaseManager.deleteDatabase();
         DatabaseManager.initializeDatabase();
     }
 

@@ -39,28 +39,7 @@ final class BoundList extends PointList<BoundPoint> {
 
     @Override
     protected Transferable createTransferableFromEntry(BoundPoint entry) {
-        return new Transferable() {
-
-            private final BoundPoint bound = entry;
-
-            private final DataFlavor sourceFlavor = new DataFlavor(BoundList.this.getClass(),
-                    String.valueOf(BoundList.this.hashCode()));
-
-            @Override
-            public DataFlavor[] getTransferDataFlavors() {
-                return new DataFlavor[] {BOUND_FLAVOR, sourceFlavor};
-            }
-
-            @Override
-            public boolean isDataFlavorSupported(DataFlavor flavor) {
-                return flavor.equals(BOUND_FLAVOR);
-            }
-
-            @Override
-            public Object getTransferData(DataFlavor flavor) {
-                return bound;
-            }
-        };
+        return createSingleEntryTransferable(entry, BOUND_FLAVOR);
     }
 
     @Override

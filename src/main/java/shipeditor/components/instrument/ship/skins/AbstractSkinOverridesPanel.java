@@ -1,8 +1,11 @@
 package shipeditor.components.instrument.ship.skins;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import shipeditor.utility.text.StringManager;
+import lombok.extern.log4j.Log4j2;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 import shipeditor.communication.EventBus;
+import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 import shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated;
 import shipeditor.communication.events.viewer.layers.LayerEvents.LayerWasSelected;
 import shipeditor.components.ComponentEnums.EditorInstrument;
@@ -13,15 +16,18 @@ import shipeditor.components.viewer.layers.ship.data.ActiveShipSpec;
 import shipeditor.components.viewer.layers.ship.data.ShipSkin;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.UIConstants;
-import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
+import shipeditor.utility.text.StringManager;
+import shipeditor.utility.themes.Themes;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.BorderLayout;
+import java.awt.FlowLayout;
 import java.awt.GridBagLayout;
 
+@Log4j2
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
 public abstract class AbstractSkinOverridesPanel<M extends AbstractTableModel> extends JPanel {
 
@@ -34,30 +40,25 @@ public abstract class AbstractSkinOverridesPanel<M extends AbstractTableModel> e
     private final EditorInstrument editorMode;
     private boolean isUpdatingSkinChooser;
 
-    public AbstractSkinOverridesPanel(M tableModel, EditorInstrument editorMode, String editorTitle) {
-        this.tableModel = tableModel;
+    protected AbstractSkinOverridesPanel(EditorInstrument editorMode) {
         this.editorMode = editorMode;
-        
+        this.tableModel = null;
+        this.overridesTable = null;
+        this.editorPanel = null;
+
+        skinChooser = createSkinChooserComboBox();
+        statusLabel = createStatusLabel();
+    }
+
+    public AbstractSkinOverridesPanel(M tableModel, EditorInstrument editorMode, String editorTitle) {
+        this.editorMode = editorMode;
+        this.tableModel = tableModel;
+        this.skinChooser = createSkinChooserComboBox();
+        this.statusLabel = createStatusLabel();
+
         this.setLayout(new BorderLayout());
 
-        JPanel chooserPanel = new JPanel(new BorderLayout(6, 0));
-        chooserPanel.setBorder(new EmptyBorder(4, 6, 2, 6));
-        JLabel skinLabel = new JLabel("Skin:");
-        skinChooser = new JComboBox<>();
-        skinChooser.addActionListener(e -> {
-            if (isUpdatingSkinChooser || cachedPainter == null || cachedPainter.isUninitialized()) {
-                return;
-            }
-            ShipSkin chosen = (ShipSkin) skinChooser.getSelectedItem();
-            ActiveShipSpec spec = (chosen != null && !chosen.isBase()) ? ActiveShipSpec.SKIN : ActiveShipSpec.HULL;
-            cachedPainter.setActiveSpec(spec, chosen);
-        });
-        chooserPanel.add(skinLabel, BorderLayout.LINE_START);
-        chooserPanel.add(skinChooser, BorderLayout.CENTER);
-
-        statusLabel = new JLabel(StringManager.getString("NO_SKIN_ACTIVE"));
-        statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        statusLabel.setBorder(new EmptyBorder(4, 8, 4, 8));
+        JPanel chooserPanel = createChooserPanel();
 
         overridesTable = new JTable(tableModel);
         overridesTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
@@ -98,6 +99,46 @@ public abstract class AbstractSkinOverridesPanel<M extends AbstractTableModel> e
         this.initEventListening();
     }
 
+    private JComboBox<ShipSkin> createSkinChooserComboBox() {
+        JComboBox<ShipSkin> combo = new JComboBox<>();
+        combo.addActionListener(e -> {
+            if (isUpdatingSkinChooser || cachedPainter == null || cachedPainter.isUninitialized()) {
+                return;
+            }
+            applyChosenSkin(cachedPainter, (ShipSkin) combo.getSelectedItem());
+        });
+        return combo;
+    }
+
+    private static JLabel createStatusLabel() {
+        JLabel label = new JLabel(StringManager.getString("NO_SKIN_ACTIVE"));
+        label.setHorizontalAlignment(SwingConstants.CENTER);
+        label.setBorder(new EmptyBorder(4, 8, 4, 8));
+        return label;
+    }
+
+    protected final EditorInstrument getEditorMode() {
+        return editorMode;
+    }
+
+    protected static boolean isSkinActive(ShipSkin skin) {
+        return skin != null && !skin.isBase();
+    }
+
+    static void applyChosenSkin(ShipPainter painter, ShipSkin chosen) {
+        ActiveShipSpec spec = isSkinActive(chosen) ? ActiveShipSpec.SKIN : ActiveShipSpec.HULL;
+        painter.setActiveSpec(spec, chosen);
+    }
+
+    protected JPanel createChooserPanel() {
+        JPanel chooserPanel = new JPanel(new BorderLayout(6, 0));
+        chooserPanel.setBorder(new EmptyBorder(4, 6, 2, 6));
+        JLabel skinLabel = new JLabel("Skin:");
+        chooserPanel.add(skinLabel, BorderLayout.LINE_START);
+        chooserPanel.add(skinChooser, BorderLayout.CENTER);
+        return chooserPanel;
+    }
+
     protected void updateSkinChooser() {
         isUpdatingSkinChooser = true;
         skinChooser.removeAllItems();
@@ -118,11 +159,12 @@ public abstract class AbstractSkinOverridesPanel<M extends AbstractTableModel> e
         isUpdatingSkinChooser = false;
     }
 
-    protected abstract void refreshEditorPanel();
-    
     protected abstract void refreshContent();
 
-    private void initEventListening() {
+    protected void refreshEditorPanel() {
+    }
+
+    protected final void initEventListening() {
         EventBus.subscribe(this, event -> {
             if (event instanceof LayerWasSelected checked) {
                 handleLayerChange(checked.selected());
@@ -148,8 +190,34 @@ public abstract class AbstractSkinOverridesPanel<M extends AbstractTableModel> e
                 return;
             }
         }
+        log.debug("Skin panel {} has no initialized ship painter for the changed layer", editorMode);
         this.cachedPainter = null;
         refreshContent();
+    }
+
+    /**
+     * Shared body of {@link #refreshEditorPanel()}: clears the inner editor and either shows the hint when no row
+     * is selected or lets the subclass populate the editor for the selected row.
+     *
+     * @param noSelectionHint text shown when no valid row is selected.
+     * @param rowPopulator    receives the inner editor panel and the selected row index.
+     */
+    protected void refreshEditorForSelection(String noSelectionHint,
+                                             java.util.function.BiConsumer<JPanel, Integer> rowPopulator) {
+        JPanel innerEditor = (JPanel) editorPanel.getComponent(0);
+        innerEditor.removeAll();
+
+        int selectedRow = overridesTable.getSelectedRow();
+        if (selectedRow < 0 || selectedRow >= tableModel.getRowCount()) {
+            showNoSelectionHint(innerEditor, noSelectionHint);
+            return;
+        }
+
+        log.debug("Populating override editor for row {}", selectedRow);
+        rowPopulator.accept(innerEditor, selectedRow);
+
+        innerEditor.revalidate();
+        innerEditor.repaint();
     }
 
     protected <K, V> void commitOverride(K key, V override,
@@ -181,32 +249,47 @@ public abstract class AbstractSkinOverridesPanel<M extends AbstractTableModel> e
                 map -> mapSetter.accept(activeSkin, map),
                 mapGetter.apply(activeSkin),
                 newMap,
-                this.editorMode,
+                getEditorMode(),
                 activeSkin
         );
         shipeditor.undo.UndoOverseer.post(edit);
         edit.redo();
     }
 
-    protected void addField(JPanel panel, String labelText, java.awt.Component comp,
-                            java.awt.GridBagConstraints labelGbc, java.awt.GridBagConstraints fieldGbc, int row) {
+    protected java.awt.GridBagConstraints createLabelConstraints() {
+        java.awt.GridBagConstraints labelGbc = new java.awt.GridBagConstraints();
+        labelGbc.anchor = java.awt.GridBagConstraints.LINE_START;
+        labelGbc.insets = new java.awt.Insets(2, 4, 2, 4);
+        return labelGbc;
+    }
+
+    protected java.awt.GridBagConstraints createFieldConstraints() {
+        java.awt.GridBagConstraints fieldGbc = new java.awt.GridBagConstraints();
+        fieldGbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        fieldGbc.weightx = 1;
+        fieldGbc.insets = new java.awt.Insets(2, 4, 2, 4);
+        return fieldGbc;
+    }
+
+    private void addLabel(JPanel panel, String labelText, java.awt.GridBagConstraints labelGbc,
+                          java.awt.GridBagConstraints fieldGbc, int row) {
         labelGbc.gridx = 0;
         labelGbc.gridy = row;
         panel.add(new JLabel(labelText), labelGbc);
 
         fieldGbc.gridx = 1;
         fieldGbc.gridy = row;
+    }
+
+    protected void addField(JPanel panel, String labelText, java.awt.Component comp,
+                            java.awt.GridBagConstraints labelGbc, java.awt.GridBagConstraints fieldGbc, int row) {
+        addLabel(panel, labelText, labelGbc, fieldGbc, row);
         panel.add(comp, fieldGbc);
     }
 
     protected void addReadOnlyField(JPanel panel, String labelText, String value,
                                     java.awt.GridBagConstraints labelGbc, java.awt.GridBagConstraints fieldGbc, int row) {
-        labelGbc.gridx = 0;
-        labelGbc.gridy = row;
-        panel.add(new JLabel(labelText), labelGbc);
-
-        fieldGbc.gridx = 1;
-        fieldGbc.gridy = row;
+        addLabel(panel, labelText, labelGbc, fieldGbc, row);
         JTextField field = new JTextField(value);
         field.setEditable(false);
         field.setColumns(12);
@@ -215,15 +298,63 @@ public abstract class AbstractSkinOverridesPanel<M extends AbstractTableModel> e
 
     protected void addColoredField(JPanel panel, String labelText, String value, java.awt.Color color,
                                   java.awt.GridBagConstraints labelGbc, java.awt.GridBagConstraints fieldGbc, int row) {
-        labelGbc.gridx = 0;
-        labelGbc.gridy = row;
-        panel.add(new JLabel(labelText), labelGbc);
-
-        fieldGbc.gridx = 1;
-        fieldGbc.gridy = row;
+        addLabel(panel, labelText, labelGbc, fieldGbc, row);
         JLabel valueLabel = new JLabel(value);
         valueLabel.setForeground(color);
         panel.add(valueLabel, fieldGbc);
+    }
+
+    /**
+     * Adds the "Status:" row showing whether the selected entry has a skin override.
+     *
+     * @param overrideColor color used for the status text when an override is present.
+     */
+    protected void addOverrideStatusRow(JPanel panel, boolean hasOverride, java.awt.Color overrideColor,
+                                        java.awt.GridBagConstraints labelGbc, java.awt.GridBagConstraints fieldGbc,
+                                        int row) {
+        String overrideStatus = hasOverride ? "✓ Has Override" : "✗ No Override";
+        java.awt.Color statusColor = hasOverride
+                ? overrideColor
+                : UIManager.getColor("Label.disabledForeground");
+        addColoredField(panel, "Status:", overrideStatus, statusColor, labelGbc, fieldGbc, row);
+    }
+
+    /**
+     * Adds the Clear / Apply override button row at the given grid row.
+     *
+     * @param onApply  invoked when the apply button is pressed.
+     * @param onClear  invoked when the clear button is pressed.
+     */
+    protected void addOverrideButtons(JPanel panel, int gridRow, boolean hasOverride, Runnable onApply,
+                                      Runnable onClear) {
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 4, 0));
+        JButton applyButton = new JButton(StringManager.getString("APPLY_OVERRIDE"),
+                FontIcon.of(BoxiconsRegular.CHECK_CIRCLE, 16, Themes.getIconColor()));
+        applyButton.addActionListener(e -> onApply.run());
+
+        ShipSkin activeSkin = cachedPainter != null ? cachedPainter.getActiveSkin() : null;
+        boolean isSkinActive = isSkinActive(activeSkin);
+
+        applyButton.setEnabled(isSkinActive);
+        if (!isSkinActive) {
+            applyButton.setToolTipText("Select a skin in the chooser above to apply overrides");
+        }
+
+        JButton clearButton = new JButton(StringManager.getString("CLEAR_OVERRIDE"),
+                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
+        clearButton.setEnabled(isSkinActive && hasOverride);
+        clearButton.addActionListener(e -> onClear.run());
+
+        buttonPanel.add(clearButton);
+        buttonPanel.add(applyButton);
+
+        java.awt.GridBagConstraints btnGbc = new java.awt.GridBagConstraints();
+        btnGbc.gridx = 0;
+        btnGbc.gridy = gridRow;
+        btnGbc.gridwidth = 2;
+        btnGbc.fill = java.awt.GridBagConstraints.HORIZONTAL;
+        btnGbc.insets = new java.awt.Insets(8, 4, 4, 4);
+        panel.add(buttonPanel, btnGbc);
     }
 
     protected void showNoSelectionHint(JPanel panel, String hintText) {

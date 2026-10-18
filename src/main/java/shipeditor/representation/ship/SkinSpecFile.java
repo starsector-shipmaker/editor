@@ -5,8 +5,6 @@ import shipeditor.representation.RepresentationEnums.ShipTypeHints;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -15,6 +13,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Getter;
 import lombok.Setter;
+import shipeditor.representation.UnrecognizedPropertiesHolder;
 import shipeditor.parsing.deserialize.CustomDeserializers.ColorArrayRGBADeserializer;
 import shipeditor.parsing.deserialize.CustomDeserializers.ShipTypeHintsDeserializer;
 import shipeditor.parsing.serialize.CustomSerializers.ColorArrayRGBASerializer;
@@ -26,7 +25,6 @@ import shipeditor.utility.text.StringConstants;
 import java.awt.Color;
 
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +33,7 @@ import java.util.Map;
 @SuppressWarnings({"ClassWithTooManyFields", "ClassWithTooManyMethods", "OverlyComplexClass"})
 @JsonIgnoreProperties(ignoreUnknown = true)
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
-public class SkinSpecFile implements ShipSpecFile {
+public class SkinSpecFile extends UnrecognizedPropertiesHolder implements ShipSpecFile {
 
     @JsonIgnore
     private static final SkinSpecFile NO_SKIN_DATA_SPEC_FILE = new SkinSpecFile(true);
@@ -202,19 +200,6 @@ public class SkinSpecFile implements ShipSpecFile {
     @Override
     public String getHullId() {
         return skinHullId;
-    }
-
-    @JsonIgnore
-    private final Map<String, Object> unrecognizedProperties = new LinkedHashMap<>();
-
-    @JsonAnyGetter
-    public Map<String, Object> getUnrecognizedProperties() {
-        return unrecognizedProperties;
-    }
-
-    @JsonAnySetter
-    public void setUnrecognizedProperty(String name, Object value) {
-        unrecognizedProperties.put(name, value);
     }
 
 }

@@ -132,28 +132,7 @@ public class WeaponSlotList extends PointList<WeaponSlotPoint> {
 
     @Override
     protected Transferable createTransferableFromEntry(WeaponSlotPoint entry) {
-        return new Transferable() {
-
-            private final WeaponSlotPoint slot = entry;
-
-            private final DataFlavor sourceFlavor = new DataFlavor(WeaponSlotList.this.getClass(),
-                    String.valueOf(WeaponSlotList.this.hashCode()));
-
-            @Override
-            public DataFlavor[] getTransferDataFlavors() {
-                return new DataFlavor[] {SLOT_FLAVOR, sourceFlavor};
-            }
-
-            @Override
-            public boolean isDataFlavorSupported(DataFlavor flavor) {
-                return flavor.equals(SLOT_FLAVOR);
-            }
-
-            @Override
-            public Object getTransferData(DataFlavor flavor) {
-                return slot;
-            }
-        };
+        return createSingleEntryTransferable(entry, SLOT_FLAVOR);
     }
 
     @Override

@@ -5,10 +5,12 @@ import shipeditor.utility.text.StringManager;
 import lombok.extern.log4j.Log4j2;
 import org.kordamp.ikonli.boxicons.BoxiconsRegular;
 import org.kordamp.ikonli.swing.FontIcon;
+import shipeditor.parsing.FileUtilities;
 import shipeditor.parsing.loading.FileLoading;
 import shipeditor.parsing.saving.SaveCoordinator;
 import shipeditor.persistence.SettingsManager;
 import shipeditor.persistence.database.DatabaseManager;
+import shipeditor.utility.overseers.StaticController;
 import shipeditor.utility.themes.Themes;
 
 import javax.swing.JMenu;
@@ -42,6 +44,11 @@ class FileMenu extends JMenu {
         loadSpriteAsHull.setIcon(FontIcon.of(BoxiconsRegular.IMAGE, 16, Themes.getIconColor()));
         this.add(loadSpriteAsHull);
 
+        JMenuItem loadVariant = new JMenuItem("Load Variant...");
+        loadVariant.setIcon(FontIcon.of(BoxiconsRegular.FOLDER_OPEN, 16, Themes.getIconColor()));
+        loadVariant.addActionListener(e -> FileUtilities.loadVariantFromDisk(StaticController.getActiveLayer()));
+        this.add(loadVariant);
+
         this.addSeparator();
 
         JMenuItem saveActiveLayer = new JMenuItem(StringManager.getString("SAVE_ACTIVE_LAYER"));
@@ -49,6 +56,21 @@ class FileMenu extends JMenu {
         saveActiveLayer.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, InputEvent.CTRL_DOWN_MASK));
         saveActiveLayer.addActionListener(e -> SaveCoordinator.saveActiveLayer());
         this.add(saveActiveLayer);
+
+        JMenuItem saveActiveHull = new JMenuItem("Save Active Hull (.ship)");
+        saveActiveHull.setIcon(FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));
+        saveActiveHull.addActionListener(e -> SaveCoordinator.saveActiveHull());
+        this.add(saveActiveHull);
+
+        JMenuItem saveActiveVariant = new JMenuItem("Save Active Variant (.variant)");
+        saveActiveVariant.setIcon(FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));
+        saveActiveVariant.addActionListener(e -> SaveCoordinator.saveActiveVariant());
+        this.add(saveActiveVariant);
+
+        JMenuItem saveVariantAsCopy = new JMenuItem("Save Variant As Copy...");
+        saveVariantAsCopy.setIcon(FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));
+        saveVariantAsCopy.addActionListener(e -> SaveCoordinator.saveActiveVariantAsCopy());
+        this.add(saveVariantAsCopy);
 
         JMenuItem saveAll = new JMenuItem(StringManager.getString("SAVE_ALL_LAYERS"));
         saveAll.setIcon(FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));

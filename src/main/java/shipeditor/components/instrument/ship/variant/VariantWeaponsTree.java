@@ -111,15 +111,16 @@ public class VariantWeaponsTree extends DynamicWidthTree {
                     if (path != null && path.getLastPathComponent() instanceof CustomTreeNode node) {
                         Object obj = node.getUserObject();
                         WeaponSlotPoint slot = null;
-                        if (obj instanceof InstalledFeature feature) {
+                        if (obj instanceof InstalledFeature feature && !feature.isContainedInBuiltIns()) {
                             slot = getSlotPoint(feature);
-                        } else if (obj instanceof WeaponSlotPoint slotPoint) {
+                        } else if (obj instanceof WeaponSlotPoint slotPoint && slotPoint.isFittable()) {
                             slot = slotPoint;
                         }
-                        if (slot != null) {
+                        if (slot != null && slot.isFittable()) {
+                            EventBus.publish(new PointSelectQueued(slot));
                             var layer = StaticController.getActiveLayer();
                             if (layer instanceof ShipLayer shipLayer) {
-                                shipeditor.components.datafiles.entities.WeaponCSVEntry picked = 
+                                shipeditor.components.datafiles.entities.WeaponCSVEntry picked =
                                         DialogUtilities.showWeaponPickerDialog(slot);
                                 if (picked != null) {
                                     shipLayer.getFeaturesOverseer().installWeapon(slot, picked);
@@ -315,8 +316,36 @@ public class VariantWeaponsTree extends DynamicWidthTree {
         this.reloadModel();
     }
 
-    
+    public void moveWeaponToGroup(InstalledFeature feature, FittedWeaponGroup targetGroup) {
+        if (feature == null || targetGroup == null || feature.getParentGroup() == targetGroup) {
+            return;
+        }
+        EditDispatch.postWeaponGroupsRearranged(feature, targetGroup, targetGroup.getWeapons().size());
+        this.reloadModel();
+    }
 
-    
+    public void moveWeaponToNewGroup(InstalledFeature feature) {
+        if (feature == null) {
+            return;
+        }
+        if (!(StaticController.getActiveLayer() instanceof ShipLayer layer)) {
+            return;
+        }
+        ShipPainter shipPainter = layer.getPainter();
+        if (shipPainter == null) {
+            return;
+        }
+        ShipVariant variant = shipPainter.getActiveVariant();
+        if (variant == null || variant.isEmpty()) {
+            return;
+        }
+        List<FittedWeaponGroup> weaponGroups = variant.getWeaponGroups();
+        if (weaponGroups.size() >= 7) {
+            return;
+        }
+        FittedWeaponGroup newGroup = new FittedWeaponGroup(variant, false, FireMode.LINKED);
+        weaponGroups.add(newGroup);
+        moveWeaponToGroup(feature, newGroup);
+    }
 
 }

@@ -28,7 +28,21 @@ import java.util.function.Supplier;
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
 public abstract class PointLocationWidget extends LayerPropertiesPanel {
 
+    private final LayerPropertiesPanel parentPanel;
+
     private TwinSpinnerPanel twinSpinnerPanel;
+
+    protected PointLocationWidget() {
+        this(null);
+    }
+
+    protected PointLocationWidget(LayerPropertiesPanel parent) {
+        this.parentPanel = parent;
+    }
+
+    protected String getDependentCoordinatesName() {
+        return null;
+    }
 
     @Override
     public void refreshContent(LayerPainter layerPainter) {
@@ -45,7 +59,29 @@ public abstract class PointLocationWidget extends LayerPropertiesPanel {
         fireRefresherListeners(layerPainter);
     }
 
-    protected abstract boolean isLayerPainterEligible(LayerPainter layerPainter);
+    protected boolean isLayerPainterEligible(LayerPainter layerPainter) {
+        return layerPainter instanceof ShipPainter shipPainter && !shipPainter.isUninitialized();
+    }
+
+    protected ShipPainter getEligibleShipPainter() {
+        if (parentPanel == null) {
+            return null;
+        }
+        LayerPainter cachedLayerPainter = parentPanel.getCachedLayerPainter();
+        if (isLayerPainterEligible(cachedLayerPainter)) {
+            return (ShipPainter) cachedLayerPainter;
+        }
+        return null;
+    }
+
+    @Override
+    protected void addWidgetRow(JPanel contentContainer, JLabel label, javax.swing.JComponent component, int ordering) {
+        if (parentPanel != null) {
+            ComponentUtilities.addLabelAndComponent(contentContainer, label, component, 3, 5, 0, ordering);
+        } else {
+            super.addWidgetRow(contentContainer, label, component, ordering);
+        }
+    }
 
     protected TwinSpinnerPanel createSpinnerPanel(Point2D initialPoint, Consumer<Point2D> pointSetter) {
         TwinSpinnerPanel spinnerPanel = Spinners.createLocationSpinners(initialPoint,
@@ -100,6 +136,12 @@ public abstract class PointLocationWidget extends LayerPropertiesPanel {
         twinSpinnerPanel.setMaximumSize(maximumSize);
 
         this.add(twinSpinnerPanel, BorderLayout.CENTER);
+
+        String dependentCoordsName = getDependentCoordinatesName();
+        if (dependentCoordsName != null) {
+            var dependentCoordsPanel = createDependentCoordinatesLabel(dependentCoordsName);
+            this.add(dependentCoordsPanel, BorderLayout.PAGE_START);
+        }
     }
 
     private void addPanelTitle() {

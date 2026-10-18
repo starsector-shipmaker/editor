@@ -5,9 +5,9 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
+import shipeditor.components.viewer.painters.GlColors;
 import shipeditor.communication.BusEventListener;
 import shipeditor.communication.EventBus;
-import shipeditor.communication.events.viewer.ViewerRepaintQueued;
 import shipeditor.communication.events.viewer.points.PointEvents.BoundPointsSorted;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.viewer.control.ControlPredicates;
@@ -122,28 +122,7 @@ public final class BoundPointsPainter extends MirrorablePointPainter {
     }
 
     private void initHotkeys() {
-        EventBus.subscribe(this, event -> {
-            if (!this.getParentLayer().isLayerActive()) {
-                return;
-            }
-            if (event instanceof shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawKeyPressed pressedEvent) {
-                int keyCode = pressedEvent.keyEvent().getKeyCode();
-                boolean isAppendHotkey = (keyCode == APPEND_BOUND_HOTKEY);
-                boolean isInsertHotkey = (keyCode == INSERT_BOUND_HOTKEY);
-                if (isAppendHotkey || isInsertHotkey) {
-                    BoundPointsPainter.setHotkeyState(isAppendHotkey, true);
-                    EventBus.publish(new ViewerRepaintQueued());
-                }
-            } else if (event instanceof shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawKeyReleased releasedEvent) {
-                int keyCode = releasedEvent.keyEvent().getKeyCode();
-                boolean isAppendHotkey = (keyCode == APPEND_BOUND_HOTKEY);
-                boolean isInsertHotkey = (keyCode == INSERT_BOUND_HOTKEY);
-                if (isAppendHotkey || isInsertHotkey) {
-                    BoundPointsPainter.setHotkeyState(isAppendHotkey, false);
-                    EventBus.publish(new ViewerRepaintQueued());
-                }
-            }
-        });
+        this.subscribeHotkeyPair(APPEND_BOUND_HOTKEY, INSERT_BOUND_HOTKEY, BoundPointsPainter::setHotkeyState);
     }
 
     private void initPointListening() {
@@ -283,7 +262,7 @@ public final class BoundPointsPainter extends MirrorablePointPainter {
         org.lwjgl.opengl.GL11.glLineWidth(GraphicConstants.LINE_WIDTH_THICK);
         shapeRenderer.drawLine(cachedStartVec, cachedFinishVec, cachedOutlineColor);
 
-        cachedLineColor.set(color.getRed() / 255.0f, color.getGreen() / 255.0f, color.getBlue() / 255.0f, alpha);
+        GlColors.set(cachedLineColor, color, alpha);
         org.lwjgl.opengl.GL11.glLineWidth(GraphicConstants.LINE_WIDTH_NORMAL);
         shapeRenderer.drawLine(cachedStartVec, cachedFinishVec, cachedLineColor);
 

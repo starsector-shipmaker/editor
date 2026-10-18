@@ -13,6 +13,7 @@ import shipeditor.parsing.saving.CSVIDSyncHandler;
 import shipeditor.persistence.Initializations;
 import shipeditor.persistence.Settings;
 import shipeditor.persistence.SettingsManager;
+import shipeditor.utility.components.ToastManager;
 import shipeditor.utility.objects.SimpleRectangle;
 import shipeditor.utility.overseers.StaticController;
 import shipeditor.components.viewer.PrimaryViewer;
@@ -216,6 +217,7 @@ public final class PrimaryWindow extends JFrame {
 
     void showGUI() {
         this.setVisible(true);
+        ToastManager.attach(this);
         EventBus.publish(new WindowGUIShowConfirmed());
         this.initialized = true;
     }

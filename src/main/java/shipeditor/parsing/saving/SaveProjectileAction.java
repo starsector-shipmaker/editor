@@ -7,6 +7,7 @@ import lombok.extern.log4j.Log4j2;
 import shipeditor.components.viewer.layers.weapon.ProjectileLayer;
 import shipeditor.parsing.FileUtilities;
 import shipeditor.representation.weapon.ProjectileSpecFile;
+import shipeditor.utility.components.ToastManager;
 import shipeditor.utility.overseers.StaticController;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -60,6 +61,7 @@ final class SaveProjectileAction {
                 objectMapper.writeValue(result, projectileSpecFile);
                 
                 StaticController.getViewer().getLayerManager().markSaved(projectileLayer, "projectile");
+                ToastManager.show("Saved " + result.getName() + " to " + result, ToastManager.ToastLevel.SUCCESS);
             } catch (IOException e) {
                 log.error(errorMessage, result.getName(), e);
                 JOptionPane.showMessageDialog(shipeditor.PrimaryWindow.getInstance(),

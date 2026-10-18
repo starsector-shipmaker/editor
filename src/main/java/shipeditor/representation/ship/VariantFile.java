@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Getter;
 import lombok.Setter;
+import shipeditor.representation.UnrecognizedPropertiesHolder;
 import shipeditor.components.viewer.layers.ship.data.ShipVariant;
 import shipeditor.components.viewer.layers.ship.data.Variant;
 import shipeditor.parsing.deserialize.CustomDeserializers.ModulesDeserializer;
@@ -15,7 +16,6 @@ import shipeditor.representation.GameDataRepository;
 import shipeditor.utility.text.StringConstants;
 
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +24,7 @@ import java.util.Map;
 @JsonSerialize(using = VariantFileSerializer.class)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
-public class VariantFile implements Variant {
+public class VariantFile extends UnrecognizedPropertiesHolder implements Variant {
 
     @JsonIgnore
     private static final VariantFile EMPTY = new VariantFile(true);
@@ -116,30 +116,18 @@ public class VariantFile implements Variant {
         if (empty) {
             return ShipVariant.EMPTY_VARIANT;
         }
+        String suffix = (variantId != null && !variantId.isBlank()) ? " (" + variantId + ")" : "";
         var hullFile = GameDataRepository.retrieveSpecByID(this.hullId);
         if (hullFile != null) {
             String hullName = hullFile.getHullName();
-            return this.displayName + " " + hullName;
+            return this.displayName + " " + hullName + suffix;
         }
-        return displayName;
+        return displayName + suffix;
     }
 
     @Override
     public String getShipHullId() {
         return hullId;
-    }
-
-    @JsonIgnore
-    private final Map<String, Object> unrecognizedProperties = new LinkedHashMap<>();
-
-    @JsonAnyGetter
-    public Map<String, Object> getUnrecognizedProperties() {
-        return unrecognizedProperties;
-    }
-
-    @JsonAnySetter
-    public void setUnrecognizedProperty(String name, Object value) {
-        unrecognizedProperties.put(name, value);
     }
 
 }

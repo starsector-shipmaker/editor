@@ -12,6 +12,7 @@ import shipeditor.persistence.database.IndexedFile;
 import shipeditor.representation.GameDataRepository;
 import shipeditor.representation.RepresentationEnums.HullSize;
 import shipeditor.utility.components.ComponentUtilities;
+import shipeditor.utility.components.widgets.SimpleDocumentListener;
 import shipeditor.utility.text.StringConstants;
 import shipeditor.utility.themes.Themes;
 
@@ -33,8 +34,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -193,11 +192,7 @@ public class PickHullmodDialog extends JPanel {
         gbc.weightx = 0.55;
         searchField = new JTextField();
         searchField.setToolTipText(StringManager.getString("FILTER_HULLMODS_BY_ID_NAME_DESCRIPTION_OR_TAGS"));
-        searchField.getDocument().addDocumentListener(new DocumentListener() {
-            @Override public void insertUpdate(DocumentEvent e) { applyFilters(); }
-            @Override public void removeUpdate(DocumentEvent e) { applyFilters(); }
-            @Override public void changedUpdate(DocumentEvent e) { applyFilters(); }
-        });
+        searchField.getDocument().addDocumentListener(new SimpleDocumentListener(this::applyFilters));
         searchField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {

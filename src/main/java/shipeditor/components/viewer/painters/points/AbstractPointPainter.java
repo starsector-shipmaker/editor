@@ -113,13 +113,13 @@ public abstract class AbstractPointPainter implements OpenGLPainter {
     }
 
     public void selectPointsInRect(java.awt.Rectangle screenRect, AffineTransform worldToScreen, boolean cumulative) {
-        if (!this.isInteractionEnabled()) return;
+        if (!this.isSelectionEnabled()) return;
         if (!cumulative) {
             clearSelection();
         }
         Point2D screenLoc = new Point2D.Double();
         BaseWorldPoint lastSelected = null;
-        for (BaseWorldPoint point : this.getPointsIndex()) {
+        for (BaseWorldPoint point : this.getEligibleForSelection()) {
             worldToScreen.transform(point.getPosition(), screenLoc);
             if (screenRect.contains(screenLoc)) {
                 if (selectedPoints.add(point)) {
@@ -159,6 +159,10 @@ public abstract class AbstractPointPainter implements OpenGLPainter {
 
     public boolean isInteractionEnabled() {
         return interactionEnabled && isParentLayerActive();
+    }
+
+    public boolean isSelectionEnabled() {
+        return isInteractionEnabled();
     }
 
     public void setPaintOpacity(float opacity) {
@@ -458,7 +462,7 @@ public abstract class AbstractPointPainter implements OpenGLPainter {
     public abstract List<? extends BaseWorldPoint> getPointsIndex();
 
     public void updateHoverStates(Point2D rawCursor, AffineTransform worldToScreen) {
-        if (!this.isInteractionEnabled()) {
+        if (!this.isSelectionEnabled()) {
             for (BaseWorldPoint point : this.getPointsIndex()) {
                 point.setCursorInBounds(false);
             }

@@ -38,9 +38,7 @@ public class Point2DArraySerializer extends JsonSerializer<Point2D.Double[]> {
             }
 
             if (count % 5 == 0 && !isLast) {
-                gen.writeRaw(BasicPrettyPrinter.LINEFEED);
-                gen.writeRaw(BasicPrettyPrinter.INDENT);
-                gen.writeRaw(BasicPrettyPrinter.INDENT);
+                BasicPrettyPrinter.writeLineFeedAndIndent(gen, 2);
             }
         }
         gen.writeEndArray();
@@ -48,13 +46,11 @@ public class Point2DArraySerializer extends JsonSerializer<Point2D.Double[]> {
 
     protected void writeClosure(JsonGenerator gen, int length) throws IOException {
         if (length > 10) {
-            gen.writeRaw(BasicPrettyPrinter.LINEFEED);
-            gen.writeRaw(BasicPrettyPrinter.INDENT);
+            BasicPrettyPrinter.writeLineFeedAndIndent(gen, 1);
             gen.writeRaw("# " + length + " points total.");
         }
 
-        gen.writeRaw(BasicPrettyPrinter.LINEFEED);
-        gen.writeRaw(BasicPrettyPrinter.INDENT);
+        BasicPrettyPrinter.writeLineFeedAndIndent(gen, 1);
     }
 
 }

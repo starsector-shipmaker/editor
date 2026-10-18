@@ -2,6 +2,7 @@ package shipeditor.components.instrument.weapon;
 
 import shipeditor.utility.text.StringManager;
 
+import shipeditor.representation.weapon.WeaponSpecFile;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.MouseoverLabelListener;
 import shipeditor.utility.graphics.ColorUtilities;
@@ -16,7 +17,9 @@ import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
 import java.awt.Color;
 import java.awt.Insets;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class WeaponFirePanelUtilities {
@@ -66,6 +69,35 @@ public class WeaponFirePanelUtilities {
             }
         });
         return textField;
+    }
+
+    /**
+     * Creates a double field bound to a sub-spec of the current weapon spec (muzzle flash, smoke, ...).
+     *
+     * @param specResolver returns the sub-spec for the weapon spec, creating it when absent.
+     * @param setter       applies the parsed value to the resolved sub-spec.
+     */
+    public static <S> JTextField createSpecDoubleField(Supplier<Boolean> readinessChecker, Runnable onChange,
+                                                       Supplier<WeaponSpecFile> specSupplier,
+                                                       Function<WeaponSpecFile, S> specResolver,
+                                                       BiConsumer<S, Double> setter) {
+        return createDoubleField(null, readinessChecker, value -> {
+            WeaponSpecFile spec = specSupplier.get();
+            if (spec != null) setter.accept(specResolver.apply(spec), value);
+        }, onChange);
+    }
+
+    /**
+     * Integer counterpart of {@link #createSpecDoubleField}.
+     */
+    public static <S> JTextField createSpecIntField(Supplier<Boolean> readinessChecker, Runnable onChange,
+                                                    Supplier<WeaponSpecFile> specSupplier,
+                                                    Function<WeaponSpecFile, S> specResolver,
+                                                    BiConsumer<S, Integer> setter) {
+        return createIntField(null, readinessChecker, value -> {
+            WeaponSpecFile spec = specSupplier.get();
+            if (spec != null) setter.accept(specResolver.apply(spec), value);
+        }, onChange);
     }
 
     public static JCheckBox createCheckBox(String text, String tooltip, Supplier<Boolean> readinessChecker, Consumer<Boolean> setter, Runnable onChange) {

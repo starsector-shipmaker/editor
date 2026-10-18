@@ -7,20 +7,19 @@ import shipeditor.communication.EventBus;
 import shipeditor.communication.events.files.FileEvents.HullmodFoldersWalked;
 import shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated;
 import shipeditor.components.datafiles.entities.HullmodCSVEntry;
-import shipeditor.components.datafiles.entities.OrdnancedCSVEntry;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.viewer.layers.ViewerLayer;
 import shipeditor.components.viewer.layers.ship.ShipLayer;
 import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.components.viewer.layers.ship.data.ShipHull;
+import shipeditor.components.viewer.layers.ship.data.ShipSkin;
 import shipeditor.components.viewer.layers.ship.data.ShipVariant;
 import shipeditor.persistence.SettingsManager;
 import shipeditor.representation.GameDataRepository;
 import shipeditor.undo.EditDispatch;
+import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.overseers.StaticController;
 
-import javax.swing.Action;
-import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -42,11 +41,6 @@ class HullmodsTreePanel extends CSVDataTreePanel<HullmodCSVEntry>{
     @Override
     protected String getEntryTypeName() {
         return "hullmod";
-    }
-
-    @Override
-    protected Action getLoadDataAction() {
-        return new javax.swing.AbstractAction("Reload") { @Override public void actionPerformed(java.awt.event.ActionEvent e) { reload(); } };
     }
 
     @Override
@@ -73,13 +67,6 @@ class HullmodsTreePanel extends CSVDataTreePanel<HullmodCSVEntry>{
     }
 
     @Override
-    protected HullmodCSVEntry getObjectFromNode(DefaultMutableTreeNode node) {
-        Object userObject = node.getUserObject();
-        if (!(userObject instanceof HullmodCSVEntry checked)) return null;
-        return checked;
-    }
-
-    @Override
     protected void initWalkerListening() {
         EventBus.subscribe(this, event -> {
             if (event instanceof HullmodFoldersWalked) {
@@ -89,15 +76,13 @@ class HullmodsTreePanel extends CSVDataTreePanel<HullmodCSVEntry>{
     }
 
     protected void updateEntryPanel(HullmodCSVEntry selected) {
-        JPanel infoPanel = getLeftInfoPanel();
-        infoPanel.removeAll();
-        infoPanel.setLayout(new javax.swing.BoxLayout(infoPanel, javax.swing.BoxLayout.Y_AXIS));
+        JPanel infoPanel = DataTreeSupport.prepareInfoPanel(getLeftInfoPanel());
 
-        shipeditor.utility.components.ComponentUtilities.InfoPanelBuilder builder = new shipeditor.utility.components.ComponentUtilities.InfoPanelBuilder("Hullmod Info");
+        ComponentUtilities.InfoPanelBuilder builder = new ComponentUtilities.InfoPanelBuilder("Hullmod Info");
 
         String spriteFileName = selected.getSpriteFileName();
         if (spriteFileName != null && !spriteFileName.isEmpty()) {
-            JPanel hullmodIconPanel = HullmodsTreePanel.createHullmodIconPanel(selected);
+            JPanel hullmodIconPanel = ComponentUtilities.createCenteredPanel(selected.getIconLabel());
             builder.addCustomComponent(hullmodIconPanel);
             
             java.io.File spriteFile = shipeditor.parsing.loading.FileLoading.fetchDataFile(java.nio.file.Path.of(spriteFileName), selected.getPackageFolderPath());
@@ -122,28 +107,20 @@ class HullmodsTreePanel extends CSVDataTreePanel<HullmodCSVEntry>{
         infoPanel.repaint();
     }
 
-    private static JPanel createHullmodIconPanel(OrdnancedCSVEntry selected) {
-        JLabel imageLabel = selected.getIconLabel();
-        JPanel iconPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER));
-        iconPanel.add(imageLabel);
-        return iconPanel;
-    }
-
     @Override
     JPopupMenu getContextMenu() {
         JPopupMenu menu = super.getContextMenu();
         DefaultMutableTreeNode cachedSelectForMenu = getCachedSelectForMenu();
-        if (cachedSelectForMenu.getUserObject() instanceof HullmodCSVEntry checked) {
-            switch (StaticController.getEditorMode()) {
-                case BUILT_IN_MODS -> {
-                    menu.addSeparator();
-                    populateBuiltInOptions(menu, checked);
-                }
-                case VARIANT_DATA -> {
-                    menu.addSeparator();
-                    populateVariantOptions(menu, checked);
-                }
-                default -> {}
+        if (cachedSelectForMenu != null && cachedSelectForMenu.getUserObject() instanceof HullmodCSVEntry checked) {
+            EditorInstrument mode = StaticController.getEditorMode();
+            if (mode == EditorInstrument.BUILT_IN_MODS) {
+                menu.addSeparator();
+                populateBuiltInOptions(menu, checked);
+            }
+            if (DataTreeSupport.isLayerEligibleForVariant(StaticController.getActiveLayer())
+                    || (mode != null && mode.name().startsWith("VARIANT"))) {
+                menu.addSeparator();
+                populateVariantOptions(menu, checked);
             }
         }
         return menu;
@@ -152,7 +129,7 @@ class HullmodsTreePanel extends CSVDataTreePanel<HullmodCSVEntry>{
     private void populateVariantOptions(JPopupMenu menu, HullmodCSVEntry entry) {
         ViewerLayer activeLayer = StaticController.getActiveLayer();
 
-        JMenuItem addToNormal = createVariantOption("Add to variant mods",
+        JMenuItem addToNormal = createVariantOption("Add to variant hullmods",
                 activeLayer, entry, variant -> variant.getHullMods());
         menu.add(addToNormal);
 
@@ -167,28 +144,28 @@ class HullmodsTreePanel extends CSVDataTreePanel<HullmodCSVEntry>{
 
     private JMenuItem createVariantOption(String text, ViewerLayer activeLayer,
                                           HullmodCSVEntry entry, Function<ShipVariant, List<HullmodCSVEntry>> getter) {
-        EditorInstrument targetMode = EditorInstrument.VARIANT_DATA;
-
         JMenuItem option = new JMenuItem(text);
         option.addActionListener(e -> {
-            var modsList = HullmodsTreePanel.getVariantMods(activeLayer, getter);
+            var modsList = HullmodsTreePanel.getOrCreateVariantMods(activeLayer, getter);
             if (modsList == null) return;
             commenceModAddition(modsList, (ShipLayer) activeLayer, entry);
         });
-        boolean isListEligible = HullmodsTreePanel.getVariantMods(activeLayer, getter) != null;
-        if (!isListEligible || HullmodsTreePanel.isNotActiveInstrument(targetMode)) {
+        if (!DataTreeSupport.isLayerEligibleForVariant(activeLayer)) {
             option.setEnabled(false);
         }
         return option;
     }
 
-    private static List<HullmodCSVEntry> getVariantMods(ViewerLayer activeLayer,
-                                                        Function<ShipVariant, List<HullmodCSVEntry>> getter) {
+    private static List<HullmodCSVEntry> getOrCreateVariantMods(
+            ViewerLayer activeLayer, Function<ShipVariant, List<HullmodCSVEntry>> getter) {
         if (activeLayer instanceof ShipLayer checkedLayer) {
-            var activeVariant = checkedLayer.getActiveVariant();
-            if (activeVariant == null) return null;
-            return getter.apply(activeVariant);
-        } else return null;
+            ShipPainter painter = checkedLayer.getPainter();
+            if (painter == null || painter.isUninitialized()) {
+                return null;
+            }
+            return getter.apply(DataTreeSupport.getOrCreateActiveVariant(checkedLayer, painter));
+        }
+        return null;
     }
 
     private void populateBuiltInOptions(JPopupMenu menu, HullmodCSVEntry entry) {
@@ -204,7 +181,7 @@ class HullmodsTreePanel extends CSVDataTreePanel<HullmodCSVEntry>{
                 commenceModAddition(builtInMods, checkedLayer, entry);
             }
         });
-        if (!HullmodsTreePanel.isCurrentLayerDataEligible() || HullmodsTreePanel.isNotActiveInstrument(targetMode)) {
+        if (!HullmodsTreePanel.isCurrentLayerDataEligible() || DataTreeSupport.isNotActiveInstrument(targetMode)) {
             addToHullBuiltIns.setEnabled(false);
         }
         menu.add(addToHullBuiltIns);
@@ -218,29 +195,21 @@ class HullmodsTreePanel extends CSVDataTreePanel<HullmodCSVEntry>{
 
     private JMenuItem createSkinRemovedOption(HullmodCSVEntry entry,
                                               ViewerLayer activeLayer, EditorInstrument targetMode) {
-        JMenuItem addToSkinRemoved = new JMenuItem(StringManager.getString("ADD_TO_SKIN_BUILT_IN_REMOVALS"));
-        addToSkinRemoved.addActionListener(e -> {
-            if (activeLayer instanceof ShipLayer checkedLayer) {
-
-                ShipPainter shipPainter = checkedLayer.getPainter();
-                if (shipPainter == null || shipPainter.isUninitialized()) return;
-                var skin = shipPainter.getActiveSkin();
-                if (skin == null || skin.isBase()) return;
-
-                var skinRemoved = skin.getRemoveBuiltInMods();
-                commenceModAddition(skinRemoved, checkedLayer, entry);
-            }
-        });
-        if (DataTreePanel.isCurrentSkinNotEligible() || HullmodsTreePanel.isNotActiveInstrument(targetMode)) {
-            addToSkinRemoved.setEnabled(false);
-        }
-        return addToSkinRemoved;
+        return createSkinModsOption(StringManager.getString("ADD_TO_SKIN_BUILT_IN_REMOVALS"),
+                entry, activeLayer, targetMode, ShipSkin::getRemoveBuiltInMods);
     }
 
     private JMenuItem createSkinAddedOption(HullmodCSVEntry entry,
                                             ViewerLayer activeLayer, EditorInstrument targetMode) {
-        JMenuItem addToSkinAdded = new JMenuItem(StringManager.getString("ADD_TO_SKIN_BUILT_INS"));
-        addToSkinAdded.addActionListener(e -> {
+        return createSkinModsOption(StringManager.getString("ADD_TO_SKIN_BUILT_INS"),
+                entry, activeLayer, targetMode, ShipSkin::getBuiltInMods);
+    }
+
+    private JMenuItem createSkinModsOption(String text, HullmodCSVEntry entry, ViewerLayer activeLayer,
+                                           EditorInstrument targetMode,
+                                           Function<ShipSkin, List<HullmodCSVEntry>> getter) {
+        JMenuItem option = new JMenuItem(text);
+        option.addActionListener(e -> {
             if (activeLayer instanceof ShipLayer checkedLayer) {
 
                 ShipPainter shipPainter = checkedLayer.getPainter();
@@ -248,24 +217,19 @@ class HullmodsTreePanel extends CSVDataTreePanel<HullmodCSVEntry>{
                 var skin = shipPainter.getActiveSkin();
                 if (skin == null || skin.isBase()) return;
 
-                var skinAdded = skin.getBuiltInMods();
-                commenceModAddition(skinAdded, checkedLayer, entry);
+                commenceModAddition(getter.apply(skin), checkedLayer, entry);
             }
         });
-        if (DataTreePanel.isCurrentSkinNotEligible() || HullmodsTreePanel.isNotActiveInstrument(targetMode)) {
-            addToSkinAdded.setEnabled(false);
+        if (DataTreePanel.isCurrentSkinNotEligible() || DataTreeSupport.isNotActiveInstrument(targetMode)) {
+            option.setEnabled(false);
         }
-        return addToSkinAdded;
+        return option;
     }
 
     private void commenceModAddition(List<HullmodCSVEntry> list, ShipLayer shipLayer, HullmodCSVEntry entry) {
         if (this.isPushEntryToListSuccessful(list, shipLayer, entry)) {
             EventBus.publish(new ActiveLayerUpdated(shipLayer));
         }
-    }
-
-    private static boolean isNotActiveInstrument(EditorInstrument target) {
-        return StaticController.getEditorMode() != target;
     }
 
     private boolean isPushEntryToListSuccessful(List<HullmodCSVEntry> list, ShipLayer layer,

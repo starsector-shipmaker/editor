@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector4f;
+import shipeditor.components.viewer.painters.GlColors;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.utility.Utility;
 import shipeditor.utility.graphics.GraphicConstants;
@@ -75,13 +76,6 @@ public class OffsetDrawer {
         this.parentPoint = parent;
     }
 
-    private void getPointInDirection(Point2D startPoint, double angleDegrees, double length, Point2D target) {
-        double angleRadians = Math.toRadians(angleDegrees);
-        double deltaX = length * Math.cos(angleRadians);
-        double deltaY = length * Math.sin(angleRadians);
-        target.setLocation(startPoint.getX() + deltaX, startPoint.getY() + deltaY);
-    }
-
     /**
      * Renders the offset point marker and barrel direction line.
      * Must be called within an active {@code ShapeRenderer.begin()/end()} block.
@@ -97,19 +91,10 @@ public class OffsetDrawer {
         }
 
         // Compute world-to-screen scale for minimum size enforcement.
-        p0Screen.setLocation(0, 0);
-        p1Screen.setLocation(1, 0);
-        Point2D transformedP0 = worldToScreen.transform(p0Screen, this.p0Screen);
-        Point2D transformedP1 = worldToScreen.transform(p1Screen, this.p1Screen);
-        double wtsScale = transformedP0.distance(transformedP1);
+        double wtsScale = DrawerMath.worldToScreenScale(worldToScreen, p0Screen, p1Screen);
 
         Color pointColor = parentPoint.getCurrentColor();
-        colorGl.set(
-                pointColor.getRed() / 255.0f,
-                pointColor.getGreen() / 255.0f,
-                pointColor.getBlue() / 255.0f,
-                pointColor.getAlpha() / 255.0f
-        );
+        GlColors.set(colorGl, pointColor);
 
         Point2D centerScreenPoint = worldToScreen.transform(position, centerScreen);
         centerGl.set((float) centerScreenPoint.getX(), (float) centerScreenPoint.getY());
@@ -152,8 +137,8 @@ public class OffsetDrawer {
         double barrelEndDist = effectiveRadius * BARREL_LENGTH_MULTIPLIER;
 
         // Compute line endpoints in world space, then transform to screen.
-        getPointInDirection(position, transformedAngle, effectiveRadius, closestIntersection);
-        getPointInDirection(position, transformedAngle, barrelEndDist, barrelTip);
+        DrawerMath.pointInDirection(position, transformedAngle, effectiveRadius, closestIntersection);
+        DrawerMath.pointInDirection(position, transformedAngle, barrelEndDist, barrelTip);
 
         worldToScreen.transform(closestIntersection, sClosest);
         worldToScreen.transform(barrelTip, sBarrelTip);

@@ -23,12 +23,8 @@ public class BoxPanelCellRenderer<E> extends PanelListCellRenderer<E> {
     BoxPanelCellRenderer() {
         setLayout(new BoxLayout(this, BoxLayout.LINE_AXIS));
 
-        leftContainer = new JPanel();
-        leftContainer.setOpaque(false);
-        leftContainer.setLayout(new BoxLayout(leftContainer, BoxLayout.LINE_AXIS));
-        rightContainer = new JPanel();
-        rightContainer.setOpaque(false);
-        rightContainer.setLayout(new BoxLayout(rightContainer, BoxLayout.LINE_AXIS));
+        leftContainer = ComponentUtilities.createTransparentBoxPanel();
+        rightContainer = ComponentUtilities.createTransparentBoxPanel();
 
         ComponentUtilities.layoutAsOpposites(this, leftContainer, rightContainer, 4);
     }

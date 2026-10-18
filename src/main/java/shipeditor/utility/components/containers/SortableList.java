@@ -56,6 +56,26 @@ public abstract class SortableList<E> extends JList<E> implements DragGestureLis
 
     protected abstract Transferable createTransferableFromEntry(E entry);
 
+    protected final Transferable createSingleEntryTransferable(E entry, DataFlavor entryFlavor) {
+        DataFlavor sourceFlavor = new DataFlavor(this.getClass(), String.valueOf(this.hashCode()));
+        return new Transferable() {
+            @Override
+            public DataFlavor[] getTransferDataFlavors() {
+                return new DataFlavor[] {entryFlavor, sourceFlavor};
+            }
+
+            @Override
+            public boolean isDataFlavorSupported(DataFlavor flavor) {
+                return flavor.equals(entryFlavor);
+            }
+
+            @Override
+            public Object getTransferData(DataFlavor flavor) {
+                return entry;
+            }
+        };
+    }
+
     protected abstract boolean isSupported(Transferable transferable);
 
     @SuppressWarnings({"ParameterHidesMemberVariable", "BooleanMethodNameMustStartWithQuestion"})

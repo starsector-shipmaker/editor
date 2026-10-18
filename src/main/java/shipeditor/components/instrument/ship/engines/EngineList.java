@@ -37,28 +37,7 @@ public class EngineList extends PointList<EnginePoint> {
 
     @Override
     protected Transferable createTransferableFromEntry(EnginePoint entry) {
-        return new Transferable() {
-
-            private final EnginePoint engine = entry;
-
-            private final DataFlavor sourceFlavor = new DataFlavor(EngineList.this.getClass(),
-                    String.valueOf(EngineList.this.hashCode()));
-
-            @Override
-            public DataFlavor[] getTransferDataFlavors() {
-                return new DataFlavor[] {ENGINE_FLAVOR, sourceFlavor};
-            }
-
-            @Override
-            public boolean isDataFlavorSupported(DataFlavor flavor) {
-                return flavor.equals(ENGINE_FLAVOR);
-            }
-
-            @Override
-            public Object getTransferData(DataFlavor flavor) {
-                return engine;
-            }
-        };
+        return createSingleEntryTransferable(entry, ENGINE_FLAVOR);
     }
 
     @Override

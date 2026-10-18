@@ -4,6 +4,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.log4j.Log4j2;
 import shipeditor.communication.EventBus;
 import shipeditor.communication.events.viewer.control.ControlEvents.ViewerCursorMoved;
 import shipeditor.communication.events.viewer.layers.LayerEvents.LayerWasSelected;
@@ -26,15 +27,18 @@ import shipeditor.components.viewer.painters.points.ship.WeaponSlotPainter;
 import shipeditor.parsing.FileUtilities;
 import shipeditor.representation.RepresentationEnums.HullSize;
 import shipeditor.utility.Utility;
+import shipeditor.utility.components.ToastManager;
 
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 
 /** * Convenience class for static access to active layer and whatever other global features need to be accessed.*/
+@Log4j2
 @SuppressWarnings({"OverlyCoupledClass", "ClassWithTooManyMethods"})
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
 public final class StaticController {
@@ -165,11 +169,92 @@ public final class StaticController {
         return java.util.Optional.empty();
     }
 
+    /**
+     * Canonical helper that returns the currently active variant when it is editable, or auto-creates,
+     * registers and selects a new custom variant ('&lt;hullId&gt;_custom', '&lt;hullId&gt;_custom_NN') otherwise.
+     * The hull ID is the skin hull ID when a non-base skin is active, else the base hull ID.
+     *
+     * @return the editable variant, or null when the layer is missing or not initialized.
+     */
+    public static ShipVariant getOrCreateEditableVariant(ShipLayer shipLayer) {
+        if (shipLayer == null) {
+            return null;
+        }
+        ShipPainter shipPainter = shipLayer.getPainter();
+        if (shipPainter == null || shipPainter.isUninitialized()) {
+            return null;
+        }
+        ShipVariant activeVariant = shipPainter.getActiveVariant();
+        if (activeVariant != null && !activeVariant.isEmpty()) {
+            return activeVariant;
+        }
+
+        String hullId = resolveEditableHullId(shipPainter);
+        Map<String, ShipVariant> loadedVariants = shipLayer.getLoadedVariants();
+        String newVariantId = nextCustomVariantId(hullId, loadedVariants);
+
+        log.debug("Auto-creating editable custom variant '{}' for hull '{}'", newVariantId, hullId);
+        ShipVariant created = new ShipVariant(false);
+        created.setShipHullId(hullId);
+        created.setVariantId(newVariantId);
+        created.setDisplayName("Custom");
+        created.setLoadedFromFile(false);
+
+        if (loadedVariants != null) {
+            loadedVariants.put(newVariantId, created);
+        }
+        shipPainter.selectVariant(created);
+
+        LayerManager layerManager = getLayerManager();
+        if (layerManager != null) {
+            layerManager.markUnsaved(shipLayer, "variant");
+        }
+        ToastManager.show("Created variant " + newVariantId);
+        return created;
+    }
+
+    /**
+     * @return the hull ID a newly auto-created variant would reference: the skin hull ID when a
+     * non-base skin is active, else the base hull ID, falling back to "hull".
+     */
+    public static String resolveEditableHullId(ShipPainter shipPainter) {
+        String hullId = null;
+        if (shipPainter != null) {
+            ShipSkin activeSkin = shipPainter.getActiveSkin();
+            hullId = (activeSkin != null && !activeSkin.isBase())
+                    ? activeSkin.getSkinHullId()
+                    : shipPainter.getBaseHullId();
+        }
+        if (hullId == null || hullId.isBlank()) {
+            hullId = "hull";
+        }
+        return hullId;
+    }
+
+    /**
+     * @return the first unused ID of '&lt;hullId&gt;_custom', '&lt;hullId&gt;_custom_01', ... among the given variants.
+     */
+    public static String nextCustomVariantId(String hullId, Map<String, ShipVariant> loadedVariants) {
+        String newVariantId = hullId + "_custom";
+        if (loadedVariants != null) {
+            int counter = 1;
+            while (loadedVariants.containsKey(newVariantId)) {
+                newVariantId = hullId + "_custom_" + String.format("%02d", counter);
+                counter++;
+            }
+        }
+        return newVariantId;
+    }
+
     public static void actOnCurrentVariant(BiConsumer<ShipLayer, ShipVariant> action) {
         getActiveInitializedShipPainter().ifPresent(p -> {
+            ShipLayer shipLayer = p.getParentLayer();
             var variant = p.getActiveVariant();
+            if (variant == null || variant.isEmpty()) {
+                variant = getOrCreateEditableVariant(shipLayer);
+            }
             if (variant != null && !variant.isEmpty()) {
-                action.accept((ShipLayer) p.getParentLayer(), variant);
+                action.accept(shipLayer, variant);
             }
         });
     }

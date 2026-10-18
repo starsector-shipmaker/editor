@@ -1,45 +1,23 @@
 package shipeditor.components.instrument.ship.bounds;
 
 import shipeditor.components.viewer.entities.BoundPoint;
-import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.components.viewer.painters.points.ship.BoundPointsPainter;
-import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.widgets.PointLocationWidget;
 
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import java.awt.BorderLayout;
 import java.awt.geom.Point2D;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 class BoundLocationWidget extends PointLocationWidget {
 
-    private final BoundsPanel parentPanel;
-
     BoundLocationWidget(BoundsPanel parent) {
-        this.parentPanel = parent;
+        super(parent);
     }
 
     @Override
-    protected void populateContent() {
-        super.populateContent();
-        String name = "Bound position:";
-        var dependentCoordsPanel = createDependentCoordinatesLabel(name);
-        this.add(dependentCoordsPanel, BorderLayout.PAGE_START);
-    }
-
-    @Override
-    protected void addWidgetRow(JPanel contentContainer, JLabel label, JComponent component, int ordering) {
-        ComponentUtilities.addLabelAndComponent(contentContainer,
-                label, component, 3, 5, 0, ordering);
-    }
-
-    @Override
-    protected boolean isLayerPainterEligible(LayerPainter layerPainter) {
-        return layerPainter instanceof ShipPainter shipPainter && !shipPainter.isUninitialized();
+    protected String getDependentCoordinatesName() {
+        return "Bound position:";
     }
 
     @Override
@@ -50,9 +28,9 @@ class BoundLocationWidget extends PointLocationWidget {
     @Override
     protected Supplier<Point2D> retrieveGetter() {
         return () -> {
-            LayerPainter cachedLayerPainter = parentPanel.getCachedLayerPainter();
-            if (isLayerPainterEligible(cachedLayerPainter)) {
-                BoundPointsPainter boundsPainter = ((ShipPainter) cachedLayerPainter).getBoundsPainter();
+            ShipPainter shipPainter = getEligibleShipPainter();
+            if (shipPainter != null) {
+                BoundPointsPainter boundsPainter = shipPainter.getBoundsPainter();
                 BoundPoint selected = boundsPainter.getSelected();
                 if (selected != null) {
                     return selected.getPosition();
@@ -65,9 +43,9 @@ class BoundLocationWidget extends PointLocationWidget {
     @Override
     protected Consumer<Point2D> retrieveSetter() {
         return point -> {
-            LayerPainter cachedLayerPainter = parentPanel.getCachedLayerPainter();
-            if (isLayerPainterEligible(cachedLayerPainter)) {
-                BoundPointsPainter boundsPainter = ((ShipPainter) cachedLayerPainter).getBoundsPainter();
+            ShipPainter shipPainter = getEligibleShipPainter();
+            if (shipPainter != null) {
+                BoundPointsPainter boundsPainter = shipPainter.getBoundsPainter();
                 BoundPoint selected = boundsPainter.getSelected();
                 if (selected != null) {
                     boundsPainter.dragPointWithMirrorCheck(point);

@@ -16,7 +16,7 @@ import shipeditor.representation.GameDataRepository;
 import shipeditor.representation.ship.SpecWeaponGroup;
 import shipeditor.representation.ship.VariantFile;
 import shipeditor.utility.Errors;
-import shipeditor.utility.text.StringConstants;
+import shipeditor.utility.components.ToastManager;
 import shipeditor.components.viewer.layers.ViewerLayer;
 import shipeditor.components.viewer.layers.LayerManager;
 import shipeditor.components.viewer.layers.ship.ShipLayer;
@@ -38,19 +38,24 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Log4j2
-final class SaveVariantAction {
+public final class SaveVariantAction {
 
     private SaveVariantAction() {
     }
 
-    static void saveVariant(ShipVariant variant) {
+    public static void saveVariant(ShipVariant variant) {
         if (variant == null) {
             return;
         }
+        java.awt.Component focusOwner = java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        if (focusOwner instanceof javax.swing.JTextField tf) {
+            tf.postActionEvent();
+        }
+
         // --- Cascading Save Check ---
-        LayerManager manager = StaticController.getViewer().getLayerManager();
+        LayerManager manager = StaticController.getLayerManager();
         Set<ShipVariant> dirtyModules = new LinkedHashSet<>();
-        if (variant.getFittedModules() != null) {
+        if (manager != null && variant.getFittedModules() != null) {
             for (InstalledFeature module : variant.getFittedModules().values()) {
                 if (module != null && module.getFeaturePainter() instanceof ShipPainter shipPainter) {
                     ShipVariant modVariant = shipPainter.getActiveVariant();
@@ -66,7 +71,7 @@ final class SaveVariantAction {
                 }
             }
         }
-        
+
         if (!dirtyModules.isEmpty()) {
             int result = JOptionPane.showConfirmDialog(shipeditor.PrimaryWindow.getInstance(),
                     StringManager.getString("UNSAVED_MODULES_PROMPT_MSG", dirtyModules.size()),
@@ -82,20 +87,43 @@ final class SaveVariantAction {
         }
         // -----------------------------
 
-        JFileChooser fileChooser = SaveVariantAction.getSaveVariantFileChooser();
+        ShipLayer owningLayer = null;
+        if (manager != null) {
+            if (manager.getActiveLayer() instanceof ShipLayer activeShip
+                    && (activeShip.getActiveVariant() == variant || activeShip.getLoadedVariants().containsValue(variant))) {
+                owningLayer = activeShip;
+            } else {
+                for (ViewerLayer layer : manager.getLayers()) {
+                    if (layer instanceof ShipLayer sl
+                            && (sl.getActiveVariant() == variant || sl.getLoadedVariants().containsValue(variant))) {
+                        owningLayer = sl;
+                        break;
+                    }
+                }
+            }
+            if (owningLayer == null && manager.getActiveLayer() instanceof ShipLayer activeShip) {
+                owningLayer = activeShip;
+            }
+        }
+
+        JFileChooser fileChooser = FileUtilities.getVariantFileChooser(variant, owningLayer);
 
         String varId = variant.getVariantId() != null ? variant.getVariantId() : "unnamed_variant";
         File currentDirectory = fileChooser.getCurrentDirectory();
         File initial = new File(currentDirectory, varId);
         fileChooser.setSelectedFile(initial);
 
-        VariantFile existing = GameDataRepository.getVariantByID(variant.getVariantId());
-        if (existing != null) {
-            Path specFilePath = existing.getVariantFilePath();
-            if (specFilePath != null) {
-                File originalPath = specFilePath.toFile();
-                if (originalPath.isFile()) {
-                    fileChooser.setSelectedFile(originalPath);
+        if (variant.getVariantFilePath() != null && variant.getVariantFilePath().toFile().isFile()) {
+            fileChooser.setSelectedFile(variant.getVariantFilePath().toFile());
+        } else {
+            VariantFile existing = GameDataRepository.getVariantByID(variant.getVariantId());
+            if (existing != null) {
+                Path specFilePath = existing.getVariantFilePath();
+                if (specFilePath != null) {
+                    File originalPath = specFilePath.toFile();
+                    if (originalPath.isFile()) {
+                        fileChooser.setSelectedFile(originalPath);
+                    }
                 }
             }
         }
@@ -109,6 +137,29 @@ final class SaveVariantAction {
         if (returnVal == JFileChooser.APPROVE_OPTION) {
             String extension = ((FileNameExtensionFilter) fileChooser.getFileFilter()).getExtensions()[0];
             File result = FileUtilities.ensureFileExtension(fileChooser, extension);
+
+            String fileName = result.getName();
+            String fileStem = fileName.endsWith("." + extension)
+                    ? fileName.substring(0, fileName.length() - extension.length() - 1)
+                    : fileName;
+            LayerManager layerManager = StaticController.getLayerManager();
+            if (!fileStem.isBlank() && !fileStem.equals(variant.getVariantId())) {
+                String oldVariantId = variant.getVariantId();
+                variant.setVariantId(fileStem);
+                if (layerManager != null) {
+                    for (ViewerLayer layer : layerManager.getLayers()) {
+                        if (layer instanceof ShipLayer shipLayer) {
+                            Map<String, ShipVariant> loaded = shipLayer.getLoadedVariants();
+                            if (oldVariantId != null && loaded.get(oldVariantId) == variant) {
+                                loaded.remove(oldVariantId);
+                                loaded.put(fileStem, variant);
+                            } else if (shipLayer.getActiveVariant() == variant) {
+                                loaded.put(fileStem, variant);
+                            }
+                        }
+                    }
+                }
+            }
 
             log.info("Commencing variant saving: {}", result);
 
@@ -125,15 +176,28 @@ final class SaveVariantAction {
                 toSerialize.setVariantFilePath(result.toPath());
                 objectMapper.writeValue(result, toSerialize);
                 variant.setVariantFilePath(result.toPath());
+                variant.setLoadedFromFile(true);
                 GameDataRepository.putVariant(toSerialize);
-                LayerManager layerManager = StaticController.getViewer().getLayerManager();
-                for (ViewerLayer layer : layerManager.getLayers()) {
-                    if (layer instanceof ShipLayer shipLayer) {
-                        if (shipLayer.getLoadedVariants().containsValue(variant) || shipLayer.getActiveVariant() == variant) {
-                            layerManager.markSaved(shipLayer, "variant");
+                if (layerManager != null) {
+                    for (ViewerLayer layer : layerManager.getLayers()) {
+                        if (layer instanceof ShipLayer shipLayer) {
+                            if (shipLayer.getLoadedVariants().containsValue(variant) || shipLayer.getActiveVariant() == variant) {
+                                shipLayer.getLoadedVariants().put(variant.getVariantId(), variant);
+                                layerManager.markSaved(shipLayer, "variant");
+                            }
                         }
                     }
+                    if (layerManager.getActiveLayer() != null) {
+                        shipeditor.communication.EventBus.publish(
+                                new shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated(
+                                        layerManager.getActiveLayer()));
+                    }
                 }
+                shipeditor.communication.EventBus.publish(
+                        new shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued(
+                                shipeditor.components.ComponentEnums.EditorInstrument.VARIANT_DATA));
+                ToastManager.show("Saved " + result.getName() + " to " + result,
+                        ToastManager.ToastLevel.SUCCESS);
             } catch (IOException e) {
                 log.error("Variant file saving failed: {}", result.getName(), e);
                 JOptionPane.showMessageDialog(shipeditor.PrimaryWindow.getInstance(),
@@ -143,6 +207,181 @@ final class SaveVariantAction {
                 Errors.printToStream(e);
             }
         }
+    }
+
+    /**
+     * Writes a copy of the given variant under a new file chosen by the user.
+     * The copy's variant ID becomes the chosen file stem and it is registered in the loaded variants
+     * of the owning layer(s). The original variant (and its file) is left untouched.
+     *
+     * @param variant variant to copy
+     */
+    public static void saveVariantAsCopy(ShipVariant variant) {
+        if (variant == null || variant.isEmpty()) {
+            return;
+        }
+        LayerManager manager = StaticController.getLayerManager();
+        ShipLayer owningLayer = null;
+        if (manager != null) {
+            if (manager.getActiveLayer() instanceof ShipLayer activeShip
+                    && (activeShip.getActiveVariant() == variant
+                    || activeShip.getLoadedVariants().containsValue(variant))) {
+                owningLayer = activeShip;
+            } else {
+                for (ViewerLayer layer : manager.getLayers()) {
+                    if (layer instanceof ShipLayer sl
+                            && (sl.getActiveVariant() == variant || sl.getLoadedVariants().containsValue(variant))) {
+                        owningLayer = sl;
+                        break;
+                    }
+                }
+            }
+            if (owningLayer == null && manager.getActiveLayer() instanceof ShipLayer activeShip) {
+                owningLayer = activeShip;
+            }
+        }
+
+        JFileChooser fileChooser = FileUtilities.getVariantFileChooser(variant, owningLayer);
+        fileChooser.setDialogTitle("Save Variant As Copy");
+        String baseId = variant.getVariantId() != null ? variant.getVariantId() : "unnamed_variant";
+        fileChooser.setSelectedFile(new File(fileChooser.getCurrentDirectory(), baseId + "_copy"));
+
+        int returnVal = fileChooser.showSaveDialog(shipeditor.PrimaryWindow.getInstance());
+        File lastVariantDirectory = fileChooser.getCurrentDirectory();
+        FileUtilities.setLastVariantDirectory(lastVariantDirectory);
+        FileUtilities.setLastGeneralDirectory(lastVariantDirectory);
+        if (returnVal != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+
+        String extension = ((FileNameExtensionFilter) fileChooser.getFileFilter()).getExtensions()[0];
+        File result = FileUtilities.ensureFileExtension(fileChooser, extension);
+        String fileName = result.getName();
+        String fileStem = fileName.endsWith("." + extension)
+                ? fileName.substring(0, fileName.length() - extension.length() - 1)
+                : fileName;
+        if (fileStem.isBlank() || fileStem.equals(variant.getVariantId())) {
+            JOptionPane.showMessageDialog(shipeditor.PrimaryWindow.getInstance(),
+                    "Choose a file name different from the original variant ID ('" + baseId + "').",
+                    "Save Variant As Copy",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (result.exists()) {
+            int overwrite = JOptionPane.showConfirmDialog(shipeditor.PrimaryWindow.getInstance(),
+                    "File already exists:\n" + result + "\nOverwrite it?",
+                    "Save Variant As Copy",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (overwrite != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+
+        log.info("Commencing variant copy saving: {} -> {}", variant.getVariantId(), result);
+        String baseDisplay = variant.getDisplayName() != null && !variant.getDisplayName().isBlank()
+                ? variant.getDisplayName()
+                : fileStem;
+        ShipVariant copy = variant.createDeepCopy(fileStem, baseDisplay);
+
+        VariantFile toSerialize;
+        try {
+            toSerialize = SaveVariantAction.rebuildVariantFile(copy);
+            VariantFile original = GameDataRepository.getVariantByID(variant.getVariantId());
+            if (original != null && original.getUnrecognizedProperties() != null) {
+                toSerialize.getUnrecognizedProperties().putAll(original.getUnrecognizedProperties());
+            }
+        } catch (Exception e) {
+            log.error("Failed to rebuild VariantFile for copy: {}", result.getName(), e);
+            return;
+        }
+        try {
+            ObjectMapper objectMapper = FileUtilities.getConfigured();
+            SaveActionUtilities.mergeUnrecognizedProperties(result, toSerialize.getUnrecognizedProperties(), VariantFile.class);
+            toSerialize.setVariantFilePath(result.toPath());
+            objectMapper.writeValue(result, toSerialize);
+            copy.setVariantFilePath(result.toPath());
+            copy.setLoadedFromFile(true);
+            GameDataRepository.putVariant(toSerialize);
+            if (manager != null) {
+                for (ViewerLayer layer : manager.getLayers()) {
+                    if (layer instanceof ShipLayer shipLayer
+                            && (shipLayer.getLoadedVariants().containsValue(variant)
+                            || shipLayer.getActiveVariant() == variant)) {
+                        shipLayer.getLoadedVariants().put(fileStem, copy);
+                    }
+                }
+                if (manager.getActiveLayer() != null) {
+                    shipeditor.communication.EventBus.publish(
+                            new shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated(
+                                    manager.getActiveLayer()));
+                }
+            }
+            ToastManager.show("Saved " + result.getName() + " to " + result, ToastManager.ToastLevel.SUCCESS);
+        } catch (IOException e) {
+            log.error("Variant copy saving failed: {}", result.getName(), e);
+            JOptionPane.showMessageDialog(shipeditor.PrimaryWindow.getInstance(),
+                    StringManager.getString("VARIANT_FILE_SAVING_FAILED_EXCEPTION_THR_MSG") + result,
+                    StringManager.getString("FILE_SAVING_ERROR"),
+                    JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public static boolean deleteVariantFile(ShipVariant variant, ShipLayer shipLayer) {
+        if (variant == null || variant.isEmpty()) {
+            return false;
+        }
+        String variantId = variant.getVariantId();
+        Path filePath = variant.getVariantFilePath();
+        if (filePath == null && variantId != null) {
+            VariantFile existing = GameDataRepository.getVariantByID(variantId);
+            if (existing != null) {
+                filePath = existing.getVariantFilePath();
+            }
+        }
+
+        if (filePath != null && java.nio.file.Files.isRegularFile(filePath)) {
+            int confirm = JOptionPane.showConfirmDialog(
+                    shipeditor.PrimaryWindow.getInstance(),
+                    "Delete variant file '" + filePath.getFileName() + "' from disk?",
+                    "Delete Variant File",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (confirm != JOptionPane.YES_OPTION) {
+                return false;
+            }
+            try {
+                java.nio.file.Files.deleteIfExists(filePath);
+                log.info("Deleted variant file from disk: {}", filePath);
+            } catch (IOException ex) {
+                log.error("Failed to delete variant file: {}", filePath, ex);
+                JOptionPane.showMessageDialog(
+                        shipeditor.PrimaryWindow.getInstance(),
+                        "Failed to delete variant file: " + filePath,
+                        StringManager.getString("FILE_SAVING_ERROR"),
+                        JOptionPane.ERROR_MESSAGE);
+                return false;
+            }
+        }
+
+        if (shipLayer != null && variantId != null) {
+            shipLayer.getLoadedVariants().remove(variantId);
+        }
+
+        var gameData = shipeditor.persistence.SettingsManager.getGameData();
+        if (gameData != null && variantId != null && gameData.getAllVariants() != null) {
+            gameData.getAllVariants().remove(variantId);
+            gameData.rebuildVariantsByHullIndex();
+        }
+
+        if (shipLayer != null && shipLayer.getPainter() != null) {
+            shipLayer.getPainter().selectVariant(VariantFile.empty());
+        }
+        LayerManager layerManager = StaticController.getLayerManager();
+        if (layerManager != null && shipLayer != null) {
+            layerManager.markSaved(shipLayer, "variant");
+        }
+        return true;
     }
 
     private static VariantFile rebuildVariantFile(ShipVariant shipVariant) {
@@ -242,20 +481,6 @@ final class SaveVariantAction {
             specWeaponGroups.add(specWeaponGroup);
         });
         return specWeaponGroups;
-    }
-
-    private static JFileChooser getSaveVariantFileChooser() {
-        FileNameExtensionFilter variantFileFilter = new FileNameExtensionFilter(
-                "JSON variant files", StringConstants.VARIANT);
-
-        JFileChooser fileChooser = FileUtilities.getFileChooser(variantFileFilter);
-
-        File directory = FileUtilities.getLastVariantDirectory();
-        if (directory != null) {
-            fileChooser.setCurrentDirectory(directory);
-        }
-
-        return fileChooser;
     }
 
 }

@@ -34,8 +34,8 @@ public class DataReferenceQueriesTest {
         DatabaseQueryService.clearTypeCache();
         CoreIndexManager.reset();
 
-        DatabaseManager.deleteDatabase();
         setDatabaseManagerField("databaseFilePath", dbPath);
+        DatabaseManager.deleteDatabase();
         DatabaseManager.initializeDatabase();
     }
 

@@ -11,8 +11,6 @@ import shipeditor.components.instrument.ship.AbstractShipPropertiesPanel;
 import shipeditor.components.viewer.entities.weapon.WeaponSlotPoint;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.components.viewer.layers.ship.ShipPainter;
-import shipeditor.components.viewer.ViewerEnums.PainterVisibility;
-import shipeditor.components.viewer.painters.points.AbstractPointPainter;
 import shipeditor.components.viewer.painters.points.ship.WeaponSlotPainter;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.objects.Pair;
@@ -25,16 +23,10 @@ import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.DefaultListModel;
 import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.util.Map;
-import java.util.function.Function;
 import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 import shipeditor.communication.events.viewer.points.PointEvents.PointAddConfirmed;
 import shipeditor.communication.events.viewer.points.PointEvents.WeaponSlotInsertedConfirmed;
@@ -103,10 +95,7 @@ public class WeaponSlotListPanel extends AbstractShipPropertiesPanel {
         this.slotDataPane = new SlotDataControlPane(slotPointContainer);
 
         JPanel northContainer = new JPanel(new BorderLayout());
-        var visibilityWidget = createSlotsVisibilityWidget();
-        Map<JLabel, JComponent> visibilityWidgetMap = Map.of(visibilityWidget.getFirst(), visibilityWidget.getSecond());
-        JPanel visibilityWidgetContainer = this.createWidgetsPanel(visibilityWidgetMap);
-        visibilityWidgetContainer.setBorder(new EmptyBorder(4, 0, 3, 0));
+        JPanel visibilityWidgetContainer = createShipVisibilityPanel(ShipPainter::getWeaponSlotPainter, "SLOTS_VIEW");
         northContainer.add(visibilityWidgetContainer, BorderLayout.PAGE_START);
 
         ComponentUtilities.outfitPanelWithTitle(slotDataPane, "Slot Data");
@@ -143,33 +132,8 @@ public class WeaponSlotListPanel extends AbstractShipPropertiesPanel {
                 }
                 WeaponSlotPainter cachedSlotPainter = getCachedSlotPainter();
                 if (cachedSlotPainter != null) {
-                    java.util.List<WeaponSlotPoint> currentPoints = cachedSlotPainter.getPointsIndex();
-                    boolean modelsEqual = true;
-                    if (this.model.getSize() == currentPoints.size()) {
-                        for (int i = 0; i < this.model.getSize(); i++) {
-                            if (this.model.getElementAt(i) != currentPoints.get(i)) {
-                                modelsEqual = false;
-                                break;
-                            }
-                        }
-                    } else {
-                        modelsEqual = false;
-                    }
-
-                    if (!modelsEqual) {
-                        int[] cachedSelected = this.slotPointContainer.getSelectedIndices();
-                        DefaultListModel<WeaponSlotPoint> newModel = new DefaultListModel<>();
-                        newModel.addAll(currentPoints);
-
-                        this.model = newModel;
-                        this.slotPointContainer.setModel(newModel);
-                        this.slotPointContainer.setSelectedIndices(cachedSelected);
-                        if (!this.model.isEmpty() && cachedSelected.length > 0) {
-                            this.slotPointContainer.ensureIndexIsVisible(cachedSelected[0]);
-                        }
-                    } else {
-                        this.slotPointContainer.repaint();
-                    }
+                    this.model = this.slotPointContainer.synchronizeModel(this.model,
+                            cachedSlotPainter.getPointsIndex());
                 }
 
                 this.refreshPointDataPane(null);
@@ -206,22 +170,6 @@ public class WeaponSlotListPanel extends AbstractShipPropertiesPanel {
             return shipPainter.getWeaponSlotPainter();
         }
         return null;
-    }
-
-    private Pair<JLabel, JComboBox<PainterVisibility>> createSlotsVisibilityWidget() {
-        Function<LayerPainter, AbstractPointPainter> painterGetter = layerPainter -> {
-            if (layerPainter instanceof ShipPainter shipPainter) {
-                return shipPainter.getWeaponSlotPainter();
-            }
-            return null;
-        };
-
-        var opacityWidget = createVisibilityWidget(painterGetter);
-
-        JLabel opacityLabel = opacityWidget.getFirst();
-        opacityLabel.setText(StringManager.getString("SLOTS_VIEW"));
-
-        return opacityWidget;
     }
 
 }

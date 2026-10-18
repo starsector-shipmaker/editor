@@ -8,6 +8,9 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.Getter;
 import shipeditor.communication.BusEventListener;
 import shipeditor.communication.EventBus;
+import shipeditor.communication.events.viewer.ViewerRepaintQueued;
+import shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawKeyPressed;
+import shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawKeyReleased;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.viewer.control.ControlPredicates;
 import shipeditor.components.viewer.entities.BaseWorldPoint;
@@ -17,6 +20,7 @@ import shipeditor.components.viewer.ViewerEnums.PainterVisibility;
 import shipeditor.utility.overseers.StaticController;
 
 import java.awt.geom.Point2D;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import shipeditor.communication.events.viewer.points.PointEvents.PointCreationQueued;
 import shipeditor.communication.events.viewer.points.PointEvents.InstrumentModeChanged;
@@ -44,6 +48,34 @@ public abstract class MirrorablePointPainter extends AbstractPointPainter {
             }
         };
         EventBus.subscribe(this, slotCreationListener);
+    }
+
+    /**
+     * Tracks a pair of creation hotkeys while the parent layer is active, requesting a repaint on every change.
+     * @param firstHotkey key code reported to the setter with {@code isFirstHotkey == true}.
+     * @param secondHotkey key code reported to the setter with {@code isFirstHotkey == false}.
+     * @param stateSetter receives (isFirstHotkey, pressed) whenever one of the two keys is pressed or released.
+     */
+    protected final void subscribeHotkeyPair(int firstHotkey, int secondHotkey,
+                                             BiConsumer<Boolean, Boolean> stateSetter) {
+        EventBus.subscribe(this, event -> {
+            if (!this.getParentLayer().isLayerActive()) {
+                return;
+            }
+            if (event instanceof ViewerRawKeyPressed pressedEvent) {
+                int keyCode = pressedEvent.keyEvent().getKeyCode();
+                if (keyCode == firstHotkey || keyCode == secondHotkey) {
+                    stateSetter.accept(keyCode == firstHotkey, true);
+                    EventBus.publish(new ViewerRepaintQueued());
+                }
+            } else if (event instanceof ViewerRawKeyReleased releasedEvent) {
+                int keyCode = releasedEvent.keyEvent().getKeyCode();
+                if (keyCode == firstHotkey || keyCode == secondHotkey) {
+                    stateSetter.accept(keyCode == firstHotkey, false);
+                    EventBus.publish(new ViewerRepaintQueued());
+                }
+            }
+        });
     }
 
     private void initModeListener() {

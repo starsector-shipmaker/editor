@@ -1,24 +1,15 @@
 package shipeditor.components.datafiles.styles;
 
-import shipeditor.utility.text.StringManager;
-
 import shipeditor.communication.EventBus;
 import shipeditor.communication.events.files.FileEvents.EngineStylesLoaded;
 import shipeditor.representation.ship.EngineStyle;
 import shipeditor.utility.components.ComponentUtilities;
 
-import javax.swing.BoxLayout;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.nio.file.Path;
 import java.util.Map;
 
 public class EngineStylesPanel extends AbstractStylesPanel {
-
-    @Override
-    protected JPanel createTopPanel() {
-        return new JPanel();
-    }
 
     @Override
     protected boolean isDataLoaded() {
@@ -43,14 +34,7 @@ public class EngineStylesPanel extends AbstractStylesPanel {
     }
 
     private void populatePanel(Map<String, EngineStyle> engineStyles) {
-        if (engineStyles == null) return;
-        JPanel scrollerContent = getScrollerContent();
-        scrollerContent.removeAll();
-        for (EngineStyle style : engineStyles.values()) {
-            scrollerContent.add(createStylePanel(style));
-        }
-        scrollerContent.revalidate();
-        scrollerContent.repaint();
+        populateStyles(engineStyles);
     }
 
     protected JPanel createStyleTitlePanel(Object style) {
@@ -66,24 +50,15 @@ public class EngineStylesPanel extends AbstractStylesPanel {
 
     protected JPanel createStyleContentPanel(Object style) {
         if (style instanceof EngineStyle checked) {
-            JPanel contentContainer = new JPanel();
-            contentContainer.setLayout(new BoxLayout(contentContainer, BoxLayout.PAGE_AXIS));
+            JPanel contentContainer = createStyleContentContainer();
 
-            JLabel engineLabel = new JLabel(StringManager.getString("ENGINE_COLOR"));
-            JPanel engineColorPanel = ComponentUtilities.createColorPropertyPanel(engineLabel,
-                    checked.getEngineColor(), CONTENT_SIDE_PAD, color -> {
-                        checked.setEngineColor(color);
-                        shipeditor.utility.overseers.StaticController.getScheduler().queueEnginesPanelRepaint();
-                    });
-            contentContainer.add(engineColorPanel);
+            contentContainer.add(createColorRow("ENGINE_COLOR", checked.getEngineColor(),
+                    checked::setEngineColor,
+                    () -> shipeditor.utility.overseers.StaticController.getScheduler().queueEnginesPanelRepaint()));
 
-            JLabel contrailLabel = new JLabel(StringManager.getString("CONTRAIL_COLOR"));
-            JPanel contrailColorPanel = ComponentUtilities.createColorPropertyPanel(contrailLabel,
-                    checked.getContrailColor(), CONTENT_SIDE_PAD, color -> {
-                        checked.setContrailColor(color);
-                        shipeditor.utility.overseers.StaticController.getScheduler().queueEnginesPanelRepaint();
-                    });
-            contentContainer.add(contrailColorPanel);
+            contentContainer.add(createColorRow("CONTRAIL_COLOR", checked.getContrailColor(),
+                    checked::setContrailColor,
+                    () -> shipeditor.utility.overseers.StaticController.getScheduler().queueEnginesPanelRepaint()));
 
             return contentContainer;
         } else {

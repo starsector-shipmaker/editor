@@ -5,7 +5,6 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import shipeditor.communication.EventBus;
-import shipeditor.communication.events.viewer.ViewerRepaintQueued;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.viewer.PrimaryViewer;
 import shipeditor.components.viewer.entities.BaseWorldPoint;
@@ -105,34 +104,15 @@ public class LaunchBayPainter extends MirrorablePointPainter {
     }
 
     private void initHotkeys() {
-        EventBus.subscribe(this, event -> {
-            if (!this.getParentLayer().isLayerActive()) {
-                return;
-            }
-            if (event instanceof shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawKeyPressed pressedEvent) {
-                int keyCode = pressedEvent.keyEvent().getKeyCode();
-                boolean isPortHotkey = (keyCode == ADD_PORT_HOTKEY);
-                boolean isBayHotkey = (keyCode == ADD_BAY_HOTKEY);
-                if (isPortHotkey) {
-                    addPortHotkeyPressed = true;
-                    EventBus.publish(new ViewerRepaintQueued());
-                } else if (isBayHotkey) {
-                    addBayHotkeyPressed = true;
-                    EventBus.publish(new ViewerRepaintQueued());
-                }
-            } else if (event instanceof shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawKeyReleased releasedEvent) {
-                int keyCode = releasedEvent.keyEvent().getKeyCode();
-                boolean isPortHotkey = (keyCode == ADD_PORT_HOTKEY);
-                boolean isBayHotkey = (keyCode == ADD_BAY_HOTKEY);
-                if (isPortHotkey) {
-                    addPortHotkeyPressed = false;
-                    EventBus.publish(new ViewerRepaintQueued());
-                } else if (isBayHotkey) {
-                    addBayHotkeyPressed = false;
-                    EventBus.publish(new ViewerRepaintQueued());
-                }
-            }
-        });
+        this.subscribeHotkeyPair(ADD_PORT_HOTKEY, ADD_BAY_HOTKEY, LaunchBayPainter::setHotkeyState);
+    }
+
+    private static void setHotkeyState(boolean isPortHotkey, boolean state) {
+        if (isPortHotkey) {
+            addPortHotkeyPressed = state;
+        } else {
+            addBayHotkeyPressed = state;
+        }
     }
 
     @Override

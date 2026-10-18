@@ -32,50 +32,32 @@ public class WeaponSmokeHandler {
     }
 
     public WeaponSmokeHandler(Supplier<Boolean> readinessChecker, Runnable onChange, Supplier<WeaponSpecFile> specSupplier) {
-        smokeParticleSizeMinEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setParticleSizeMin(value);
-        }, onChange);
+        smokeParticleSizeMinEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, SmokeSpec::setParticleSizeMin);
 
-        smokeParticleSizeRangeEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setParticleSizeRange(value);
-        }, onChange);
+        smokeParticleSizeRangeEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, SmokeSpec::setParticleSizeRange);
 
-        smokeCloudParticleCountEditor = WeaponFirePanelUtilities.createIntField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setCloudParticleCount(value);
-        }, onChange);
+        smokeCloudParticleCountEditor = WeaponFirePanelUtilities.createSpecIntField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, SmokeSpec::setCloudParticleCount);
 
-        smokeCloudDurationEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setCloudDuration(value);
-        }, onChange);
+        smokeCloudDurationEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, SmokeSpec::setCloudDuration);
 
-        smokeCloudRadiusEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setCloudRadius(value);
-        }, onChange);
+        smokeCloudRadiusEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, SmokeSpec::setCloudRadius);
 
-        smokeBlowbackParticleCountEditor = WeaponFirePanelUtilities.createIntField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setBlowbackParticleCount(value);
-        }, onChange);
+        smokeBlowbackParticleCountEditor = WeaponFirePanelUtilities.createSpecIntField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, SmokeSpec::setBlowbackParticleCount);
 
-        smokeBlowbackDurationEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setBlowbackDuration(value);
-        }, onChange);
+        smokeBlowbackDurationEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, SmokeSpec::setBlowbackDuration);
 
-        smokeBlowbackLengthEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setBlowbackLength(value);
-        }, onChange);
+        smokeBlowbackLengthEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, SmokeSpec::setBlowbackLength);
 
-        smokeBlowbackSpreadEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setBlowbackSpread(value);
-        }, onChange);
+        smokeBlowbackSpreadEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, SmokeSpec::setBlowbackSpread);
 
         smokeParticleColorValue = new JLabel();
         colorLabel = WeaponFirePanelUtilities.createColorLabel("Particle Color:", smokeParticleColorValue,

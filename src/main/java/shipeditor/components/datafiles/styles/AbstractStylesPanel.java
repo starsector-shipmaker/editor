@@ -2,19 +2,27 @@ package shipeditor.components.datafiles.styles;
 
 import com.formdev.flatlaf.ui.FlatLineBorder;
 import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
+import shipeditor.utility.components.ComponentUtilities;
+import shipeditor.utility.text.StringManager;
 import shipeditor.utility.themes.Themes;
 
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Insets;
+import java.util.Map;
+import java.util.function.Consumer;
 
 @Getter
+@Log4j2
 abstract class AbstractStylesPanel extends JPanel {
 
     protected static final int CONTENT_SIDE_PAD = 2;
@@ -58,7 +66,9 @@ abstract class AbstractStylesPanel extends JPanel {
 
     protected abstract javax.swing.Action getLoadDataAction();
 
-    protected abstract JPanel createTopPanel();
+    protected JPanel createTopPanel() {
+        return new JPanel();
+    }
 
     protected abstract void initListeners();
 
@@ -80,6 +90,37 @@ abstract class AbstractStylesPanel extends JPanel {
         stylePanel.add(contentContainer);
 
         return stylePanel;
+    }
+
+    /**
+     * Rebuilds the scroller content with one style panel per given style.
+     */
+    protected void populateStyles(Map<String, ?> styles) {
+        if (styles == null) return;
+        log.debug("Populating {} with {} styles", this.getClass().getSimpleName(), styles.size());
+        scrollerContent.removeAll();
+        for (Object style : styles.values()) {
+            scrollerContent.add(this.createStylePanel(style));
+        }
+        scrollerContent.revalidate();
+        scrollerContent.repaint();
+    }
+
+    protected JPanel createStyleContentContainer() {
+        JPanel contentContainer = new JPanel();
+        contentContainer.setLayout(new BoxLayout(contentContainer, BoxLayout.PAGE_AXIS));
+        return contentContainer;
+    }
+
+    /**
+     * Creates a labelled color picker row; {@code onChanged} runs after the new color has been set.
+     */
+    protected JPanel createColorRow(String labelKey, Color color, Consumer<Color> setter, Runnable onChanged) {
+        JLabel label = new JLabel(StringManager.getString(labelKey));
+        return ComponentUtilities.createColorPropertyPanel(label, color, CONTENT_SIDE_PAD, picked -> {
+            setter.accept(picked);
+            onChanged.run();
+        });
     }
 
     protected abstract JPanel createStyleTitlePanel(Object style);

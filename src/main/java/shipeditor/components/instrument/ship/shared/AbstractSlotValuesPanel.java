@@ -35,13 +35,24 @@ import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public abstract class AbstractSlotValuesPanel extends LayerPropertiesPanel {
-    private void registerSkinOverrideSpinner(JSpinner spinner, java.util.function.Function<WeaponSlotOverride, Object> overrideCheck, java.util.function.Function<SlotData, Double> valueGetter, String lockedTooltipKey) {
-        registerWidgetListeners(spinner, layerPainter -> {
-            spinner.setValue(0.0d);
-            spinner.setToolTipText(null);
-            spinner.setEnabled(false);
+    /**
+     * Registers clear/refresh behavior for a slot widget whose value can be locked by a skin override.
+     *
+     * @param clearValue    resets the widget value when nothing is selected.
+     * @param showValue     displays the selected slot's value in the widget.
+     * @param overrideCheck returns non-null if the skin override defines the property this widget edits.
+     */
+    private void registerSkinOverrideWidget(JComponent widget, Runnable clearValue,
+                                            Consumer<SlotData> showValue,
+                                            java.util.function.Function<WeaponSlotOverride, Object> overrideCheck,
+                                            String lockedTooltipKey) {
+        registerWidgetListeners(widget, layerPainter -> {
+            clearValue.run();
+            widget.setToolTipText(null);
+            widget.setEnabled(false);
         }, layerPainter -> {
             var selectedSlot = getSelectedFromLayer(layerPainter);
 
@@ -52,47 +63,28 @@ public abstract class AbstractSlotValuesPanel extends LayerPropertiesPanel {
                 }
 
                 if (skinOverride != null && overrideCheck.apply(skinOverride) != null) {
-                    spinner.setToolTipText(StringManager.getString(lockedTooltipKey));
-                    spinner.setEnabled(false);
+                    widget.setToolTipText(StringManager.getString(lockedTooltipKey));
+                    widget.setEnabled(false);
                 } else {
-                    spinner.setValue(valueGetter.apply(selectedSlot));
-                    spinner.setEnabled(true);
+                    showValue.accept(selectedSlot);
+                    widget.setEnabled(true);
                 }
             } else {
-                spinner.setValue(0.0d);
-                spinner.setToolTipText(null);
-                spinner.setEnabled(false);
+                clearValue.run();
+                widget.setToolTipText(null);
+                widget.setEnabled(false);
             }
         });
     }
 
+    private void registerSkinOverrideSpinner(JSpinner spinner, java.util.function.Function<WeaponSlotOverride, Object> overrideCheck, java.util.function.Function<SlotData, Double> valueGetter, String lockedTooltipKey) {
+        registerSkinOverrideWidget(spinner, () -> spinner.setValue(0.0d),
+                slot -> spinner.setValue(valueGetter.apply(slot)), overrideCheck, lockedTooltipKey);
+    }
+
     private <V> void registerSkinOverrideComboBox(JComboBox<V> comboBox, java.util.function.Function<WeaponSlotOverride, Object> overrideCheck, java.util.function.Function<SlotData, V> valueGetter, String lockedTooltipKey) {
-        registerWidgetListeners(comboBox, layerPainter -> {
-            comboBox.setSelectedItem(null);
-            comboBox.setToolTipText(null);
-            comboBox.setEnabled(false);
-        }, layerPainter -> {
-            var selectedSlot = getSelectedFromLayer(layerPainter);
-
-            if (selectedSlot != null) {
-                WeaponSlotOverride skinOverride = null;
-                if (selectedSlot instanceof SlotPoint checked) {
-                    skinOverride = checked.getSkinOverride();
-                }
-
-                if (skinOverride != null && overrideCheck.apply(skinOverride) != null) {
-                    comboBox.setToolTipText(StringManager.getString(lockedTooltipKey));
-                    comboBox.setEnabled(false);
-                } else {
-                    comboBox.setSelectedItem(valueGetter.apply(selectedSlot));
-                    comboBox.setEnabled(true);
-                }
-            } else {
-                comboBox.setSelectedItem(null);
-                comboBox.setToolTipText(null);
-                comboBox.setEnabled(false);
-            }
-        });
+        registerSkinOverrideWidget(comboBox, () -> comboBox.setSelectedItem(null),
+                slot -> comboBox.setSelectedItem(valueGetter.apply(slot)), overrideCheck, lockedTooltipKey);
     }
 
     private final boolean multiSelectionAllowed;
@@ -257,138 +249,86 @@ public abstract class AbstractSlotValuesPanel extends LayerPropertiesPanel {
     }
 
     private Pair<JLabel, JComponent> createTypeSelector() {
-        JLabel selectorLabel = new JLabel(getEntityName() + " type:");
-        if (multiSelectionAllowed) {
-            selectorLabel.setToolTipText(StringManager.getString("CHANGE_APPLIES_TO_ALL_SELECTED_SLOTS"));
-        }
-
         JComboBox<WeaponType> typeSelector = new JComboBox<>(WeaponType.values());
         typeSelector.removeItem(WeaponType.LAUNCH_BAY);
 
-        typeSelector.addActionListener(e -> {
-            Object selectedItem = typeSelector.getSelectedItem();
-            if (isWidgetsReadyForInput() && selectedItem instanceof WeaponType weaponType) {
-                Consumer<WeaponType> setter = getTypeSetter();
-                setter.accept(weaponType);
-            }
-        });
-
-        registerSkinOverrideComboBox(typeSelector, WeaponSlotOverride::getWeaponType, SlotData::getWeaponType, "LOCKED_TYPE_OVERRIDDEN_BY_SKIN");
-
-        return new Pair<>(selectorLabel, typeSelector);
+        return createEnumSelector(" type:", typeSelector, WeaponType.class, this::getTypeSetter,
+                WeaponSlotOverride::getWeaponType, SlotData::getWeaponType, "LOCKED_TYPE_OVERRIDDEN_BY_SKIN");
     }
 
     private Pair<JLabel, JComponent> createMountSelector() {
-        JLabel selectorLabel = new JLabel(getEntityName() + " mount:");
-        if (multiSelectionAllowed) {
-            selectorLabel.setToolTipText(StringManager.getString("CHANGE_APPLIES_TO_ALL_SELECTED_SLOTS"));
-        }
-
         JComboBox<WeaponMount> mountSelector = new JComboBox<>(WeaponMount.values());
 
-        mountSelector.addActionListener(e -> {
-            Object selectedItem = mountSelector.getSelectedItem();
-            if (isWidgetsReadyForInput() && selectedItem instanceof WeaponMount weaponMount) {
-                Consumer<WeaponMount> setter = getMountSetter();
-                setter.accept(weaponMount);
-            }
-        });
-
-        registerSkinOverrideComboBox(mountSelector, WeaponSlotOverride::getWeaponMount, SlotData::getWeaponMount, "LOCKED_MOUNT_OVERRIDDEN_BY_SKIN");
-
-        return new Pair<>(selectorLabel, mountSelector);
+        return createEnumSelector(" mount:", mountSelector, WeaponMount.class, this::getMountSetter,
+                WeaponSlotOverride::getWeaponMount, SlotData::getWeaponMount, "LOCKED_MOUNT_OVERRIDDEN_BY_SKIN");
     }
 
     private Pair<JLabel, JComponent> createSizeSelector() {
-        JLabel selectorLabel = new JLabel(getEntityName() + " size:");
+        JComboBox<WeaponSize> sizeSelector = new JComboBox<>(WeaponSize.values());
+
+        return createEnumSelector(" size:", sizeSelector, WeaponSize.class, this::getSizeSetter,
+                WeaponSlotOverride::getWeaponSize, SlotData::getWeaponSize, "LOCKED_SIZE_OVERRIDDEN_BY_SKIN");
+    }
+
+    /**
+     * Builds a label + combo box pair editing an enum property of the selected slots.
+     *
+     * @param labelSuffix text appended to the entity name for the label.
+     */
+    private <V> Pair<JLabel, JComponent> createEnumSelector(String labelSuffix, JComboBox<V> selector,
+                                                            Class<V> valueType,
+                                                            Supplier<Consumer<V>> setterSupplier,
+                                                            java.util.function.Function<WeaponSlotOverride, Object> overrideCheck,
+                                                            java.util.function.Function<SlotData, V> valueGetter,
+                                                            String lockedTooltipKey) {
+        JLabel selectorLabel = new JLabel(getEntityName() + labelSuffix);
         if (multiSelectionAllowed) {
             selectorLabel.setToolTipText(StringManager.getString("CHANGE_APPLIES_TO_ALL_SELECTED_SLOTS"));
         }
 
-        JComboBox<WeaponSize> sizeSelector = new JComboBox<>(WeaponSize.values());
-
-        sizeSelector.addActionListener(e -> {
-            Object selectedItem = sizeSelector.getSelectedItem();
-            if (isWidgetsReadyForInput() && selectedItem instanceof WeaponSize weaponSize) {
-                Consumer<WeaponSize> setter = getSizeSetter();
-                setter.accept(weaponSize);
+        selector.addActionListener(e -> {
+            Object selectedItem = selector.getSelectedItem();
+            if (isWidgetsReadyForInput() && valueType.isInstance(selectedItem)) {
+                Consumer<V> setter = setterSupplier.get();
+                setter.accept(valueType.cast(selectedItem));
             }
         });
 
-        registerSkinOverrideComboBox(sizeSelector, WeaponSlotOverride::getWeaponSize, SlotData::getWeaponSize, "LOCKED_SIZE_OVERRIDDEN_BY_SKIN");
+        registerSkinOverrideComboBox(selector, overrideCheck, valueGetter, lockedTooltipKey);
 
-        return new Pair<>(selectorLabel, sizeSelector);
+        return new Pair<>(selectorLabel, selector);
     }
 
     private Pair<JLabel, JComponent> createAngleController() {
         JLabel selectorLabel = new JLabel(getEntityName() + " angle:");
 
-        String tooltip;
-        if (multiSelectionAllowed) {
-            tooltip = Utility.getWithLinebreaks(StringManager.getString("CHANGE_APPLIES_TO_FIRST_SELECTED_SLOT"), StringManager.getString("MOUSEWHEEL_TO_CHANGE"));
-        } else {
-            tooltip = StringManager.getString("MOUSEWHEEL_TO_CHANGE");
-        }
-        selectorLabel.setToolTipText(tooltip);
-
-        double minValue = -360;
-        double maxValue = 360;
-        SpinnerNumberModel spinnerNumberModel = new SpinnerNumberModel(
-                0.0d, minValue, maxValue, 0.5d
-        );
-        JSpinner spinner =  Spinners.createWheelable(spinnerNumberModel);
-
-        spinner.addChangeListener(e -> {
-            if (isWidgetsReadyForInput()) {
-                Number modelNumber = spinnerNumberModel.getNumber();
-                double current = modelNumber.doubleValue();
-
-                Consumer<Double> setter = getAngleSetter();
-                setter.accept(current);
-            }
-        });
-
-        registerSkinOverrideSpinner(spinner, WeaponSlotOverride::getBoxedAngle, SlotData::getAngle, "LOCKED_ANGLE_OVERRIDDEN_BY_SKIN");
-
-        return new Pair<>(selectorLabel, spinner);
+        return createSpinnerController(selectorLabel, -360, 360, 0.5d, this::getAngleSetter,
+                WeaponSlotOverride::getBoxedAngle, SlotData::getAngle, "LOCKED_ANGLE_OVERRIDDEN_BY_SKIN");
     }
 
     private Pair<JLabel, JComponent> createArcController() {
         JLabel selectorLabel = new JLabel(getEntityName() + " arc:");
 
-        String tooltip;
-        if (multiSelectionAllowed) {
-            tooltip = Utility.getWithLinebreaks(StringManager.getString("CHANGE_APPLIES_TO_FIRST_SELECTED_SLOT"), StringManager.getString("MOUSEWHEEL_TO_CHANGE"));
-        } else {
-            tooltip = StringManager.getString("MOUSEWHEEL_TO_CHANGE");
-        }
-        selectorLabel.setToolTipText(tooltip);
-
-        double minValue = 0;
-        double maxValue = 360;
-        SpinnerNumberModel spinnerNumberModel = new SpinnerNumberModel(
-                0.0d, minValue, maxValue, 1.0d
-        );
-        JSpinner spinner =  Spinners.createWheelable(spinnerNumberModel);
-
-        spinner.addChangeListener(e -> {
-            if (isWidgetsReadyForInput()) {
-                Number modelNumber = spinnerNumberModel.getNumber();
-                double current = modelNumber.doubleValue();
-
-                Consumer<Double> setter = getArcSetter();
-                setter.accept(current);
-            }
-        });
-
-        registerSkinOverrideSpinner(spinner, WeaponSlotOverride::getBoxedArc, SlotData::getArc, "LOCKED_ARC_OVERRIDDEN_BY_SKIN");
-
-        return new Pair<>(selectorLabel, spinner);
+        return createSpinnerController(selectorLabel, 0, 360, 1.0d, this::getArcSetter,
+                WeaponSlotOverride::getBoxedArc, SlotData::getArc, "LOCKED_ARC_OVERRIDDEN_BY_SKIN");
     }
 
     private Pair<JLabel, JComponent> createRenderOrderController() {
         JLabel selectorLabel = new JLabel(StringManager.getString("RENDER_ORDER"));
 
+        return createSpinnerController(selectorLabel, Integer.MIN_VALUE + 1, Integer.MAX_VALUE - 1, 1.0d,
+                this::getRenderOrderSetter, WeaponSlotOverride::getRenderOrderModBoxed,
+                slot -> (double) slot.getRenderOrderMod(), "LOCKED_RENDER_ORDER_OVERRIDDEN_BY_SKIN");
+    }
+
+    /**
+     * Builds the wheelable spinner for a numeric slot property, tooltipping the label and wiring skin override locking.
+     */
+    private Pair<JLabel, JComponent> createSpinnerController(JLabel selectorLabel, double minValue, double maxValue,
+                                                             double step, Supplier<Consumer<Double>> setterSupplier,
+                                                             java.util.function.Function<WeaponSlotOverride, Object> overrideCheck,
+                                                             java.util.function.Function<SlotData, Double> valueGetter,
+                                                             String lockedTooltipKey) {
         String tooltip;
         if (multiSelectionAllowed) {
             tooltip = Utility.getWithLinebreaks(StringManager.getString("CHANGE_APPLIES_TO_FIRST_SELECTED_SLOT"), StringManager.getString("MOUSEWHEEL_TO_CHANGE"));
@@ -397,10 +337,8 @@ public abstract class AbstractSlotValuesPanel extends LayerPropertiesPanel {
         }
         selectorLabel.setToolTipText(tooltip);
 
-        double minValue = Integer.MIN_VALUE + 1;
-        double maxValue = Integer.MAX_VALUE - 1;
-        SpinnerNumberModel spinnerNumberModel = new SpinnerNumberModel(0.0d,
-                minValue, maxValue, 1.0d
+        SpinnerNumberModel spinnerNumberModel = new SpinnerNumberModel(
+                0.0d, minValue, maxValue, step
         );
         JSpinner spinner =  Spinners.createWheelable(spinnerNumberModel);
 
@@ -409,12 +347,12 @@ public abstract class AbstractSlotValuesPanel extends LayerPropertiesPanel {
                 Number modelNumber = spinnerNumberModel.getNumber();
                 double current = modelNumber.doubleValue();
 
-                Consumer<Double> setter = getRenderOrderSetter();
+                Consumer<Double> setter = setterSupplier.get();
                 setter.accept(current);
             }
         });
 
-        registerSkinOverrideSpinner(spinner, WeaponSlotOverride::getRenderOrderModBoxed, slot -> (double) slot.getRenderOrderMod(), "LOCKED_RENDER_ORDER_OVERRIDDEN_BY_SKIN");
+        registerSkinOverrideSpinner(spinner, overrideCheck, valueGetter, lockedTooltipKey);
 
         return new Pair<>(selectorLabel, spinner);
     }

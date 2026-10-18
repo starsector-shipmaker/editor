@@ -31,6 +31,7 @@ import shipeditor.representation.weapon.WeaponSlot;
 import shipeditor.representation.weapon.WeaponEnums.WeaponType;
 import shipeditor.utility.Utility;
 import shipeditor.utility.graphics.ColorUtilities;
+import shipeditor.utility.components.ToastManager;
 import shipeditor.utility.overseers.StaticController;
 import shipeditor.utility.text.StringConstants;
 import javax.swing.JFileChooser;
@@ -106,7 +107,12 @@ final class SaveHullAction {
                 if (csvEntry != null) {
                     csvEntry.setHullSpecFile(toSerialize);
                 }
-                StaticController.getViewer().getLayerManager().markSaved(shipLayer, "hull");
+                var layerManager = StaticController.getViewer().getLayerManager();
+                layerManager.markSaved(shipLayer, "hull");
+                if (shipLayer.getActiveVariant() == null) {
+                    layerManager.markSaved(shipLayer, "variant");
+                }
+                ToastManager.show("Saved " + result.getName() + " to " + result, ToastManager.ToastLevel.SUCCESS);
             } catch (IOException e) {
                 log.error(errorMessage, result.getName(), e);
                 JOptionPane.showMessageDialog(shipeditor.PrimaryWindow.getInstance(),

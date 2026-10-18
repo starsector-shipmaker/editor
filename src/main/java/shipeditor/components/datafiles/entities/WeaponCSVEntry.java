@@ -62,6 +62,8 @@ public class WeaponCSVEntry implements LayerableEntry, InstallableEntry {
 
     private WeaponSpecFile specFile;
 
+    private boolean specLoadAttempted;
+
     private WeaponSprites sprites;
 
     private Sprite weaponImage;
@@ -81,19 +83,28 @@ public class WeaponCSVEntry implements LayerableEntry, InstallableEntry {
     public void setWeaponID(String newID) {
         this.weaponID = newID;
         this.rowData.put("id", newID);
+        this.specLoadAttempted = false;
     }
 
     public void setSpecFile(WeaponSpecFile weaponSpecFile) {
         this.specFile = weaponSpecFile;
+        this.specLoadAttempted = weaponSpecFile != null;
     }
 
     public WeaponSpecFile getSpecFile() {
-        if (specFile == null) {
+        if (specFile == null && !specLoadAttempted) {
+            specLoadAttempted = true;
+            if (weaponID == null || weaponID.isBlank()) {
+                return null;
+            }
             Path filePath = shipeditor.persistence.database.DatabaseQueryService.getFilePathForEntity(weaponID, StringConstants.WEAPON_TYPE);
             if (filePath != null) {
                 specFile = FileLoading.loadWeaponFile(filePath.toFile());
             } else {
-                log.error("Failed to locate weapon file path for ID: {}", weaponID);
+                log.debug("No weapon spec file path found for ID: {}", weaponID);
+                shipeditor.utility.DataProblemsRegistry.recordInPackage(
+                        shipeditor.utility.DataProblemsRegistry.Category.MISSING_WEAPON_SPEC, weaponID,
+                        packageFolderPath, "No .wpn spec file found for weapon ID");
             }
         }
         return specFile;
@@ -431,7 +442,7 @@ public class WeaponCSVEntry implements LayerableEntry, InstallableEntry {
             String framePath = Utility.getFrameSpritePath(pathInPackage, i);
             if (framePath != null && !framePath.equals(pathInPackage)) {
                 Path filePath = Path.of(framePath);
-                File spriteFile = FileLoading.fetchDataFile(filePath, this.packageFolderPath);
+                File spriteFile = shipeditor.parsing.loading.FileSystemUtils.fetchDataFileQuiet(filePath, this.packageFolderPath);
                 if (spriteFile != null && spriteFile.exists()) {
                     Sprite frameSprite = FileLoading.loadSprite(spriteFile);
                     if (frameSprite != null) {

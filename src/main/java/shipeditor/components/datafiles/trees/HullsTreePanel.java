@@ -9,7 +9,6 @@ import shipeditor.components.datafiles.entities.ShipCSVEntry;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.parsing.FileUtilities;
 import shipeditor.persistence.GameDataPackage;
-import shipeditor.persistence.Settings;
 import shipeditor.persistence.SettingsManager;
 import shipeditor.representation.ship.SkinSpecFile;
 import shipeditor.utility.overseers.StaticController;
@@ -20,24 +19,20 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 import javax.swing.JTree;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.text.Document;
 import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreePath;
-import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import shipeditor.utility.components.widgets.SimpleDocumentListener;
 import shipeditor.utility.components.UIConstants;
 import shipeditor.communication.events.components.ComponentEvents.SelectShipDataEntry;
 import shipeditor.communication.events.components.ComponentEvents.GameDataPanelResized;
@@ -136,7 +131,7 @@ public class HullsTreePanel extends DataTreePanel {
         timer.setRepeats(false);
 
         Document document = searchField.getDocument();
-        document.addDocumentListener(new SearchFieldDocumentListener(timer));
+        document.addDocumentListener(new SimpleDocumentListener(timer::restart));
         return searchField;
     }
 
@@ -186,9 +181,7 @@ public class HullsTreePanel extends DataTreePanel {
     }
 
     void updateEntryPanel(ShipCSVEntry selected) {
-        JPanel infoPanel = getLeftInfoPanel();
-        infoPanel.removeAll();
-        infoPanel.setLayout(new javax.swing.BoxLayout(infoPanel, javax.swing.BoxLayout.Y_AXIS));
+        JPanel infoPanel = DataTreeSupport.prepareInfoPanel(getLeftInfoPanel());
 
         ShipFilesSubpanel shipFilesSubpanel = new ShipFilesSubpanel(infoPanel);
         JPanel shipFilesPanel = shipFilesSubpanel.createShipFilesPanel(selected, this);
@@ -268,27 +261,11 @@ public class HullsTreePanel extends DataTreePanel {
     private static DefaultMutableTreeNode createPackageNode(Map.Entry<String, List<shipeditor.persistence.database.IndexedFile>> hullFolder) {
         String packageName = hullFolder.getKey();
 
-        Settings settings = SettingsManager.getSettings();
-
-        DefaultMutableTreeNode result;
-        if ("starsector-core".equals(packageName)) {
-            GameDataPackage corePackage = SettingsManager.getCorePackage();
-            result = new DefaultMutableTreeNode(corePackage);
-            for (shipeditor.persistence.database.IndexedFile entry : hullFolder.getValue()) {
-                MutableTreeNode shipNode = new DefaultMutableTreeNode(entry);
-                result.add(shipNode);
-            }
-        } else {
-            GameDataPackage dataPackage = settings.getPackage(packageName);
-            if (dataPackage == null) {
-                dataPackage = new GameDataPackage(packageName, false, false);
-            }
-            result = new DefaultMutableTreeNode(dataPackage);
-
-            for (shipeditor.persistence.database.IndexedFile entry : hullFolder.getValue()) {
-                MutableTreeNode shipNode = new DefaultMutableTreeNode(entry);
-                result.add(shipNode);
-            }
+        DefaultMutableTreeNode result = DataTreeSupport.createPackageRootNode(packageName,
+                "starsector-core".equals(packageName));
+        for (shipeditor.persistence.database.IndexedFile entry : hullFolder.getValue()) {
+            MutableTreeNode shipNode = new DefaultMutableTreeNode(entry);
+            result.add(shipNode);
         }
 
         return result;
@@ -380,21 +357,10 @@ public class HullsTreePanel extends DataTreePanel {
         FileUtilities.openPathInDesktop(toOpen);
     }
 
-    private static class HullsTreeCellRenderer extends DefaultTreeCellRenderer {
+    private static class HullsTreeCellRenderer extends TreeEntryRenderer {
 
-        @SuppressWarnings("ParameterHidesMemberVariable")
         @Override
-        public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel,
-                boolean expanded, boolean leaf, int row, boolean hasFocus) {
-            super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus);
-            if (!(value instanceof DefaultMutableTreeNode treeNode)) {
-                return this;
-            }
-            Object object = treeNode.getUserObject();
-            if (object == null) {
-                return this;
-            }
-            DataTreePanel.configureCellRendererColors(object, this);
+        protected void customizeEntry(Object object, boolean leaf) {
             setIcon(null);
             if (object instanceof shipeditor.persistence.database.IndexedFile file) {
                 var gameData = SettingsManager.getGameData();
@@ -421,7 +387,6 @@ public class HullsTreePanel extends DataTreePanel {
                 }
                 setText(title);
             }
-            return this;
         }
 
     }
@@ -432,43 +397,12 @@ public class HullsTreePanel extends DataTreePanel {
         @Override
         public void mousePressed(MouseEvent e) {
             // Check for double-click.
-            if (e.getButton() != MouseEvent.BUTTON1 || e.getClickCount() != 2)
+            DefaultMutableTreeNode node = DataTreeSupport.getDoubleClickedNode(getTree(), e);
+            if (node == null)
                 return;
-            JTree tree = getTree();
-            Point eventPoint = e.getPoint();
-            TreePath pathForLocation = tree.getPathForLocation(eventPoint.x, eventPoint.y);
-            TreePath selectionPath = tree.getSelectionPath();
-            TreePath targetPath = pathForLocation != null ? pathForLocation : selectionPath;
-            
-            if (targetPath == null)
-                return;
-            DefaultMutableTreeNode node = (DefaultMutableTreeNode) targetPath.getLastPathComponent();
             if (node.getUserObject() instanceof shipeditor.persistence.database.IndexedFile file) {
                 loadShipFromIndexedFile(file);
             }
-        }
-    }
-
-    private static class SearchFieldDocumentListener implements DocumentListener {
-        private final javax.swing.Timer timer;
-
-        SearchFieldDocumentListener(javax.swing.Timer timer) {
-            this.timer = timer;
-        }
-
-        @Override
-        public void insertUpdate(DocumentEvent e) {
-            timer.restart();
-        }
-
-        @Override
-        public void removeUpdate(DocumentEvent e) {
-            timer.restart();
-        }
-
-        @Override
-        public void changedUpdate(DocumentEvent e) {
-            timer.restart();
         }
     }
 

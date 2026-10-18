@@ -9,15 +9,16 @@ import shipeditor.components.datafiles.entities.WingCSVEntry;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.viewer.layers.ViewerLayer;
 import shipeditor.components.viewer.layers.ship.ShipLayer;
+import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.components.viewer.layers.ship.data.ShipHull;
 import shipeditor.persistence.GameDataPackage;
 import shipeditor.persistence.SettingsManager;
 import shipeditor.representation.GameDataRepository;
 import shipeditor.representation.ship.VariantFile;
 import shipeditor.undo.EditDispatch;
+import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.overseers.StaticController;
 
-import javax.swing.Action;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -25,8 +26,8 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeCellRenderer;
-import java.awt.Component;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
@@ -41,11 +42,6 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
     @Override
     protected boolean isDataLoaded() {
         return SettingsManager.getGameData().isWingDataLoaded();
-    }
-
-    @Override
-    protected Action getLoadDataAction() {
-        return new javax.swing.AbstractAction("Reload") { @Override public void actionPerformed(java.awt.event.ActionEvent e) { reload(); } };
     }
 
     @Override
@@ -79,6 +75,25 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
     }
 
     @Override
+    protected void initTreePanelListeners(JPanel passedTreePanel) {
+        super.initTreePanelListeners(passedTreePanel);
+        JTree tree = getTree();
+        tree.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                DefaultMutableTreeNode node = DataTreeSupport.getDoubleClickedNode(tree, e);
+                if (node == null) {
+                    return;
+                }
+                WingCSVEntry entry = getObjectFromNode(node);
+                if (entry != null) {
+                    WingsTreePanel.handleDoubleClickOnWing(entry);
+                }
+            }
+        });
+    }
+
+    @Override
     protected void initWalkerListening() {
         EventBus.subscribe(this, event -> {
             if (event instanceof WingDataLoaded) {
@@ -87,19 +102,41 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
         });
     }
 
+    private static void handleDoubleClickOnWing(WingCSVEntry entry) {
+        ViewerLayer activeLayer = StaticController.getActiveLayer();
+        if (!(activeLayer instanceof ShipLayer checkedLayer)) {
+            return;
+        }
+        EditorInstrument mode = StaticController.getEditorMode();
+        if (mode == EditorInstrument.BUILT_IN_WINGS) {
+            var skin = checkedLayer.getActiveSkin();
+            if (skin != null && !skin.isBase()) {
+                var skinAdded = skin.getBuiltInWings();
+                if (skinAdded != null && WingsTreePanel.isPushEntryToListSuccessful(skinAdded, checkedLayer, entry)) {
+                    EventBus.publish(new ActiveLayerUpdated(checkedLayer));
+                }
+            } else {
+                ShipHull hull = checkedLayer.getHull();
+                if (hull != null && hull.getBuiltInWings() != null) {
+                    if (WingsTreePanel.isPushEntryToListSuccessful(hull.getBuiltInWings(), checkedLayer, entry)) {
+                        EventBus.publish(new ActiveLayerUpdated(checkedLayer));
+                    }
+                }
+            }
+        } else if (mode != null && ("VARIANT_WINGS".equals(mode.name()) || mode == EditorInstrument.VARIANT_DATA)) {
+            WingsTreePanel.addWingToVariant(checkedLayer, entry);
+        }
+    }
+
     @Override
     protected void updateEntryPanel(WingCSVEntry selected) {
-        JPanel infoPanel = getLeftInfoPanel();
-        infoPanel.removeAll();
-        infoPanel.setLayout(new javax.swing.BoxLayout(infoPanel, javax.swing.BoxLayout.Y_AXIS));
+        JPanel infoPanel = DataTreeSupport.prepareInfoPanel(getLeftInfoPanel());
 
-        shipeditor.utility.components.ComponentUtilities.InfoPanelBuilder builder = new shipeditor.utility.components.ComponentUtilities.InfoPanelBuilder("Wing Info");
+        ComponentUtilities.InfoPanelBuilder builder = new ComponentUtilities.InfoPanelBuilder("Wing Info");
 
         JLabel spriteIcon = selected.getIconLabel(128);
         if (spriteIcon != null) {
-            JPanel iconPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER));
-            iconPanel.add(spriteIcon);
-            builder.addCustomComponent(iconPanel);
+            builder.addCustomComponent(ComponentUtilities.createCenteredPanel(spriteIcon));
         }
 
         VariantFile variantFile = selected.retrieveMemberVariant();
@@ -128,51 +165,48 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
     }
 
     @Override
-    protected WingCSVEntry getObjectFromNode(DefaultMutableTreeNode node) {
-        Object userObject = node.getUserObject();
-        if (!(userObject instanceof WingCSVEntry checked)) return null;
-        return checked;
-    }
-
-    @Override
     JPopupMenu getContextMenu() {
         JPopupMenu menu = super.getContextMenu();
         DefaultMutableTreeNode cachedSelectForMenu = getCachedSelectForMenu();
-        if (cachedSelectForMenu.getUserObject() instanceof WingCSVEntry checked) {
-            switch (StaticController.getEditorMode()) {
-                case BUILT_IN_WINGS -> {
-                    menu.addSeparator();
-                    WingsTreePanel.populateBuiltInOptions(menu, checked);
-                }
-                case VARIANT_DATA -> {
-                    menu.addSeparator();
-                    WingsTreePanel.populateVariantOptions(menu, checked);
-                }
-                default -> {}
+        if (cachedSelectForMenu != null && cachedSelectForMenu.getUserObject() instanceof WingCSVEntry checked) {
+            EditorInstrument mode = StaticController.getEditorMode();
+            if (mode == EditorInstrument.BUILT_IN_WINGS) {
+                menu.addSeparator();
+                WingsTreePanel.populateBuiltInOptions(menu, checked);
+            }
+            if (WingsTreePanel.isCurrentLayerVariantEligible()
+                    || (mode != null && mode.name().startsWith("VARIANT"))) {
+                menu.addSeparator();
+                WingsTreePanel.populateVariantOptions(menu, checked);
             }
         }
         return menu;
     }
 
     private static void populateVariantOptions(JPopupMenu menu, WingCSVEntry entry) {
-        EditorInstrument targetMode = EditorInstrument.VARIANT_DATA;
-
         JMenuItem addToVariantWings = new JMenuItem(StringManager.getString("ADD_TO_VARIANT_WINGS"));
         ViewerLayer activeLayer = StaticController.getActiveLayer();
         addToVariantWings.addActionListener(e -> {
             if (activeLayer instanceof ShipLayer checkedLayer) {
-                var variant = checkedLayer.getActiveVariant();
-                if (variant == null) return;
-                var variantWings = variant.getWings();
-                if (WingsTreePanel.isPushEntryToListSuccessful(variantWings, checkedLayer, entry)) {
-                    EventBus.publish(new ActiveLayerUpdated(activeLayer));
-                }
+                WingsTreePanel.addWingToVariant(checkedLayer, entry);
             }
         });
-        if (!WingsTreePanel.isCurrentLayerVariantEligible() || WingsTreePanel.isNotActiveInstrument(targetMode)) {
+        if (!WingsTreePanel.isCurrentLayerVariantEligible()) {
             addToVariantWings.setEnabled(false);
         }
         menu.add(addToVariantWings);
+    }
+
+    private static void addWingToVariant(ShipLayer checkedLayer, WingCSVEntry entry) {
+        ShipPainter painter = checkedLayer.getPainter();
+        if (painter == null || painter.isUninitialized()) {
+            return;
+        }
+        var variant = DataTreeSupport.getOrCreateActiveVariant(checkedLayer, painter);
+        var variantWings = variant.getWings();
+        if (variantWings != null && WingsTreePanel.isPushEntryToListSuccessful(variantWings, checkedLayer, entry)) {
+            EventBus.publish(new ActiveLayerUpdated(checkedLayer));
+        }
     }
 
     private static void populateBuiltInOptions(JPopupMenu menu, WingCSVEntry entry) {
@@ -191,7 +225,7 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
                 }
             }
         });
-        if (!WingsTreePanel.areCurrentLayerBuiltInsEligible() || WingsTreePanel.isNotActiveInstrument(targetMode)) {
+        if (!WingsTreePanel.areCurrentLayerBuiltInsEligible() || DataTreeSupport.isNotActiveInstrument(targetMode)) {
             addToHullBuiltIns.setEnabled(false);
         }
         menu.add(addToHullBuiltIns);
@@ -213,14 +247,10 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
                 }
             }
         });
-        if (DataTreePanel.isCurrentSkinNotEligible() || WingsTreePanel.isNotActiveInstrument(targetMode)) {
+        if (DataTreePanel.isCurrentSkinNotEligible() || DataTreeSupport.isNotActiveInstrument(targetMode)) {
             addToSkinAdded.setEnabled(false);
         }
         return addToSkinAdded;
-    }
-
-    private static boolean isNotActiveInstrument(EditorInstrument target) {
-        return StaticController.getEditorMode() != target;
     }
 
     private static boolean isPushEntryToListSuccessful(List<WingCSVEntry> list, ShipLayer layer,
@@ -242,17 +272,7 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
     }
 
     private static boolean isCurrentLayerVariantEligible() {
-        ViewerLayer activeLayer = StaticController.getActiveLayer();
-        boolean isShipLayer = activeLayer instanceof ShipLayer;
-        ShipLayer shipLayer;
-        if (isShipLayer) {
-            shipLayer = (ShipLayer) activeLayer;
-        } else return false;
-        var variant = shipLayer.getActiveVariant();
-        if (variant != null) {
-            var wings = variant.getWings();
-            return wings != null;
-        } else return false;
+        return DataTreeSupport.isLayerEligibleForVariant(StaticController.getActiveLayer());
     }
 
     @Override
@@ -260,21 +280,11 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
         return WingCSVEntry.class;
     }
 
-    private static class WingsTreeCellRenderer extends DefaultTreeCellRenderer {
+    private static class WingsTreeCellRenderer extends TreeEntryRenderer {
 
-        @SuppressWarnings({"ParameterHidesMemberVariable", "ChainOfInstanceofChecks"})
+        @SuppressWarnings("ChainOfInstanceofChecks")
         @Override
-        public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel,
-                                                      boolean expanded, boolean leaf, int row, boolean hasFocus) {
-            super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus);
-            if (!(value instanceof DefaultMutableTreeNode treeNode)) {
-                return this;
-            }
-            Object object = treeNode.getUserObject();
-            if (object == null) {
-                return this;
-            }
-            DataTreePanel.configureCellRendererColors(object, this);
+        protected void customizeEntry(Object object, boolean leaf) {
             if (object instanceof WingCSVEntry checked) {
                 String name = checked.getEntryName();
                 if (name == null || name.isBlank()) {
@@ -287,8 +297,6 @@ public class WingsTreePanel extends CSVDataTreePanel<WingCSVEntry>{
             } else if (object instanceof GameDataPackage dataPackage) {
                 setText(dataPackage.getFolderName());
             }
-
-            return this;
         }
 
     }

@@ -51,6 +51,7 @@ import javax.swing.JPopupMenu;
 import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import javax.swing.plaf.TabbedPaneUI;
+import java.awt.Color;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
@@ -69,6 +70,10 @@ import shipeditor.communication.events.files.FileEvents.ProjectileSaveQueued;
 public final class ViewerLayersPanel extends SortableTabbedPane {
 
     private static final String LAYER = "Layer #";
+
+    private static final Color HULL_BADGE_COLOR = new Color(230, 126, 34);
+    private static final Color VARIANT_BADGE_COLOR = new Color(52, 152, 219);
+    private static final Color SKIN_BADGE_COLOR = new Color(155, 89, 182);
 
     /**
      * Expected to be the same instance that is originally created and assigned in viewer;
@@ -191,7 +196,7 @@ public final class ViewerLayersPanel extends SortableTabbedPane {
         }
         
         this.setTitleAt(indexOfComponent(tab), shipeditor.utility.Utility.wrapTextWithHtml(tabTitle, 7));
-        this.setToolTipTextAt(indexOfComponent(tab), tab.getTabTooltip());
+        this.applyDirtyIndicators(tab, layer);
     }
 
     private void updateShipTab(ShipLayerTab tab, ShipLayer layer) {
@@ -244,7 +249,7 @@ public final class ViewerLayersPanel extends SortableTabbedPane {
             tabTitle += "*";
         }
         this.setTitleAt(indexOfComponent(tab), shipeditor.utility.Utility.wrapTextWithHtml(tabTitle, 7));
-        this.setToolTipTextAt(indexOfComponent(tab), tab.getTabTooltip());
+        this.applyDirtyIndicators(tab, layer);
     }
 
     private void updateWeaponTab(WeaponLayerTab tab, WeaponLayer layer) {
@@ -297,7 +302,62 @@ public final class ViewerLayersPanel extends SortableTabbedPane {
         }
         
         this.setTitleAt(indexOfComponent(tab), shipeditor.utility.Utility.wrapTextWithHtml(tabTitle, 7));
-        this.setToolTipTextAt(indexOfComponent(tab), tab.getTabTooltip());
+        this.applyDirtyIndicators(tab, layer);
+    }
+
+    /**
+     * Shows one badge per unsaved category (hull / variant / skin for ships) as the tab icon
+     * and appends the list of unsaved categories to the tab tooltip.
+     */
+    private void applyDirtyIndicators(LayerTab tab, ViewerLayer layer) {
+        int index = indexOfComponent(tab);
+        if (index < 0) {
+            return;
+        }
+        List<DirtyBadgeIcon.Badge> badges = collectDirtyBadges(layer);
+        log.debug("Updating dirty badges for tab {}: {}", index, badges);
+        this.setIconAt(index, badges.isEmpty() ? null : new DirtyBadgeIcon(badges));
+
+        String tooltip = tab.getTabTooltip();
+        if (!badges.isEmpty()) {
+            List<String> names = new ArrayList<>();
+            for (DirtyBadgeIcon.Badge badge : badges) {
+                names.add(badge.description());
+            }
+            String unsavedLine = "<b>Unsaved:</b> " + String.join(", ", names);
+            if (tooltip == null || tooltip.isEmpty()) {
+                tooltip = "<html>" + unsavedLine + "</html>";
+            } else if (tooltip.endsWith("</html>")) {
+                tooltip = tooltip.substring(0, tooltip.length() - "</html>".length()) + unsavedLine + "</html>";
+            } else {
+                tooltip = "<html>" + tooltip + "<br>" + unsavedLine + "</html>";
+            }
+        }
+        this.setToolTipTextAt(index, tooltip);
+    }
+
+    private List<DirtyBadgeIcon.Badge> collectDirtyBadges(ViewerLayer layer) {
+        List<DirtyBadgeIcon.Badge> badges = new ArrayList<>();
+        if (layer instanceof ShipLayer) {
+            if (layerManager.isHullDirty(layer)) {
+                badges.add(new DirtyBadgeIcon.Badge("H", HULL_BADGE_COLOR, "hull"));
+            }
+            if (layerManager.isVariantDirty(layer)) {
+                badges.add(new DirtyBadgeIcon.Badge("V", VARIANT_BADGE_COLOR, "variant"));
+            }
+            if (layerManager.isCategoryDirty(layer, "skin")) {
+                badges.add(new DirtyBadgeIcon.Badge("S", SKIN_BADGE_COLOR, "skin"));
+            }
+        } else if (layer instanceof WeaponLayer) {
+            if (layerManager.isCategoryDirty(layer, "weapon")) {
+                badges.add(new DirtyBadgeIcon.Badge("W", HULL_BADGE_COLOR, "weapon"));
+            }
+        } else if (layer instanceof ProjectileLayer) {
+            if (layerManager.isCategoryDirty(layer, "projectile")) {
+                badges.add(new DirtyBadgeIcon.Badge("P", HULL_BADGE_COLOR, "projectile"));
+            }
+        }
+        return badges;
     }
 
     @Override

@@ -7,6 +7,7 @@ import lombok.extern.log4j.Log4j2;
 import shipeditor.components.viewer.layers.weapon.WeaponLayer;
 import shipeditor.parsing.FileUtilities;
 import shipeditor.representation.weapon.WeaponSpecFile;
+import shipeditor.utility.components.ToastManager;
 import shipeditor.utility.overseers.StaticController;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -69,6 +70,7 @@ final class SaveWeaponAction {
                 objectMapper.writeValue(result, weaponSpecFile);
                 
                 StaticController.getViewer().getLayerManager().markSaved(weaponLayer, "weapon");
+                ToastManager.show("Saved " + result.getName() + " to " + result, ToastManager.ToastLevel.SUCCESS);
             } catch (IOException e) {
                 log.error(errorMessage, result.getName(), e);
                 JOptionPane.showMessageDialog(shipeditor.PrimaryWindow.getInstance(),

@@ -5,15 +5,15 @@ import shipeditor.components.ComponentEnums.OpenDataTarget;
 import shipeditor.components.datafiles.entities.CSVEntry;
 import shipeditor.parsing.FileUtilities;
 import shipeditor.persistence.GameDataPackage;
-import shipeditor.persistence.Settings;
 import shipeditor.persistence.SettingsManager;
 
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 import javax.swing.JPanel;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.TreePath;
-import java.awt.Component;
+import java.awt.event.ActionEvent;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -30,28 +30,8 @@ public abstract class CSVDataTreePanel<T extends CSVEntry> extends DataTreePanel
     @Override
     protected JTree createCustomTree() {
         JTree custom = super.createCustomTree();
-        custom.setCellRenderer(new CSVDataCellRenderer());
+        custom.setCellRenderer(new TreeEntryRenderer());
         return custom;
-    }
-
-    private static class CSVDataCellRenderer extends DefaultTreeCellRenderer {
-
-        @SuppressWarnings("ParameterHidesMemberVariable")
-        @Override
-        public Component getTreeCellRendererComponent(JTree tree, Object value, boolean sel,
-                                                      boolean expanded, boolean leaf, int row, boolean hasFocus) {
-            super.getTreeCellRendererComponent(tree, value, sel, expanded, leaf, row, hasFocus);
-            if (!(value instanceof DefaultMutableTreeNode treeNode)) {
-                return this;
-            }
-            Object object = treeNode.getUserObject();
-            if (object == null) {
-                return this;
-            }
-            DataTreePanel.configureCellRendererColors(object, this);
-            return this;
-        }
-
     }
 
     @SuppressWarnings("ChainOfInstanceofChecks")
@@ -119,19 +99,9 @@ public abstract class CSVDataTreePanel<T extends CSVEntry> extends DataTreePanel
         Path path = entryFolder.getKey();
         String packagePath = path.toString();
         String folderName = FileUtilities.extractFolderName(packagePath);
-        Settings settings = SettingsManager.getSettings();
 
-        DefaultMutableTreeNode result;
-        if (SettingsManager.isCoreFolder(folderName)) {
-            GameDataPackage corePackage = SettingsManager.getCorePackage();
-            result = new DefaultMutableTreeNode(corePackage);
-        } else {
-            GameDataPackage dataPackage = settings.getPackage(folderName);
-            if (dataPackage == null) {
-                dataPackage = new GameDataPackage(folderName, false, false);
-            }
-            result = new DefaultMutableTreeNode(dataPackage);
-        }
+        DefaultMutableTreeNode result = DataTreeSupport.createPackageRootNode(folderName,
+                SettingsManager.isCoreFolder(folderName));
 
         List<T> entries = entryFolder.getValue();
         if (entries != null && !entries.isEmpty()) {
@@ -169,7 +139,23 @@ public abstract class CSVDataTreePanel<T extends CSVEntry> extends DataTreePanel
 
     protected abstract void updateEntryPanel(T selected);
 
-    protected abstract T getObjectFromNode(DefaultMutableTreeNode node);
+    @Override
+    protected Action getLoadDataAction() {
+        return new AbstractAction("Reload") {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                reload();
+            }
+        };
+    }
+
+    protected T getObjectFromNode(DefaultMutableTreeNode node) {
+        Object userObject = node.getUserObject();
+        if (!getEntryClass().isInstance(userObject)) return null;
+        @SuppressWarnings("unchecked")
+        T checked = (T) userObject;
+        return checked;
+    }
 
     @Override
     protected void openEntryPath(OpenDataTarget target) {

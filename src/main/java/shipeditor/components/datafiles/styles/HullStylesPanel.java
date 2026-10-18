@@ -1,24 +1,15 @@
 package shipeditor.components.datafiles.styles;
 
-import shipeditor.utility.text.StringManager;
-
 import shipeditor.communication.EventBus;
 import shipeditor.communication.events.files.FileEvents.HullStylesLoaded;
 import shipeditor.representation.ship.HullStyle;
 import shipeditor.utility.components.ComponentUtilities;
 
-import javax.swing.BoxLayout;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.nio.file.Path;
 import java.util.Map;
 
 public class HullStylesPanel extends AbstractStylesPanel {
-
-    @Override
-    protected JPanel createTopPanel() {
-        return new JPanel();
-    }
 
     @Override
     protected boolean isDataLoaded() {
@@ -43,14 +34,7 @@ public class HullStylesPanel extends AbstractStylesPanel {
     }
 
     private void populatePanel(Map<String, HullStyle> hullStyles) {
-        if (hullStyles == null) return;
-        JPanel scrollerContent = getScrollerContent();
-        scrollerContent.removeAll();
-        for (HullStyle style : hullStyles.values()) {
-            scrollerContent.add(this.createStylePanel(style));
-        }
-        scrollerContent.revalidate();
-        scrollerContent.repaint();
+        populateStyles(hullStyles);
     }
 
     @Override
@@ -69,24 +53,15 @@ public class HullStylesPanel extends AbstractStylesPanel {
     @Override
     protected JPanel createStyleContentPanel(Object style) {
         if (style instanceof HullStyle checked) {
-            JPanel contentContainer = new JPanel();
-            contentContainer.setLayout(new BoxLayout(contentContainer, BoxLayout.PAGE_AXIS));
+            JPanel contentContainer = createStyleContentContainer();
 
-            JLabel ringLabel = new JLabel(StringManager.getString("SHIELD_RING_COLOR"));
-            JPanel ringColorPanel = ComponentUtilities.createColorPropertyPanel(ringLabel,
-                    checked.getShieldRingColor(), CONTENT_SIDE_PAD, color -> {
-                        checked.setShieldRingColor(color);
-                        shipeditor.utility.overseers.StaticController.getScheduler().queueBuiltInsRepaint();
-                    });
-            contentContainer.add(ringColorPanel);
+            contentContainer.add(createColorRow("SHIELD_RING_COLOR", checked.getShieldRingColor(),
+                    checked::setShieldRingColor,
+                    () -> shipeditor.utility.overseers.StaticController.getScheduler().queueBuiltInsRepaint()));
 
-            JLabel innerLabel = new JLabel(StringManager.getString("SHIELD_INNER_COLOR"));
-            JPanel innerColorPanel = ComponentUtilities.createColorPropertyPanel(innerLabel,
-                    checked.getShieldInnerColor(), CONTENT_SIDE_PAD, color -> {
-                        checked.setShieldInnerColor(color);
-                        shipeditor.utility.overseers.StaticController.getScheduler().queueBuiltInsRepaint();
-                    });
-            contentContainer.add(innerColorPanel);
+            contentContainer.add(createColorRow("SHIELD_INNER_COLOR", checked.getShieldInnerColor(),
+                    checked::setShieldInnerColor,
+                    () -> shipeditor.utility.overseers.StaticController.getScheduler().queueBuiltInsRepaint()));
 
             return contentContainer;
         } else {

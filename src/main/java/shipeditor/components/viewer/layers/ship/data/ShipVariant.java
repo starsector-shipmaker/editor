@@ -19,7 +19,6 @@ import shipeditor.components.viewer.layers.weapon.WeaponPainter;
 import shipeditor.components.viewer.ViewerEnums.FireMode;
 import shipeditor.components.viewer.painters.points.ship.features.FittedWeaponGroup;
 import shipeditor.components.viewer.painters.points.ship.features.InstalledFeature;
-import shipeditor.persistence.SettingsManager;
 import shipeditor.representation.GameDataRepository;
 import shipeditor.representation.RepresentationEnums.HullSize;
 import shipeditor.representation.ship.SpecWeaponGroup;
@@ -101,12 +100,117 @@ public class ShipVariant implements Variant {
         int counter = 1;
         while (true) {
             Map<String, ShipVariant> loadedVariants = shipLayer.getLoadedVariants();
-            if (!loadedVariants.containsKey(result)) break;
+            if (!loadedVariants.containsKey(result) && GameDataRepository.getVariantByID(result) == null) {
+                break;
+            }
             result = shipID + "_custom_" + String.format("%02d", counter);
             counter++;
         }
 
         return result;
+    }
+
+    /**
+     * Creates an independent deep copy of this variant with a new variant ID and display name.
+     */
+    public ShipVariant createDeepCopy(String newVariantId, String newDisplayName) {
+        log.debug("Creating deep copy of variant '{}' as '{}'", this.variantId, newVariantId);
+        ShipVariant copy = new ShipVariant(false);
+        copy.setVariantId(newVariantId);
+        copy.setDisplayName(newDisplayName);
+        copy.setShipHullId(this.shipHullId);
+        copy.setContainingPackage(this.containingPackage);
+        copy.setVariantFilePath(null);
+        copy.setLoadedFromFile(false);
+        copy.setFluxCapacitors(this.fluxCapacitors);
+        copy.setFluxVents(this.fluxVents);
+        copy.setGoalVariant(this.goalVariant);
+        copy.setQuality(this.quality);
+
+        if (this.hullMods != null) {
+            copy.setHullMods(new ArrayList<>(this.hullMods));
+        }
+        if (this.permaMods != null) {
+            copy.setPermaMods(new ArrayList<>(this.permaMods));
+        }
+        if (this.sMods != null) {
+            copy.setSMods(new ArrayList<>(this.sMods));
+        }
+        if (this.suppressedMods != null) {
+            copy.setSuppressedMods(new ArrayList<>(this.suppressedMods));
+        }
+        if (this.wings != null) {
+            copy.setWings(new ArrayList<>(this.wings));
+        }
+
+        List<FittedWeaponGroup> copiedGroups = new ArrayList<>();
+        if (this.weaponGroups != null) {
+            for (FittedWeaponGroup group : this.weaponGroups) {
+                if (group == null) {
+                    continue;
+                }
+                FittedWeaponGroup copiedGroup = new FittedWeaponGroup(copy, group.isAutofire(), group.getMode());
+                ListOrderedMap<String, InstalledFeature> groupWeapons = group.getWeapons();
+                if (groupWeapons != null) {
+                    for (Map.Entry<String, InstalledFeature> entry : groupWeapons.entrySet()) {
+                        String slotID = entry.getKey();
+                        InstalledFeature origFeature = entry.getValue();
+                        if (origFeature == null) {
+                            continue;
+                        }
+                        LayerPainter copiedPainter = origFeature.getFeaturePainter();
+                        if (origFeature.getDataEntry() instanceof WeaponCSVEntry weaponEntry) {
+                            WeaponSpecFile specFile = weaponEntry.getSpecFile();
+                            if (specFile != null) {
+                                copiedPainter = weaponEntry.createPainterFromEntry(null, specFile);
+                            }
+                        }
+                        InstalledFeature copiedFeature;
+                        if (origFeature.getDataEntry() != null) {
+                            copiedFeature = InstalledFeature.of(
+                                    slotID, origFeature.getFeatureID(), copiedPainter, origFeature.getDataEntry());
+                        } else {
+                            copiedFeature = InstalledFeature.createEmpty(slotID);
+                        }
+                        copiedFeature.setContainedInBuiltIns(origFeature.isContainedInBuiltIns());
+                        copiedFeature.setParentGroup(copiedGroup);
+                        copiedGroup.getWeapons().put(slotID, copiedFeature);
+                    }
+                }
+                copiedGroups.add(copiedGroup);
+            }
+        }
+        copy.setWeaponGroups(copiedGroups);
+
+        ListOrderedMap<String, InstalledFeature> copiedModules = new ListOrderedMap<>();
+        if (this.fittedModules != null) {
+            for (Map.Entry<String, InstalledFeature> entry : this.fittedModules.entrySet()) {
+                String slotID = entry.getKey();
+                InstalledFeature origModule = entry.getValue();
+                if (origModule == null) {
+                    continue;
+                }
+                String moduleVariantID = origModule.getFeatureID();
+                VariantFile moduleVariantFile = GameDataRepository.getVariantByID(moduleVariantID);
+                InstalledFeature copiedModule = null;
+                if (moduleVariantFile != null) {
+                    copiedModule = shipeditor.components.viewer.layers.LayerFactory.createModuleFromVariant(
+                            slotID, moduleVariantFile);
+                }
+                if (copiedModule == null) {
+                    if (origModule.getDataEntry() != null) {
+                        copiedModule = InstalledFeature.of(
+                                slotID, moduleVariantID, origModule.getFeaturePainter(), origModule.getDataEntry());
+                    } else {
+                        copiedModule = origModule;
+                    }
+                }
+                copiedModules.put(slotID, copiedModule);
+            }
+        }
+        copy.setFittedModules(copiedModules);
+
+        return copy;
     }
 
     public List<InstalledFeature> getFittedModulesList() {
@@ -402,12 +506,13 @@ public class ShipVariant implements Variant {
         if (empty) {
             return EMPTY_VARIANT;
         }
+        String suffix = (variantId != null && !variantId.isBlank()) ? " (" + variantId + ")" : "";
         var hullFile = GameDataRepository.retrieveSpecByID(this.getShipHullId());
         if (hullFile != null) {
             String hullName = hullFile.getHullName();
-            return this.displayName + " " + hullName;
+            return this.displayName + " " + hullName + suffix;
         }
-        return displayName;
+        return displayName + suffix;
     }
 
 }

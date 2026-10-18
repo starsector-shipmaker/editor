@@ -222,10 +222,7 @@ public final class Initializations {
                 for (File root : roots) {
                     try {
                         Path rootPath = root.toPath();
-                        paths.add(rootPath.resolve("Games/Starsector"));
-                        paths.add(rootPath.resolve("Games/starsector"));
-                        paths.add(rootPath.resolve("Starsector"));
-                        paths.add(rootPath.resolve("starsector"));
+                        addStarsectorSubfolders(paths, rootPath);
                     } catch (Throwable t) {
                         log.warn("Failed to resolve path for drive root: {}", root, t);
                     }
@@ -244,10 +241,7 @@ public final class Initializations {
                             if (uMount.isDirectory()) {
                                 try {
                                     Path uMountPath = uMount.toPath();
-                                    paths.add(uMountPath.resolve("Games/Starsector"));
-                                    paths.add(uMountPath.resolve("Games/starsector"));
-                                    paths.add(uMountPath.resolve("Starsector"));
-                                    paths.add(uMountPath.resolve("starsector"));
+                                    addStarsectorSubfolders(paths, uMountPath);
 
                                     File[] subMounts = uMount.listFiles();
                                     if (subMounts != null) {
@@ -255,10 +249,7 @@ public final class Initializations {
                                             if (sub.isDirectory()) {
                                                 try {
                                                     Path subPath = sub.toPath();
-                                                    paths.add(subPath.resolve("Games/Starsector"));
-                                                    paths.add(subPath.resolve("Games/starsector"));
-                                                    paths.add(subPath.resolve("Starsector"));
-                                                    paths.add(subPath.resolve("starsector"));
+                                                    addStarsectorSubfolders(paths, subPath);
                                                 } catch (Throwable t) {
                                                     log.warn("Failed to resolve path for submount: {}", sub, t);
                                                 }
@@ -276,6 +267,13 @@ public final class Initializations {
         }
 
         return paths;
+    }
+
+    private static void addStarsectorSubfolders(List<Path> paths, Path base) {
+        paths.add(base.resolve("Games/Starsector"));
+        paths.add(base.resolve("Games/starsector"));
+        paths.add(base.resolve("Starsector"));
+        paths.add(base.resolve("starsector"));
     }
 
     public static void selectGameFolder() {

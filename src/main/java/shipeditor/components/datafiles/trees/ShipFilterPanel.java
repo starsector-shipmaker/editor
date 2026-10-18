@@ -31,8 +31,7 @@ public class ShipFilterPanel extends JPanel {
     private JComboBox<String> sizeCombo;
 
     public ShipFilterPanel() {
-        this.setLayout(new GridBagLayout());
-        this.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        FilterPanelSupport.setupFilterPanel(this);
         this.initUI();
         
         EventBus.subscribe(this, event -> {
@@ -43,22 +42,14 @@ public class ShipFilterPanel extends JPanel {
     }
 
     private void initUI() {
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(5, 5, 5, 5);
-        gbc.weightx = 1.0;
-        gbc.gridx = 0;
+        GridBagConstraints gbc = FilterPanelSupport.createFilterConstraints();
         
         gbc.gridy = 0;
         this.add(new JLabel(StringManager.getString("TECH_MANUFACTURER")), gbc);
         
         gbc.gridy = 1;
-        techCombo = new JComboBox<>();
-        techCombo.addActionListener(e -> {
-            if (isUpdatingDropdown) return;
-            String selected = (String) techCombo.getSelectedItem();
-            if ("Any".equals(selected)) selectedTech = null;
-            else selectedTech = selected;
+        techCombo = FilterPanelSupport.createTechCombo(() -> isUpdatingDropdown, selected -> {
+            selectedTech = selected;
             applyFilters();
         });
         this.add(techCombo, gbc);
@@ -67,15 +58,8 @@ public class ShipFilterPanel extends JPanel {
         this.add(new JLabel(StringManager.getString("HULL_SIZE")), gbc);
         
         gbc.gridy = 3;
-        sizeCombo = new JComboBox<>();
-        sizeCombo.addItem("Any");
-        for (HullSize size : HullSize.values()) {
-            sizeCombo.addItem(size.getDisplayedName());
-        }
-        sizeCombo.addActionListener(e -> {
-            int idx = sizeCombo.getSelectedIndex();
-            if (idx <= 0) selectedSize = null;
-            else selectedSize = HullSize.values()[idx - 1];
+        sizeCombo = FilterPanelSupport.createOptionCombo(HullSize.values(), HullSize::getDisplayedName, size -> {
+            selectedSize = size;
             applyFilters();
         });
         this.add(sizeCombo, gbc);
@@ -93,8 +77,6 @@ public class ShipFilterPanel extends JPanel {
         isUpdatingDropdown = true;
         try {
             String prevSelected = selectedTech;
-            techCombo.removeAllItems();
-            techCombo.addItem("Any");
             
             Set<String> techs = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
             
@@ -103,22 +85,11 @@ public class ShipFilterPanel extends JPanel {
             if (shipEntries != null) {
                 for (ShipCSVEntry entry : shipEntries.values()) {
                     if (entry == null) continue;
-                    Map<String, String> row = entry.getRowData();
-                    String tech = row != null ? row.get("tech/manufacturer") : null;
-                    if (tech == null || tech.trim().isEmpty()) tech = "Unknown";
-                    techs.add(tech);
+                    techs.add(FilterPanelSupport.resolveTech(entry.getRowData()));
                 }
             }
             
-            for (String t : techs) {
-                techCombo.addItem(t);
-            }
-            
-            if (prevSelected != null && techs.contains(prevSelected)) {
-                techCombo.setSelectedItem(prevSelected);
-            } else {
-                techCombo.setSelectedIndex(0);
-            }
+            FilterPanelSupport.repopulateTechCombo(techCombo, techs, prevSelected);
         } finally {
             isUpdatingDropdown = false;
         }
@@ -194,16 +165,13 @@ public class ShipFilterPanel extends JPanel {
     }
 
     private static boolean shouldDisplayByType(IndexedFile entry, Map<String, ShipCSVEntry> shipEntries) {
-        if (selectedTech == null || selectedTech.isEmpty() || "Any".equals(selectedTech)) return true;
-        if (shipEntries == null || entry.getEntityId() == null) return "Unknown".equalsIgnoreCase(selectedTech);
+        if (selectedTech == null || selectedTech.isEmpty() || FilterPanelSupport.ANY.equals(selectedTech)) return true;
+        if (shipEntries == null || entry.getEntityId() == null) return FilterPanelSupport.UNKNOWN_TECH.equalsIgnoreCase(selectedTech);
 
         ShipCSVEntry csvEntry = shipEntries.get(entry.getEntityId());
         if (csvEntry != null) {
-            Map<String, String> row = csvEntry.getRowData();
-            String tech = row != null ? row.get("tech/manufacturer") : null;
-            if (tech == null || tech.trim().isEmpty()) tech = "Unknown";
-            return selectedTech.equalsIgnoreCase(tech);
+            return selectedTech.equalsIgnoreCase(FilterPanelSupport.resolveTech(csvEntry.getRowData()));
         }
-        return "Unknown".equalsIgnoreCase(selectedTech);
+        return FilterPanelSupport.UNKNOWN_TECH.equalsIgnoreCase(selectedTech);
     }
 }

@@ -13,6 +13,23 @@ public class BasicPrettyPrinter extends DefaultPrettyPrinter {
 
     public static final String INDENT = "    ";
 
+    /**
+     * Writes a raw line feed followed by the given number of indentation levels.
+     */
+    public static void writeLineFeedAndIndent(JsonGenerator gen, int levels) throws IOException {
+        gen.writeRaw(LINEFEED);
+        writeIndentation(gen, levels);
+    }
+
+    /**
+     * Writes the given number of raw indentation levels.
+     */
+    public static void writeIndentation(JsonGenerator gen, int levels) throws IOException {
+        for (int i = 0; i < levels; i++) {
+            gen.writeRaw(INDENT);
+        }
+    }
+
     @Override
     public BasicPrettyPrinter createInstance() {
         BasicPrettyPrinter basicPrettyPrinter = new BasicPrettyPrinter();

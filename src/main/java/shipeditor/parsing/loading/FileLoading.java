@@ -5,10 +5,23 @@ import shipeditor.utility.text.StringManager;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.type.MapType;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import shipeditor.communication.EventBus;
+import shipeditor.communication.events.files.FileEvents;
+import shipeditor.parsing.FileUtilities;
+import shipeditor.persistence.GameDataPackage;
+import shipeditor.persistence.Settings;
+import shipeditor.persistence.database.DatabaseQueryService;
+import shipeditor.persistence.database.IndexedFile;
+import shipeditor.representation.GameDataRepository;
+import shipeditor.representation.ship.EngineStyle;
+import shipeditor.representation.ship.HullStyle;
+import shipeditor.utility.text.StringConstants;
 
 import shipeditor.persistence.SettingsManager;
 import shipeditor.representation.ship.HullSpecFile;
@@ -25,9 +38,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import shipeditor.communication.events.components.ComponentEvents.LoadingTaskCompleted;
 import shipeditor.communication.events.components.ComponentEvents.LoadingTaskStarted;
@@ -98,6 +114,7 @@ public final class FileLoading {
         }
 
         clearDirectoryCache();
+        shipeditor.utility.DataProblemsRegistry.clear();
         shipeditor.persistence.database.DatabaseQueryService.clearTypeCache();
         if (forceReindex) {
             shipeditor.persistence.database.DatabaseQueryService.clearCsvCache();
@@ -120,40 +137,25 @@ public final class FileLoading {
                     futures.add(CompletableFuture.runAsync(() -> shipeditor.persistence.database.CoreIndexManager.loadCoreData()).thenApply(ignored -> () -> {}));
 
                     // Pre-load CSV data in parallel so caches are warm before tabs render.
-                    CompletableFuture<Runnable> shipCsv = CompletableFuture.supplyAsync(() -> {
-                        SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskStarted(StringManager.getString("TASK_SHIPS"))));
+                    CompletableFuture<Runnable> shipCsv = preloadCsvTask("TASK_SHIPS", () -> {
                         SettingsManager.getGameData().getShipEntriesByPackage();
                         SettingsManager.getGameData().getAllShipEntries();
-                        SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskCompleted(StringManager.getString("TASK_SHIPS"))));
-                        return () -> {};
                     });
-                    CompletableFuture<Runnable> weaponCsv = CompletableFuture.supplyAsync(() -> {
-                        SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskStarted(StringManager.getString("TASK_WEAPONS"))));
+                    CompletableFuture<Runnable> weaponCsv = preloadCsvTask("TASK_WEAPONS", () -> {
                         SettingsManager.getGameData().getWeaponEntriesByPackage();
                         SettingsManager.getGameData().getAllWeaponEntries();
-                        SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskCompleted(StringManager.getString("TASK_WEAPONS"))));
-                        return () -> {};
                     });
-                    CompletableFuture<Runnable> hullmodCsv = CompletableFuture.supplyAsync(() -> {
-                        SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskStarted(StringManager.getString("TASK_HULLMODS"))));
+                    CompletableFuture<Runnable> hullmodCsv = preloadCsvTask("TASK_HULLMODS", () -> {
                         SettingsManager.getGameData().getHullmodEntriesByPackage();
                         SettingsManager.getGameData().getAllHullmodEntries();
-                        SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskCompleted(StringManager.getString("TASK_HULLMODS"))));
-                        return () -> {};
                     });
-                    CompletableFuture<Runnable> systemCsv = CompletableFuture.supplyAsync(() -> {
-                        SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskStarted(StringManager.getString("TASK_SHIP_SYSTEMS"))));
+                    CompletableFuture<Runnable> systemCsv = preloadCsvTask("TASK_SHIP_SYSTEMS", () -> {
                         SettingsManager.getGameData().getShipSystemEntriesByPackage();
                         SettingsManager.getGameData().getAllShipsystemEntries();
-                        SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskCompleted(StringManager.getString("TASK_SHIP_SYSTEMS"))));
-                        return () -> {};
                     });
-                    CompletableFuture<Runnable> wingCsv = CompletableFuture.supplyAsync(() -> {
-                        SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskStarted(StringManager.getString("TASK_WINGS"))));
+                    CompletableFuture<Runnable> wingCsv = preloadCsvTask("TASK_WINGS", () -> {
                         SettingsManager.getGameData().getWingEntriesByPackage();
                         SettingsManager.getGameData().getAllWingEntries();
-                        SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskCompleted(StringManager.getString("TASK_WINGS"))));
-                        return () -> {};
                     });
 
                     futures.add(shipCsv);
@@ -207,6 +209,22 @@ public final class FileLoading {
                         }
                     }
                 });
+    }
+
+    /**
+     * Runs a CSV pre-load on a background thread, publishing started/completed task events around it.
+     *
+     * @param taskNameKey string-table key of the task label shown while loading.
+     * @param loader the CSV pre-loading work.
+     */
+    private static CompletableFuture<Runnable> preloadCsvTask(String taskNameKey, Runnable loader) {
+        return CompletableFuture.supplyAsync(() -> {
+            log.debug("Pre-loading CSV data for task: {}", taskNameKey);
+            SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskStarted(StringManager.getString(taskNameKey))));
+            loader.run();
+            SwingUtilities.invokeLater(() -> EventBus.publish(new LoadingTaskCompleted(StringManager.getString(taskNameKey))));
+            return () -> {};
+        });
     }
 
     private static void executeStaggered(List<Runnable> tasks, Runnable onComplete) {
@@ -263,91 +281,61 @@ public final class FileLoading {
         return JsonSpecLoader.loadProjectileFile(file);
     }
 
-    public static Runnable loadHullStyles() {
-        List<shipeditor.persistence.database.IndexedFile> dbFiles = shipeditor.persistence.database.DatabaseQueryService.getFilesByType(shipeditor.utility.text.StringConstants.HULL_STYLE_JSON_TYPE);
-
-        Map<String, shipeditor.representation.ship.HullStyle> collectedHullStyles = new java.util.LinkedHashMap<>();
-        for (shipeditor.persistence.database.IndexedFile dbFile : dbFiles) {
-            Path folderPath = SettingsManager.getFolderForModId(dbFile.getModId());
-            if (folderPath == null) {
-                log.warn("No folder found for mod_id '{}', skipping hull styles", dbFile.getModId());
-                continue;
-            }
-
-            shipeditor.persistence.Settings settings = SettingsManager.getSettings();
-            if (settings == null) {
-                continue;
-            }
-            Path folderName = folderPath.getFileName();
-            if (folderName == null) {
-                continue;
-            }
-            shipeditor.persistence.GameDataPackage dataPackage = settings.getPackage(folderName.toString());
-            if (dataPackage != null && dataPackage.isDisabled()) {
-                continue;
-            }
-            if (LibModFilter.isLibMod(folderPath)) {
-                continue;
-            }
-
-            File styleFile = dbFile.getFilePath().toFile();
-            log.trace("Hullstyle data file found in mod directory: {}", folderPath);
-            Map<String, shipeditor.representation.ship.HullStyle> stylesFromFile = loadHullStyleFile(styleFile);
-            for (shipeditor.representation.ship.HullStyle style : stylesFromFile.values()) {
-                style.setContainingPackage(folderPath);
-            }
-            collectedHullStyles.putAll(stylesFromFile);
-        }
-
-        return () -> {
-            shipeditor.representation.GameDataRepository gameData = SettingsManager.getGameData();
-            gameData.setAllHullStyles(collectedHullStyles);
-            EventBus.publish(new shipeditor.communication.events.files.FileEvents.HullStylesLoaded(collectedHullStyles));
-        };
+    /**
+     * Assigns the id and source file onto a freshly deserialized style entry.
+     */
+    @FunctionalInterface
+    private interface StyleIdentifier<T> {
+        void identify(T style, String styleId, Path filePath);
     }
 
-    private static Map<String, shipeditor.representation.ship.HullStyle> loadHullStyleFile(File styleFile) {
-        com.fasterxml.jackson.databind.ObjectMapper mapper = shipeditor.parsing.FileUtilities.getConfigured();
-        Map<String, shipeditor.representation.ship.HullStyle> hullStyles = null;
-        log.trace("Fetching hullstyle data at: {}..", styleFile.toPath());
-        com.fasterxml.jackson.databind.type.MapType mapType = null;
-        try {
-            com.fasterxml.jackson.databind.type.TypeFactory typeFactory = mapper.getTypeFactory();
-            mapType = typeFactory.constructMapType(java.util.HashMap.class, String.class, shipeditor.representation.ship.HullStyle.class);
-            hullStyles = mapper.readValue(styleFile, mapType);
-        } catch (IOException e) {
-            log.trace("Hull styles file loading failed, retrying with correction: {}", styleFile.getName());
-            hullStyles = FileLoading.parseCorrectableJSON(styleFile, mapType);
-        }
+    public static Runnable loadHullStyles() {
+        Map<String, HullStyle> collectedHullStyles = collectStyles(StringConstants.HULL_STYLE_JSON_TYPE,
+                "hull styles", HullStyle.class,
+                (style, styleId, filePath) -> {
+                    style.setHullStyleID(styleId);
+                    style.setFilePath(filePath);
+                },
+                HullStyle::setContainingPackage);
 
-        if (hullStyles == null) {
-            log.error("Hull styles file loading failed conclusively: {}", styleFile.getName());
-            return new java.util.HashMap<>();
-        }
-
-        for (Map.Entry<String, shipeditor.representation.ship.HullStyle> entry : hullStyles.entrySet()) {
-            String hullStyleID = entry.getKey();
-            shipeditor.representation.ship.HullStyle hullStyle = entry.getValue();
-            if (hullStyle != null) {
-                hullStyle.setHullStyleID(hullStyleID);
-                hullStyle.setFilePath(styleFile.toPath());
-            }
-        }
-        return hullStyles;
+        return () -> {
+            GameDataRepository gameData = SettingsManager.getGameData();
+            gameData.setAllHullStyles(collectedHullStyles);
+            EventBus.publish(new FileEvents.HullStylesLoaded(collectedHullStyles));
+        };
     }
 
     public static Runnable loadEngineStyles() {
-        List<shipeditor.persistence.database.IndexedFile> dbFiles = shipeditor.persistence.database.DatabaseQueryService.getFilesByType(shipeditor.utility.text.StringConstants.ENGINE_STYLE_JSON_TYPE);
+        Map<String, EngineStyle> collectedEngineStyles = collectStyles(StringConstants.ENGINE_STYLE_JSON_TYPE,
+                "engine styles", EngineStyle.class,
+                (style, styleId, filePath) -> {
+                    style.setEngineStyleID(styleId);
+                    style.setFilePath(filePath);
+                },
+                EngineStyle::setContainingPackage);
 
-        Map<String, shipeditor.representation.ship.EngineStyle> collectedEngineStyles = new java.util.LinkedHashMap<>();
-        for (shipeditor.persistence.database.IndexedFile dbFile : dbFiles) {
+        return () -> {
+            GameDataRepository gameData = SettingsManager.getGameData();
+            gameData.setAllEngineStyles(collectedEngineStyles);
+            EventBus.publish(new FileEvents.EngineStylesLoaded(collectedEngineStyles));
+        };
+    }
+
+    private static <T> Map<String, T> collectStyles(String jsonType, String styleLabel, Class<T> styleClass,
+                                                    StyleIdentifier<T> identifier,
+                                                    BiConsumer<T, Path> packageSetter) {
+        log.debug("Collecting {} from indexed files of type: {}", styleLabel, jsonType);
+        List<IndexedFile> dbFiles = DatabaseQueryService.getFilesByType(jsonType);
+
+        Map<String, T> collectedStyles = new LinkedHashMap<>();
+        for (IndexedFile dbFile : dbFiles) {
             Path folderPath = SettingsManager.getFolderForModId(dbFile.getModId());
             if (folderPath == null) {
-                log.warn("No folder found for mod_id '{}', skipping engine styles", dbFile.getModId());
+                log.warn("No folder found for mod_id '{}', skipping {}", dbFile.getModId(), styleLabel);
                 continue;
             }
 
-            shipeditor.persistence.Settings settings = SettingsManager.getSettings();
+            Settings settings = SettingsManager.getSettings();
             if (settings == null) {
                 continue;
             }
@@ -355,7 +343,7 @@ public final class FileLoading {
             if (folderName == null) {
                 continue;
             }
-            shipeditor.persistence.GameDataPackage dataPackage = settings.getPackage(folderName.toString());
+            GameDataPackage dataPackage = settings.getPackage(folderName.toString());
             if (dataPackage != null && dataPackage.isDisabled()) {
                 continue;
             }
@@ -364,49 +352,43 @@ public final class FileLoading {
             }
 
             File styleFile = dbFile.getFilePath().toFile();
-            log.trace("Engine style data file found in mod directory: {}", folderPath);
-            Map<String, shipeditor.representation.ship.EngineStyle> stylesFromFile = loadEngineStyleFile(styleFile);
-            for (shipeditor.representation.ship.EngineStyle style : stylesFromFile.values()) {
-                style.setContainingPackage(folderPath);
+            log.trace("Data file for {} found in mod directory: {}", styleLabel, folderPath);
+            Map<String, T> stylesFromFile = loadStyleFile(styleFile, styleClass, styleLabel, identifier);
+            for (T style : stylesFromFile.values()) {
+                packageSetter.accept(style, folderPath);
             }
-            collectedEngineStyles.putAll(stylesFromFile);
+            collectedStyles.putAll(stylesFromFile);
         }
-
-        return () -> {
-            shipeditor.representation.GameDataRepository gameData = SettingsManager.getGameData();
-            gameData.setAllEngineStyles(collectedEngineStyles);
-            EventBus.publish(new shipeditor.communication.events.files.FileEvents.EngineStylesLoaded(collectedEngineStyles));
-        };
+        return collectedStyles;
     }
 
-    private static Map<String, shipeditor.representation.ship.EngineStyle> loadEngineStyleFile(File styleFile) {
-        com.fasterxml.jackson.databind.ObjectMapper mapper = shipeditor.parsing.FileUtilities.getConfigured();
-        Map<String, shipeditor.representation.ship.EngineStyle> engineStyles = null;
-        log.trace("Fetching engine style data at: {}..", styleFile.toPath());
-        com.fasterxml.jackson.databind.type.MapType mapType = null;
+    private static <T> Map<String, T> loadStyleFile(File styleFile, Class<T> styleClass, String styleLabel,
+                                                    StyleIdentifier<T> identifier) {
+        ObjectMapper mapper = FileUtilities.getConfigured();
+        Map<String, T> styles = null;
+        log.trace("Fetching {} data at: {}..", styleLabel, styleFile.toPath());
+        MapType mapType = null;
         try {
-            com.fasterxml.jackson.databind.type.TypeFactory typeFactory = mapper.getTypeFactory();
-            mapType = typeFactory.constructMapType(java.util.HashMap.class, String.class, shipeditor.representation.ship.EngineStyle.class);
-            engineStyles = mapper.readValue(styleFile, mapType);
+            TypeFactory typeFactory = mapper.getTypeFactory();
+            mapType = typeFactory.constructMapType(HashMap.class, String.class, styleClass);
+            styles = mapper.readValue(styleFile, mapType);
         } catch (IOException e) {
-            log.trace("Engine styles file loading failed, retrying with correction: {}", styleFile.getName());
-            engineStyles = FileLoading.parseCorrectableJSON(styleFile, mapType);
+            log.trace("File loading failed for {}, retrying with correction: {}", styleLabel, styleFile.getName());
+            styles = FileLoading.parseCorrectableJSON(styleFile, mapType);
         }
 
-        if (engineStyles == null) {
-            log.error("Engine styles file loading failed conclusively: {}", styleFile.getName());
-            return new java.util.HashMap<>();
+        if (styles == null) {
+            log.error("File loading failed conclusively for {}: {}", styleLabel, styleFile.getName());
+            return new HashMap<>();
         }
 
-        for (Map.Entry<String, shipeditor.representation.ship.EngineStyle> entry : engineStyles.entrySet()) {
-            String engineStyleID = entry.getKey();
-            shipeditor.representation.ship.EngineStyle engineStyle = entry.getValue();
-            if (engineStyle != null) {
-                engineStyle.setEngineStyleID(engineStyleID);
-                engineStyle.setFilePath(styleFile.toPath());
+        for (Map.Entry<String, T> entry : styles.entrySet()) {
+            T style = entry.getValue();
+            if (style != null) {
+                identifier.identify(style, entry.getKey(), styleFile.toPath());
             }
         }
-        return engineStyles;
+        return styles;
     }
 
     @SuppressWarnings("AssignmentToNull")

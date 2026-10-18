@@ -204,13 +204,7 @@ public final class GuidesPainters {
             Point2D toDisplay = pointInput.getCoordinatesForDisplay();
             String spriteCenterCoords = "Sprite Center (" + toDisplay.getX() + ", " + toDisplay.getY() + ")";
             
-            double zoomLevel = StaticController.getZoomLevel();
-            if (zoomLevel > 20) {
-                float alpha = (float) ((zoomLevel - 20.0) / 20.0);
-                alpha = Math.min(alpha, 1.0f);
-                Font font = Utility.getOrbitron(14);
-                TextRenderer.drawTextGL(spriteRenderer, projection, spriteCenterCoords, font, Color.WHITE, spriteCenter, alpha);
-            }
+            ZoomFadedLabel.draw(spriteRenderer, projection, spriteCenterCoords, spriteCenter);
         }
 
     }

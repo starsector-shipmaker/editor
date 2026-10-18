@@ -16,6 +16,12 @@ public final class EngineEdits {
     private EngineEdits() {
     }
 
+    private static void queueEngineRepaint() {
+        var repainter = StaticController.getScheduler();
+        repainter.queueViewerRepaint();
+        repainter.queueEnginesPanelRepaint();
+    }
+
     public static class EngineAngleSet extends AbstractEdit {
         private final EnginePoint enginePoint;
         private final double oldAngle;
@@ -32,18 +38,14 @@ public final class EngineEdits {
         public void undo() {
             undoSubEdits();
             enginePoint.setAngle(oldAngle);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueEnginesPanelRepaint();
+            queueEngineRepaint();
         }
 
         @Override
         public void redo() {
             enginePoint.setAngle(updatedAngle);
             redoSubEdits();
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueEnginesPanelRepaint();
+            queueEngineRepaint();
         }
 
         @Override
@@ -68,18 +70,14 @@ public final class EngineEdits {
         public void undo() {
             undoSubEdits();
             enginePoint.setContrailSize(oldContrail);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueEnginesPanelRepaint();
+            queueEngineRepaint();
         }
 
         @Override
         public void redo() {
             enginePoint.setContrailSize(updatedContrail);
             redoSubEdits();
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueEnginesPanelRepaint();
+            queueEngineRepaint();
         }
 
         @Override
@@ -104,18 +102,14 @@ public final class EngineEdits {
         public void undo() {
             undoSubEdits();
             enginePoint.setSize(oldSize);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueEnginesPanelRepaint();
+            queueEngineRepaint();
         }
 
         @Override
         public void redo() {
             enginePoint.setSize(updatedSize);
             redoSubEdits();
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueEnginesPanelRepaint();
+            queueEngineRepaint();
         }
 
         @Override
@@ -138,17 +132,13 @@ public final class EngineEdits {
         @Override
         public void undo() {
             enginePoint.setStyle(oldStyle);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueEnginesPanelRepaint();
+            queueEngineRepaint();
         }
 
         @Override
         public void redo() {
             enginePoint.setStyle(updatedStyle);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueEnginesPanelRepaint();
+            queueEngineRepaint();
         }
 
         @Override
@@ -171,17 +161,13 @@ public final class EngineEdits {
         @Override
         public void undo() {
             pointPainter.setEnginePoints(oldList);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueEnginesPanelRepaint();
+            queueEngineRepaint();
         }
 
         @Override
         public void redo() {
             pointPainter.setEnginePoints(newList);
-            var repainter = StaticController.getScheduler();
-            repainter.queueViewerRepaint();
-            repainter.queueEnginesPanelRepaint();
+            queueEngineRepaint();
         }
 
         @Override

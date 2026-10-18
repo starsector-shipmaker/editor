@@ -43,6 +43,27 @@ public abstract class AbstractEdit implements Edit, shipeditor.undo.edits.LayerE
         editsList.forEach(a -> a.redo());
     }
 
+    /**
+     * Releases references held by the sub-edits of the given type; sub-edits of other types are left untouched.
+     */
+    protected void cleanupSubEditsOfType(Class<? extends shipeditor.undo.edits.LayerEdit> type) {
+        subEdits.forEach(edit -> {
+            if (type.isInstance(edit)) {
+                ((shipeditor.undo.edits.LayerEdit) edit).cleanupReferences();
+            }
+        });
+    }
+
+    /**
+     * Notifies listeners that the layer was updated, but only if it is the currently active layer.
+     */
+    protected static void refreshIfActive(shipeditor.components.viewer.layers.ViewerLayer layer) {
+        if (shipeditor.utility.overseers.StaticController.getActiveLayer() == layer) {
+            shipeditor.communication.EventBus.publish(
+                    new shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated(layer));
+        }
+    }
+
     @Override
     public String toString() {
         Class<? extends AbstractEdit> identity = this.getClass();

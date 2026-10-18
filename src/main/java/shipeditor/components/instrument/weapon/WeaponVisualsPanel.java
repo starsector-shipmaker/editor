@@ -2,33 +2,20 @@ package shipeditor.components.instrument.weapon;
 
 import shipeditor.utility.text.StringManager;
 
-import com.formdev.flatlaf.ui.FlatLineBorder;
-import shipeditor.communication.EventBus;
-import shipeditor.communication.events.components.ComponentEvents.LayerTabUpdated;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.components.viewer.layers.weapon.WeaponLayer;
 import shipeditor.representation.weapon.WeaponSpecFile;
 import shipeditor.utility.components.CollapsibleSection;
 import shipeditor.utility.components.ComponentUtilities;
-import shipeditor.utility.components.MouseoverLabelListener;
-import shipeditor.utility.graphics.ColorUtilities;
-import shipeditor.utility.overseers.StaticController;
-import shipeditor.utility.themes.Themes;
 
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
 import javax.swing.JLabel;
-import javax.swing.JMenuItem;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
-import javax.swing.border.EmptyBorder;
 import java.awt.Color;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -38,7 +25,6 @@ import java.util.function.Supplier;
  */
 public class WeaponVisualsPanel extends AbstractWeaponPropertiesPanel {
 
-    private WeaponLayer cachedLayer;
     
 
     // Turret sprites
@@ -320,16 +306,6 @@ public class WeaponVisualsPanel extends AbstractWeaponPropertiesPanel {
         ComponentUtilities.addLabelAndComponent(content, new JLabel(StringManager.getString("DISPLAY_ARC_RADIUS")), displayArcRadiusEditor, row++);
 
         return new CollapsibleSection("Misc", content, true);
-    }
-
-    // ========== processChange ==========
-
-    @Override
-    protected void processChange() {
-        if (cachedLayer != null) {
-            EventBus.publish(new LayerTabUpdated(cachedLayer));
-            StaticController.getScheduler().queueViewerRepaint();
-        }
     }
 
     // ========== Refresh / Clear ==========

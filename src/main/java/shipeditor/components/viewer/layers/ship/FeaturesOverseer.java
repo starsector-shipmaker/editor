@@ -3,6 +3,7 @@ package shipeditor.components.viewer.layers.ship;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import lombok.Getter;
+import lombok.extern.log4j.Log4j2;
 import org.apache.commons.collections4.map.ListOrderedMap;
 import shipeditor.communication.BusEventListener;
 import shipeditor.communication.EventBus;
@@ -24,20 +25,30 @@ import shipeditor.components.viewer.painters.points.ship.features.InstalledFeatu
 import shipeditor.representation.ship.VariantFile;
 import shipeditor.representation.weapon.WeaponSpecFile;
 import shipeditor.representation.weapon.WeaponEnums.WeaponType;
+import shipeditor.components.viewer.layers.LayerPainter;
+import shipeditor.undo.AbstractEdit;
+import shipeditor.undo.Edit;
 import shipeditor.undo.EditDispatch;
+import shipeditor.undo.UndoOverseer;
+import shipeditor.utility.UtilityEnums.EditCategory;
 import shipeditor.utility.overseers.StaticController;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Deque;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import shipeditor.communication.events.components.ComponentEvents.DeleteButtonPressed;
 
 /** * Responsible for all non-rendering interactions with installed features of layer,
  * be it base hull or skin built-in, or variant fits.*/
+@Log4j2
 @SuppressWarnings({"WeakerAccess", "OverlyCoupledClass", "OverlyComplexClass", "ClassWithTooManyMethods"})
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
 public class FeaturesOverseer {
@@ -349,16 +360,181 @@ public class FeaturesOverseer {
         FeaturesOverseer.handleFeatureRemoval(selected, EditorInstrument.VARIANT_WEAPONS, shipPainter);
     }
 
-    public void installWeapon(SlotData selected, WeaponCSVEntry forInstall) {
+    /**
+     * Delegates to {@link StaticController#getOrCreateEditableVariant(ShipLayer)}, the single source of truth
+     * for auto-creating a custom variant on first install.
+     */
+    private ShipVariant ensureEditableVariant(ShipPainter shipPainter) {
+        if (shipPainter == null || shipPainter.isUninitialized()) {
+            return null;
+        }
+        return StaticController.getOrCreateEditableVariant(parent);
+    }
+
+    /**
+     * Installs the weapon on every given slot that is fittable and compatible with it,
+     * replacing whatever is currently fitted there. Incompatible or non-fittable slots are skipped.
+     * Where the undo system allows, all resulting edits are collapsed into one undo step.
+     *
+     * @return the number of slots the weapon was installed on
+     */
+    public int installWeaponOnSlots(Collection<? extends SlotData> slots, WeaponCSVEntry weapon) {
+        if (slots == null || slots.isEmpty() || weapon == null) return 0;
+        try {
+            var shipPainter = parent.getPainter();
+            ShipVariant variant = ensureEditableVariant(shipPainter);
+            if (variant == null || variant.isEmpty()) return 0;
+            if (weapon.getSpecFile() == null) {
+                log.warn("Cannot install weapon {} on slots: no weapon spec file loaded", weapon.getWeaponID());
+                return 0;
+            }
+
+            List<SlotData> eligible = new ArrayList<>();
+            for (SlotData slot : slots) {
+                if (slot instanceof WeaponSlotPoint fittableSlot && fittableSlot.isFittable()
+                        && WeaponType.isWeaponFitting(slot, weapon)) {
+                    eligible.add(slot);
+                } else if (slot != null) {
+                    log.debug("Skipping slot {} for weapon {}: not fittable or incompatible",
+                            slot.getId(), weapon.getWeaponID());
+                }
+            }
+            if (eligible.isEmpty()) return 0;
+
+            log.debug("Installing weapon {} on {} slot(s)", weapon.getWeaponID(), eligible.size());
+            String editName = "Install " + weapon + " on " + eligible.size() + " slot(s)";
+            return runAsSingleUndoStep(editName, variant, () -> {
+                int installed = 0;
+                for (SlotData slot : eligible) {
+                    installWeapon(slot, weapon);
+                    installed++;
+                }
+                return installed;
+            });
+        } catch (RuntimeException e) {
+            log.error("Failed to install weapon {} on slots", weapon.getWeaponID(), e);
+            return 0;
+        }
+    }
+
+    /**
+     * Installs the weapon on every currently empty, fittable slot that is compatible with it.
+     *
+     * @return the number of slots the weapon was installed on
+     */
+    public int installWeaponOnMatchingSlots(WeaponCSVEntry weapon) {
+        if (weapon == null) return 0;
         var shipPainter = parent.getPainter();
-        var activeVariant = shipPainter.getActiveVariant();
+        if (shipPainter == null || shipPainter.isUninitialized()) return 0;
+        var slotPainter = shipPainter.getWeaponSlotPainter();
+        if (slotPainter == null) return 0;
+
+        ShipVariant variant = shipPainter.getActiveVariant();
+        List<SlotData> matching = new ArrayList<>();
+        for (WeaponSlotPoint slot : slotPainter.getSlotPoints()) {
+            if (slot.isFittable() && WeaponType.isWeaponFitting(slot, weapon) && isSlotEmpty(slot, variant)) {
+                matching.add(slot);
+            }
+        }
+        log.debug("Found {} empty slot(s) matching weapon {}", matching.size(), weapon.getWeaponID());
+        return installWeaponOnSlots(matching, weapon);
+    }
+
+    private static boolean isSlotEmpty(SlotData slot, ShipVariant variant) {
+        if (variant == null || variant.isEmpty()) return true;
+        FittedWeaponGroup group = variant.getGroupWithExistingMapping(slot.getId());
+        return group == null || group.getWeapons() == null || group.getWeapons().get(slot.getId()) == null;
+    }
+
+    /**
+     * Runs the action and merges all edits it posted to the undo stack into a single compound edit,
+     * so that one undo reverts the whole batch.
+     */
+    private int runAsSingleUndoStep(String editName, ShipVariant variant, IntSupplier action) {
+        Deque<Edit> undoStack = UndoOverseer.getUndoStack();
+        Edit marker = undoStack.peekFirst();
+
+        int result = action.getAsInt();
+
+        if (marker != null && !undoStack.contains(marker)) {
+            log.debug("Undo stack was trimmed during batch install, leaving edits ungrouped");
+            return result;
+        }
+        List<Edit> posted = new ArrayList<>();
+        while (!undoStack.isEmpty() && undoStack.peekFirst() != marker) {
+            posted.add(undoStack.pollFirst());
+        }
+        if (posted.size() < 2) {
+            // Nothing to group; restore as they were (oldest first so the newest ends up on top).
+            for (int i = posted.size() - 1; i >= 0; i--) {
+                undoStack.addFirst(posted.get(i));
+            }
+            return result;
+        }
+        log.debug("Grouping {} edits into compound edit '{}'", posted.size(), editName);
+        CompoundInstallEdit compound = new CompoundInstallEdit(editName, parent.getPainter());
+        compound.setTargetEntity(variant);
+        for (int i = posted.size() - 1; i >= 0; i--) {
+            compound.add(posted.get(i));
+        }
+        UndoOverseer.post(compound);
+        return result;
+    }
+
+    /**
+     * Collapses the edits of a batch install into one undo/redo step. Sub-edits are undone newest first
+     * and redone oldest first, as maintained by {@link AbstractEdit}.
+     */
+    private static final class CompoundInstallEdit extends AbstractEdit {
+        private final String name;
+        private final ShipPainter painter;
+
+        private CompoundInstallEdit(String name, ShipPainter painter) {
+            this.name = name;
+            this.painter = painter;
+        }
+
+        @Override
+        public void undo() {
+            undoSubEdits();
+        }
+
+        @Override
+        public void redo() {
+            redoSubEdits();
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public EditCategory getCategory() {
+            return EditCategory.VARIANT;
+        }
+
+        @Override
+        public LayerPainter getLayerPainter() {
+            return painter;
+        }
+    }
+
+    public void installWeapon(SlotData selected, WeaponCSVEntry forInstall) {
+        if (selected == null || forInstall == null) return;
+        var shipPainter = parent.getPainter();
+        var activeVariant = ensureEditableVariant(shipPainter);
         if (activeVariant == null || activeVariant.isEmpty()) return;
+
+        WeaponSpecFile specFile = forInstall.getSpecFile();
+        if (specFile == null) {
+            return;
+        }
 
         String slotID = selected.getId();
 
         List<FittedWeaponGroup> weaponGroups = activeVariant.getWeaponGroups();
 
-        WeaponSpecFile specFile = forInstall.getSpecFile();
         WeaponPainter weaponPainter = forInstall.createPainterFromEntry(null, specFile);
         InstalledFeature feature = InstalledFeature.of(slotID, forInstall.getWeaponID(),
                 weaponPainter, forInstall);
@@ -392,7 +568,7 @@ public class FeaturesOverseer {
 
     private void installModule(SlotData selected, Variant variantFile) {
         var shipPainter = parent.getPainter();
-        var activeVariant = shipPainter.getActiveVariant();
+        var activeVariant = ensureEditableVariant(shipPainter);
         if (activeVariant == null || activeVariant.isEmpty()) return;
 
         String slotID = selected.getId();

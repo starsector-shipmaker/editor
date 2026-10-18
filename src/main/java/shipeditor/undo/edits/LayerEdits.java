@@ -13,12 +13,17 @@ import shipeditor.utility.graphics.Sprite;
 import shipeditor.utility.overseers.StaticController;
 
 import java.awt.geom.Point2D;
-import java.util.Deque;
 
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
 public final class LayerEdits {
 
     private LayerEdits() {
+    }
+
+    private static void queueLayerPropertiesAndCenterPanelsRepaint() {
+        var repainter = StaticController.getScheduler();
+        repainter.queueLayerPropertiesRepaint();
+        repainter.queueCenterPanelsRepaint();
     }
 
     public static class HullCoversColorEdit extends AbstractEdit {
@@ -95,18 +100,14 @@ public final class LayerEdits {
         public void undo() {
             undoSubEdits();
             layerPainter.setAnchor(oldOffset);
-            var repainter = StaticController.getScheduler();
-            repainter.queueLayerPropertiesRepaint();
-            repainter.queueCenterPanelsRepaint();
+            queueLayerPropertiesAndCenterPanelsRepaint();
         }
 
         @Override
         public void redo() {
             layerPainter.setAnchor(updatedOffset);
             redoSubEdits();
-            var repainter = StaticController.getScheduler();
-            repainter.queueLayerPropertiesRepaint();
-            repainter.queueCenterPanelsRepaint();
+            queueLayerPropertiesAndCenterPanelsRepaint();
         }
 
         @Override
@@ -116,12 +117,7 @@ public final class LayerEdits {
 
         @Override
         public void cleanupReferences() {
-            Deque<Edit> subEdits = this.getSubEdits();
-            subEdits.forEach(edit -> {
-                if (edit instanceof AnchorOffsetEdit checked) {
-                    checked.cleanupReferences();
-                }
-            });
+            this.cleanupSubEditsOfType(AnchorOffsetEdit.class);
             this.layerPainter = null;
         }
     }
@@ -143,18 +139,14 @@ public final class LayerEdits {
         public void undo() {
             undoSubEdits();
             layerPainter.setRotationRadians(oldRotation);
-            var repainter = StaticController.getScheduler();
-            repainter.queueLayerPropertiesRepaint();
-            repainter.queueCenterPanelsRepaint();
+            queueLayerPropertiesAndCenterPanelsRepaint();
         }
 
         @Override
         public void redo() {
             layerPainter.setRotationRadians(updatedRotation);
             redoSubEdits();
-            var repainter = StaticController.getScheduler();
-            repainter.queueLayerPropertiesRepaint();
-            repainter.queueCenterPanelsRepaint();
+            queueLayerPropertiesAndCenterPanelsRepaint();
         }
 
         @Override
@@ -164,12 +156,7 @@ public final class LayerEdits {
 
         @Override
         public void cleanupReferences() {
-            Deque<Edit> subEdits = this.getSubEdits();
-            subEdits.forEach(edit -> {
-                if (edit instanceof LayerRotationEdit checked) {
-                    checked.cleanupReferences();
-                }
-            });
+            this.cleanupSubEditsOfType(LayerRotationEdit.class);
             this.layerPainter = null;
         }
     }
@@ -219,12 +206,7 @@ public final class LayerEdits {
 
         @Override
         public void cleanupReferences() {
-            Deque<Edit> subEdits = this.getSubEdits();
-            subEdits.forEach(edit -> {
-                if (edit instanceof ModuleAnchorEdit checked) {
-                    checked.cleanupReferences();
-                }
-            });
+            this.cleanupSubEditsOfType(ModuleAnchorEdit.class);
             this.centersPainter = null;
         }
     }

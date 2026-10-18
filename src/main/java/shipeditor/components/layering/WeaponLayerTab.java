@@ -29,46 +29,21 @@ public class WeaponLayerTab extends LayerTab {
 
     @Override
     public String getTabTooltip() {
-        String notLoaded = StringManager.getString("NOT_LOADED");
-
-        String mainSprite = spriteName;
-        if (Objects.equals(mainSprite, "") || mainSprite == null) {
-            mainSprite = notLoaded;
-        }
-        String mainSpriteNameLine = "Main sprite file: " + mainSprite;
-
-        String gunSprite = gunSpriteName;
-        if (Objects.equals(gunSprite, "") || gunSprite == null) {
-            gunSprite = notLoaded;
-        }
-        String gunSpriteNameLine = "Gun sprite file: " + gunSprite;
-
-        String underSprite = underSpriteName;
-        if (Objects.equals(underSprite, "") || underSprite == null) {
-            underSprite = notLoaded;
-        }
-        String underSpriteNameLine = "Under sprite file: " + underSprite;
-
-        String glowSprite = glowSpriteName;
-        if (Objects.equals(glowSprite, "") || glowSprite == null) {
-            glowSprite = notLoaded;
-        }
-        String glowSpriteNameLine = "Glow sprite file: " + glowSprite;
-
-        String specFile = specFileName;
-        if (Objects.equals(specFile, "") || specFile == null) {
-            specFile = notLoaded;
-        }
-        String specFileNameLine = "Weapon spec file: " + specFile;
-
         List<String> result = new ArrayList<>();
-        result.add(mainSpriteNameLine);
-        result.add(gunSpriteNameLine);
-        result.add(underSpriteNameLine);
-        result.add(glowSpriteNameLine);
-        result.add(specFileNameLine);
+        result.add("Main sprite file: " + orNotLoaded(spriteName));
+        result.add("Gun sprite file: " + orNotLoaded(gunSpriteName));
+        result.add("Under sprite file: " + orNotLoaded(underSpriteName));
+        result.add("Glow sprite file: " + orNotLoaded(glowSpriteName));
+        result.add("Weapon spec file: " + orNotLoaded(specFileName));
 
         return Utility.getWithLinebreaks(result.toArray(new String[0]));
+    }
+
+    private static String orNotLoaded(String fileName) {
+        if (Objects.equals(fileName, "") || fileName == null) {
+            return StringManager.getString("NOT_LOADED");
+        }
+        return fileName;
     }
 
 }

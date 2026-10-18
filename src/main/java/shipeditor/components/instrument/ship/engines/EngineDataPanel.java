@@ -175,6 +175,37 @@ public class EngineDataPanel extends LayerPropertiesPanel {
         return createValueWidget(text, spinnerNumberModel, getter, setter);
     }
 
+    /**
+     * Registers clear/refresh behavior for an engine style widget that is locked while a skin overrides the style.
+     *
+     * @param clearValue resets the widget value when no engine is selected.
+     * @param showValue  displays the selected engine's style in the widget.
+     */
+    private void registerStyleWidget(JComponent widget, Runnable clearValue, Consumer<EnginePoint> showValue) {
+        registerWidgetListeners(widget, layerPainter -> {
+            clearValue.run();
+            widget.setToolTipText(null);
+            widget.setEnabled(false);
+        }, layerPainter -> {
+            var selectedEngine = EngineDataPanel.getSelectedFromLayer(layerPainter);
+
+            if (selectedEngine != null) {
+                EngineDataOverride skinOverride = selectedEngine.getSkinOverride();
+                if (skinOverride != null && (skinOverride.getStyle() != null || skinOverride.getStyleID() != null)) {
+                    widget.setToolTipText(StringManager.getString("LOCKED_STYLE_OVERRIDDEN_BY_SKIN"));
+                    widget.setEnabled(false);
+                } else {
+                    showValue.accept(selectedEngine);
+                    widget.setEnabled(true);
+                }
+            } else {
+                clearValue.run();
+                widget.setToolTipText(null);
+                widget.setEnabled(false);
+            }
+        });
+    }
+
     private Pair<JLabel, JComponent> createStyleSelector() {
         JLabel selectorLabel = new JLabel(StringManager.getString("ENGINE_STYLE_LABEL"));
         selectorLabel.setToolTipText(StringManager.getString("CHANGE_APPLIES_TO_FIRST_SELECTED_SLOT"));
@@ -201,28 +232,8 @@ public class EngineDataPanel extends LayerPropertiesPanel {
 
             widget = styleSelector;
 
-            registerWidgetListeners(styleSelector, layerPainter -> {
-                styleSelector.setSelectedItem(null);
-                styleSelector.setToolTipText(null);
-                styleSelector.setEnabled(false);
-            }, layerPainter -> {
-                var selectedEngine = EngineDataPanel.getSelectedFromLayer(layerPainter);
-
-                if (selectedEngine != null) {
-                    EngineDataOverride skinOverride = selectedEngine.getSkinOverride();
-                    if (skinOverride != null && (skinOverride.getStyle() != null || skinOverride.getStyleID() != null)) {
-                        styleSelector.setToolTipText(StringManager.getString("LOCKED_STYLE_OVERRIDDEN_BY_SKIN"));
-                        styleSelector.setEnabled(false);
-                    } else {
-                        styleSelector.setSelectedItem(selectedEngine.getStyle());
-                        styleSelector.setEnabled(true);
-                    }
-                } else {
-                    styleSelector.setSelectedItem(null);
-                    styleSelector.setToolTipText(null);
-                    styleSelector.setEnabled(false);
-                }
-            });
+            registerStyleWidget(styleSelector, () -> styleSelector.setSelectedItem(null),
+                    selectedEngine -> styleSelector.setSelectedItem(selectedEngine.getStyle()));
         } else {
             JTextField idField = new JTextField();
             idField.setToolTipText(StringManager.getString("STYLES_NOT_LOADED_DEFAULTED_TO_ID_TEXT"));
@@ -240,28 +251,8 @@ public class EngineDataPanel extends LayerPropertiesPanel {
 
             widget = idField;
 
-            registerWidgetListeners(idField, layerPainter -> {
-                idField.setText("");
-                idField.setToolTipText(null);
-                idField.setEnabled(false);
-            }, layerPainter -> {
-                var selectedEngine = EngineDataPanel.getSelectedFromLayer(layerPainter);
-
-                if (selectedEngine != null) {
-                    EngineDataOverride skinOverride = selectedEngine.getSkinOverride();
-                    if (skinOverride != null && (skinOverride.getStyle() != null || skinOverride.getStyleID() != null)) {
-                        idField.setToolTipText(StringManager.getString("LOCKED_STYLE_OVERRIDDEN_BY_SKIN"));
-                        idField.setEnabled(false);
-                    } else {
-                        idField.setText(selectedEngine.getStyleID());
-                        idField.setEnabled(true);
-                    }
-                } else {
-                    idField.setText("");
-                    idField.setToolTipText(null);
-                    idField.setEnabled(false);
-                }
-            });
+            registerStyleWidget(idField, () -> idField.setText(""),
+                    selectedEngine -> idField.setText(selectedEngine.getStyleID()));
         }
 
         return new Pair<>(selectorLabel, widget);

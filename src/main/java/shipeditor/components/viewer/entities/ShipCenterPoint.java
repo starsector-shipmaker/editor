@@ -1,5 +1,6 @@
 package shipeditor.components.viewer.entities;
 
+import shipeditor.components.viewer.painters.GlColors;
 import shipeditor.utility.text.StringManager;
 
 import shipeditor.utility.graphics.opengl.SpriteRenderer;
@@ -72,21 +73,12 @@ public class ShipCenterPoint extends BaseWorldPoint {
         float painterOpacity = parentPainter.getPaintOpacity();
 
         // Interior fill: same opacity as shield fill (using painterOpacity directly)
-        org.joml.Vector4f glCollisionFill = new org.joml.Vector4f(
-            collisionCircleColor.getRed() / 255.0f,
-            collisionCircleColor.getGreen() / 255.0f,
-            collisionCircleColor.getBlue() / 255.0f,
-            (collisionCircleColor.getAlpha() / 255.0f) * painterOpacity
-        );
+        org.joml.Vector4f glCollisionFill = GlColors.of(collisionCircleColor,
+                (collisionCircleColor.getAlpha() / 255.0f) * painterOpacity);
         shapeRenderer.drawCircle(centerWorld, getCollisionRadius(), glCollisionFill, true);
 
         // Border ring outline: same distinct opacity as shield ring
-        org.joml.Vector4f glCollisionRing = new org.joml.Vector4f(
-            collisionCircleColor.getRed() / 255.0f,
-            collisionCircleColor.getGreen() / 255.0f,
-            collisionCircleColor.getBlue() / 255.0f,
-            0.5f
-        );
+        org.joml.Vector4f glCollisionRing = GlColors.of(collisionCircleColor, 0.5f);
         org.lwjgl.opengl.GL11.glLineWidth(GraphicConstants.LINE_WIDTH_NORMAL);
         shapeRenderer.drawCircle(centerWorld, getCollisionRadius(), glCollisionRing, false);
         org.lwjgl.opengl.GL11.glLineWidth(GraphicConstants.LINE_WIDTH_DEFAULT);
@@ -97,12 +89,7 @@ public class ShipCenterPoint extends BaseWorldPoint {
         shapeRenderer.begin(projection, new org.joml.Matrix4f());
 
         Color crossColor = getCurrentColor();
-        org.joml.Vector4f glCrossColor = new org.joml.Vector4f(
-            crossColor.getRed() / 255.0f,
-            crossColor.getGreen() / 255.0f,
-            crossColor.getBlue() / 255.0f,
-            1.0f
-        );
+        org.joml.Vector4f glCrossColor = GlColors.of(crossColor, 1.0f);
         Point2D screenLoc = worldToScreen.transform(position, null);
         org.joml.Vector2f screenPos = new org.joml.Vector2f(Math.round(screenLoc.getX()), Math.round(screenLoc.getY()));
 

@@ -7,7 +7,6 @@ import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.viewer.layers.ViewerLayer;
 import shipeditor.components.viewer.layers.ship.ShipLayer;
 import shipeditor.components.viewer.layers.ship.ShipPainter;
-import shipeditor.components.viewer.layers.ship.data.ActiveShipSpec;
 import shipeditor.components.viewer.layers.ship.data.ShipHull;
 import shipeditor.components.viewer.layers.ship.data.ShipSkin;
 
@@ -76,15 +75,7 @@ public class SkinDataPanel extends JPanel {
         JComboBox<ShipSkin> skinChooser = new JComboBox<>(model);
         skinChooser.setSelectedItem(painter.getActiveSkin());
         skinChooser.addActionListener(e -> {
-            ShipSkin chosen = (ShipSkin) skinChooser.getSelectedItem();
-            ActiveShipSpec spec;
-            if (chosen != null && !chosen.isBase()) {
-                spec = ActiveShipSpec.SKIN;
-            } else {
-                spec = ActiveShipSpec.HULL;
-            }
-            painter.setActiveSpec(spec, chosen);
-
+            AbstractSkinOverridesPanel.applyChosenSkin(painter, (ShipSkin) skinChooser.getSelectedItem());
         });
         skinChooser.setAlignmentX(Component.CENTER_ALIGNMENT);
         return skinChooser;

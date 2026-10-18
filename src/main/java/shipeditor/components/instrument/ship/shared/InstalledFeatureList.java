@@ -139,28 +139,7 @@ public class InstalledFeatureList extends SortableList<InstalledFeature> {
 
     @Override
     protected Transferable createTransferableFromEntry(InstalledFeature entry) {
-
-        return new Transferable() {
-            private final InstalledFeature feature = entry;
-
-            private final DataFlavor sourceFlavor = new DataFlavor(InstalledFeatureList.this.getClass(),
-                    String.valueOf(InstalledFeatureList.this.hashCode()));
-
-            @Override
-            public DataFlavor[] getTransferDataFlavors() {
-                return new DataFlavor[] {FEATURE_FLAVOR, sourceFlavor};
-            }
-
-            @Override
-            public boolean isDataFlavorSupported(DataFlavor flavor) {
-                return flavor.equals(FEATURE_FLAVOR);
-            }
-
-            @Override
-            public Object getTransferData(DataFlavor flavor) {
-                return feature;
-            }
-        };
+        return createSingleEntryTransferable(entry, FEATURE_FLAVOR);
     }
 
     @Override

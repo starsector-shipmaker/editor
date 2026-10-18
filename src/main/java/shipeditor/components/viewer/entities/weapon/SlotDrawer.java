@@ -101,21 +101,10 @@ public class SlotDrawer {
         this.parentPoint = parent;
     }
 
-    private void getPointInDirection(Point2D startPoint, double angleDegrees, double length, Point2D target) {
-        double angleRadians = Math.toRadians(angleDegrees);
-        double deltaX = length * Math.cos(angleRadians);
-        double deltaY = length * Math.sin(angleRadians);
-        target.setLocation(startPoint.getX() + deltaX, startPoint.getY() + deltaY);
-    }
-
     public void paintSlotVisuals(SpriteRenderer spriteRenderer, ShapeRenderer shapeRenderer, Matrix4f projection, Matrix4f view) {
         Point2D position = this.pointPosition;
         AffineTransform worldToScreen = StaticController.getViewer().getWorldToScreen();
-        p0Screen.setLocation(0, 0);
-        p1Screen.setLocation(1, 0);
-        Point2D transformedP0 = worldToScreen.transform(p0Screen, this.p0Screen);
-        Point2D transformedP1 = worldToScreen.transform(p1Screen, this.p1Screen);
-        double wtsScale = transformedP0.distance(transformedP1);
+        double wtsScale = DrawerMath.worldToScreenScale(worldToScreen, p0Screen, p1Screen);
 
         double circleRadius = 0.10f * paintSizeMultiplier;
         double enlargedRadius = circleRadius * 1.65f;
@@ -236,10 +225,10 @@ public class SlotDrawer {
             case HARDPOINT -> {
                 double transformedAngle = Utility.transformAngle(this.angle);
                 double diagDist = effectiveHalfExtent * Math.sqrt(2);
-                getPointInDirection(pointPosition, transformedAngle + 225, diagDist, p0Cached);
-                getPointInDirection(pointPosition, transformedAngle + 315, diagDist, p1Cached);
-                getPointInDirection(pointPosition, transformedAngle + 45, diagDist, p2Cached);
-                getPointInDirection(pointPosition, transformedAngle + 135, diagDist, p3Cached);
+                DrawerMath.pointInDirection(pointPosition, transformedAngle + 225, diagDist, p0Cached);
+                DrawerMath.pointInDirection(pointPosition, transformedAngle + 315, diagDist, p1Cached);
+                DrawerMath.pointInDirection(pointPosition, transformedAngle + 45, diagDist, p2Cached);
+                DrawerMath.pointInDirection(pointPosition, transformedAngle + 135, diagDist, p3Cached);
 
                 worldToScreen.transform(p0Cached, s0Cached);
                 worldToScreen.transform(p1Cached, s1Cached);
@@ -277,9 +266,9 @@ public class SlotDrawer {
                 double transformedAngle = Utility.transformAngle(this.angle);
                 double d = effectiveHalfExtent * (2.5 / 1.65);
 
-                getPointInDirection(pointPosition, transformedAngle - 120, d, p0Cached);
-                getPointInDirection(pointPosition, transformedAngle, d, p1Cached);
-                getPointInDirection(pointPosition, transformedAngle + 120, d, p2Cached);
+                DrawerMath.pointInDirection(pointPosition, transformedAngle - 120, d, p0Cached);
+                DrawerMath.pointInDirection(pointPosition, transformedAngle, d, p1Cached);
+                DrawerMath.pointInDirection(pointPosition, transformedAngle + 120, d, p2Cached);
 
                 worldToScreen.transform(p0Cached, s0Cached);
                 worldToScreen.transform(p1Cached, s1Cached);
@@ -330,10 +319,10 @@ public class SlotDrawer {
         double effectiveLineLength = lineLength;
         double effectiveArcRadius = 0.40f * paintSizeMultiplier;
 
-        getPointInDirection(position, arcStartAngle, effectiveLineLength, arcStartEndpoint);
-        getPointInDirection(position, arcStartAngle, effectiveCircleRadius, arcStartCirclePoint);
-        getPointInDirection(position, arcEndAngle, effectiveLineLength, arcEndEndpoint);
-        getPointInDirection(position, arcEndAngle, effectiveCircleRadius, arcEndCirclePoint);
+        DrawerMath.pointInDirection(position, arcStartAngle, effectiveLineLength, arcStartEndpoint);
+        DrawerMath.pointInDirection(position, arcStartAngle, effectiveCircleRadius, arcStartCirclePoint);
+        DrawerMath.pointInDirection(position, arcEndAngle, effectiveLineLength, arcEndEndpoint);
+        DrawerMath.pointInDirection(position, arcEndAngle, effectiveCircleRadius, arcEndCirclePoint);
 
         worldToScreen.transform(arcStartEndpoint, sStartEndpoint);
         worldToScreen.transform(arcStartCirclePoint, sStartCirclePoint);
@@ -379,8 +368,8 @@ public class SlotDrawer {
         double effectiveRadius = circleRadius;
         double effectivePointerStart = effectiveRadius * 5.0;
 
-        getPointInDirection(position, transformedAngle, effectivePointerStart, lineEndpoint);
-        getPointInDirection(position, transformedAngle, effectiveRadius, closestIntersection);
+        DrawerMath.pointInDirection(position, transformedAngle, effectivePointerStart, lineEndpoint);
+        DrawerMath.pointInDirection(position, transformedAngle, effectiveRadius, closestIntersection);
 
         worldToScreen.transform(lineEndpoint, sLineEndpoint);
         worldToScreen.transform(closestIntersection, sClosestIntersection);

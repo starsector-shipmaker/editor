@@ -6,6 +6,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import lombok.Getter;
 import lombok.Setter;
+import shipeditor.components.instrument.weapon.WeaponFirePanelUtilities;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.components.viewer.ViewerEnums.PainterVisibility;
 import shipeditor.components.viewer.painters.points.AbstractPointPainter;
@@ -158,45 +159,18 @@ public abstract class LayerPropertiesPanel extends JPanel {
     }
 
     protected javax.swing.JTextField createTextField(Consumer<String> setter) {
-        javax.swing.JTextField textField = new javax.swing.JTextField();
-        textField.setColumns(10);
-        textField.addActionListener(e -> {
-            if (isWidgetsReadyForInput()) {
-                setter.accept(textField.getText());
-                processChange();
-            }
-        });
-        return textField;
+        return WeaponFirePanelUtilities.createTextField(null, this::isWidgetsReadyForInput, setter,
+                this::processChange);
     }
 
     protected javax.swing.JTextField createDoubleField(Consumer<Double> setter) {
-        javax.swing.JTextField textField = new javax.swing.JTextField();
-        textField.setColumns(10);
-        textField.addActionListener(e -> {
-            if (isWidgetsReadyForInput()) {
-                try {
-                    setter.accept(Double.parseDouble(textField.getText()));
-                    processChange();
-                } catch (NumberFormatException ex) {
-                }
-            }
-        });
-        return textField;
+        return WeaponFirePanelUtilities.createDoubleField(null, this::isWidgetsReadyForInput, setter,
+                this::processChange);
     }
 
     protected javax.swing.JTextField createIntField(Consumer<Integer> setter) {
-        javax.swing.JTextField textField = new javax.swing.JTextField();
-        textField.setColumns(10);
-        textField.addActionListener(e -> {
-            if (isWidgetsReadyForInput()) {
-                try {
-                    setter.accept(Integer.parseInt(textField.getText()));
-                    processChange();
-                } catch (NumberFormatException ex) {
-                }
-            }
-        });
-        return textField;
+        return WeaponFirePanelUtilities.createIntField(null, this::isWidgetsReadyForInput, setter,
+                this::processChange);
     }
 
     protected javax.swing.JTextField createListField(Consumer<java.util.List<String>> setter) {
@@ -217,14 +191,8 @@ public abstract class LayerPropertiesPanel extends JPanel {
     }
 
     protected javax.swing.JCheckBox createCheckBox(String text, Consumer<Boolean> setter) {
-        javax.swing.JCheckBox checkBox = new javax.swing.JCheckBox(text);
-        checkBox.addActionListener(e -> {
-            if (isWidgetsReadyForInput()) {
-                setter.accept(checkBox.isSelected());
-                processChange();
-            }
-        });
-        return checkBox;
+        return WeaponFirePanelUtilities.createCheckBox(text, null, this::isWidgetsReadyForInput, setter,
+                this::processChange);
     }
 
     protected Pair<JLabel, JSlider> createOpacityWidget(Function<LayerPainter, Float> opacityGetter,

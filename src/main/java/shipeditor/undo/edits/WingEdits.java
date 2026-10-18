@@ -1,11 +1,11 @@
 package shipeditor.undo.edits;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import shipeditor.communication.EventBus;
-import shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated;
+import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.datafiles.entities.WingCSVEntry;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.components.viewer.layers.ship.ShipLayer;
+import shipeditor.components.viewer.layers.ship.data.ShipSkin;
 import shipeditor.undo.AbstractEdit;
 import shipeditor.utility.UtilityEnums.EditCategory;
 import shipeditor.utility.overseers.StaticController;
@@ -19,31 +19,58 @@ public final class WingEdits {
     private WingEdits() {
     }
 
+    private static EditCategory resolveCategory(ShipLayer layer, List<WingCSVEntry> targetList) {
+        if (layer != null) {
+            if (layer.getHull() != null && targetList == layer.getHull().getBuiltInWings()) {
+                return EditCategory.HULL;
+            }
+            if (layer.getPainter() != null) {
+                ShipSkin skin = layer.getPainter().getActiveSkin();
+                if (skin != null && !skin.isBase() && targetList == skin.getBuiltInWings()) {
+                    return EditCategory.SKIN;
+                }
+            }
+        }
+        EditorInstrument mode = StaticController.getEditorMode();
+        if (mode == EditorInstrument.BUILT_IN_WINGS) {
+            if (layer != null && layer.getPainter() != null) {
+                ShipSkin skin = layer.getPainter().getActiveSkin();
+                if (skin != null && !skin.isBase()) {
+                    return EditCategory.SKIN;
+                }
+            }
+            return EditCategory.HULL;
+        }
+        if (mode == EditorInstrument.SKIN_DATA || mode == EditorInstrument.SKIN_SLOTS
+                || mode == EditorInstrument.SKIN_ENGINES || mode == EditorInstrument.SKIN_REMOVALS) {
+            return EditCategory.SKIN;
+        }
+        return EditCategory.VARIANT;
+    }
+
     public static class WingAddEdit extends AbstractEdit {
         private final List<WingCSVEntry> wingIndex;
-        private final ShipLayer layer;
+        private ShipLayer layer;
         private final WingCSVEntry entry;
+        private final EditCategory category;
 
         public WingAddEdit(List<WingCSVEntry> index, ShipLayer shipLayer, WingCSVEntry wing) {
             this.wingIndex = index;
             this.layer = shipLayer;
             this.entry = wing;
+            this.category = resolveCategory(shipLayer, index);
         }
 
         @Override
         public void undo() {
             wingIndex.remove(entry);
-            if (StaticController.getActiveLayer() == layer) {
-                EventBus.publish(new ActiveLayerUpdated(layer));
-            }
+            refreshIfActive(layer);
         }
 
         @Override
         public void redo() {
             wingIndex.add(entry);
-            if (StaticController.getActiveLayer() == layer) {
-                EventBus.publish(new ActiveLayerUpdated(layer));
-            }
+            refreshIfActive(layer);
         }
 
         @Override
@@ -52,8 +79,18 @@ public final class WingEdits {
         }
 
         @Override
+        public LayerPainter getLayerPainter() {
+            return layer != null ? layer.getPainter() : null;
+        }
+
+        @Override
+        public void cleanupReferences() {
+            layer = null;
+        }
+
+        @Override
         public EditCategory getCategory() {
-            return EditCategory.VARIANT;
+            return category;
         }
     }
 
@@ -62,28 +99,26 @@ public final class WingEdits {
         private ShipLayer layer;
         private final WingCSVEntry entry;
         private final int positionIndex;
+        private final EditCategory category;
 
         public WingRemoveEdit(List<WingCSVEntry> index, ShipLayer shipLayer, WingCSVEntry wing, int entryIndex) {
             this.wingIndex = index;
             this.layer = shipLayer;
             this.entry = wing;
             this.positionIndex = entryIndex;
+            this.category = resolveCategory(shipLayer, index);
         }
 
         @Override
         public void undo() {
             wingIndex.add(positionIndex, entry);
-            if (StaticController.getActiveLayer() == layer) {
-                EventBus.publish(new ActiveLayerUpdated(layer));
-            }
+            refreshIfActive(layer);
         }
 
         @Override
         public void redo() {
             wingIndex.remove(positionIndex);
-            if (StaticController.getActiveLayer() == layer) {
-                EventBus.publish(new ActiveLayerUpdated(layer));
-            }
+            refreshIfActive(layer);
         }
 
         @Override
@@ -103,7 +138,7 @@ public final class WingEdits {
 
         @Override
         public EditCategory getCategory() {
-            return EditCategory.VARIANT;
+            return category;
         }
     }
 
@@ -112,6 +147,7 @@ public final class WingEdits {
         private final List<WingCSVEntry> newList;
         private ShipLayer layer;
         private final Consumer<List<WingCSVEntry>> sortSetter;
+        private final EditCategory category;
 
         public WingsSortEdit(List<WingCSVEntry> old, List<WingCSVEntry> updated, ShipLayer shipLayer,
                              Consumer<List<WingCSVEntry>> setter) {
@@ -119,22 +155,19 @@ public final class WingEdits {
             this.newList = updated;
             this.layer = shipLayer;
             this.sortSetter = setter;
+            this.category = resolveCategory(shipLayer, old);
         }
 
         @Override
         public void undo() {
             sortSetter.accept(oldList);
-            if (StaticController.getActiveLayer() == layer) {
-                EventBus.publish(new ActiveLayerUpdated(layer));
-            }
+            refreshIfActive(layer);
         }
 
         @Override
         public void redo() {
             sortSetter.accept(newList);
-            if (StaticController.getActiveLayer() == layer) {
-                EventBus.publish(new ActiveLayerUpdated(layer));
-            }
+            refreshIfActive(layer);
         }
 
         @Override
@@ -154,7 +187,7 @@ public final class WingEdits {
 
         @Override
         public EditCategory getCategory() {
-            return EditCategory.VARIANT;
+            return category;
         }
     }
 }

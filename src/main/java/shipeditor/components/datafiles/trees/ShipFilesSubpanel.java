@@ -115,8 +115,7 @@ class ShipFilesSubpanel extends JPanel {
         if (sprite != null) {
             String tooltip = Utility.getTooltipForSprite(sprite);
             JLabel spriteIcon = ComponentUtilities.createIconFromImage(sprite.getImage(), tooltip, 128);
-            JPanel spriteWrapper = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER));
-            spriteWrapper.add(spriteIcon);
+            JPanel spriteWrapper = ComponentUtilities.createCenteredPanel(spriteIcon);
             filesPanel.add(spriteWrapper, gbc);
             gbc.gridy++;
         }
@@ -235,8 +234,11 @@ class ShipFilesSubpanel extends JPanel {
         Collection<VariantFile> variantsForHull = new ArrayList<>();
         Map<String, VariantFile> allVariants = gameData.getAllVariants();
         for (VariantFile variantFile : allVariants.values()) {
+            if (variantFile == null) {
+                continue;
+            }
             String hullID = variantFile.getHullId();
-            if (hullID.equals(shipId)) {
+            if (shipId != null && shipId.equals(hullID)) {
                 variantsForHull.add(variantFile);
             }
         }

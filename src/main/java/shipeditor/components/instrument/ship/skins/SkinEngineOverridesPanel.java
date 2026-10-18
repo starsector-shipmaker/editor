@@ -2,32 +2,18 @@ package shipeditor.components.instrument.ship.skins;
 
 import shipeditor.utility.text.StringManager;
 
-import shipeditor.communication.EventBus;
-import shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated;
-import shipeditor.communication.events.viewer.layers.LayerEvents.LayerWasSelected;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.viewer.entities.engine.EngineDataOverride;
 import shipeditor.components.viewer.entities.engine.EnginePoint;
-import shipeditor.components.viewer.layers.ViewerLayer;
-import shipeditor.components.viewer.layers.ship.ShipLayer;
-import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.components.viewer.layers.ship.data.ShipSkin;
 import shipeditor.components.viewer.painters.points.ship.EngineSlotPainter;
 import shipeditor.persistence.SettingsManager;
 import shipeditor.representation.GameDataRepository;
 import shipeditor.representation.ship.EngineStyle;
-import shipeditor.utility.components.ComponentUtilities;
-import shipeditor.utility.components.UIConstants;
-import shipeditor.utility.components.UIFactory;
 import shipeditor.utility.themes.Themes;
-import org.kordamp.ikonli.boxicons.BoxiconsRegular;
-import org.kordamp.ikonli.swing.FontIcon;
-import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 
 import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -79,41 +65,19 @@ public class SkinEngineOverridesPanel extends AbstractSkinOverridesPanel<SkinEng
 
 
     protected void refreshEditorPanel() {
-        JPanel innerEditor = (JPanel) editorPanel.getComponent(0);
-        innerEditor.removeAll();
-
-        int selectedRow = overridesTable.getSelectedRow();
-        if (selectedRow < 0 || selectedRow >= tableModel.getRowCount()) {
-            showNoSelectionHint(innerEditor, "Select an engine slot from the table to view/edit its override");
-            return;
-        }
-
-        EngineOverrideRow row = tableModel.getRow(selectedRow);
-        populateEditorForRow(innerEditor, row);
-
-        innerEditor.revalidate();
-        innerEditor.repaint();
+        refreshEditorForSelection("Select an engine slot from the table to view/edit its override",
+                (panel, rowIndex) -> populateEditorForRow(panel, tableModel.getRow(rowIndex)));
     }
 
     private void populateEditorForRow(JPanel panel, EngineOverrideRow row) {
-        GridBagConstraints labelGbc = new GridBagConstraints();
-        labelGbc.anchor = GridBagConstraints.LINE_START;
-        labelGbc.insets = new Insets(2, 4, 2, 4);
-
-        GridBagConstraints fieldGbc = new GridBagConstraints();
-        fieldGbc.fill = GridBagConstraints.HORIZONTAL;
-        fieldGbc.weightx = 1;
-        fieldGbc.insets = new Insets(2, 4, 2, 4);
+        GridBagConstraints labelGbc = createLabelConstraints();
+        GridBagConstraints fieldGbc = createFieldConstraints();
 
         int gridRow = 0;
 
         addReadOnlyField(panel, "Engine Index:", String.valueOf(row.index), labelGbc, fieldGbc, gridRow++);
 
-        String overrideStatus = row.hasOverride ? "✓ Has Override" : "✗ No Override";
-        Color overrideColor = row.hasOverride
-                ? Themes.getSuccessColor()
-                : UIManager.getColor("Label.disabledForeground");
-        addColoredField(panel, "Status:", overrideStatus, overrideColor, labelGbc, fieldGbc, gridRow++);
+        addOverrideStatusRow(panel, row.hasOverride, Themes.getSuccessColor(), labelGbc, fieldGbc, gridRow++);
 
         SpinnerNumberModel angleModel = new SpinnerNumberModel(
                 row.hasOverride && row.override.getAngle() != null ? row.override.getAngle().doubleValue() : row.baseAngle,
@@ -149,10 +113,7 @@ public class SkinEngineOverridesPanel extends AbstractSkinOverridesPanel<SkinEng
         addField(panel, "Override Width:", widthSpinner, labelGbc, fieldGbc, gridRow++);
         addField(panel, "Override Style:", styleBox, labelGbc, fieldGbc, gridRow++);
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 4, 0));
-        JButton applyButton = new JButton("Apply Override",
-                FontIcon.of(BoxiconsRegular.CHECK_CIRCLE, 16, Themes.getIconColor()));
-        applyButton.addActionListener(e -> {
+        addOverrideButtons(panel, gridRow, row.hasOverride, () -> {
             EngineDataOverride.EngineDataOverrideBuilder builder = EngineDataOverride.builder();
             builder.index(row.index);
             builder.angle(((Number) angleModel.getValue()).doubleValue());
@@ -164,33 +125,7 @@ public class SkinEngineOverridesPanel extends AbstractSkinOverridesPanel<SkinEng
             }
 
             commitOverride(row.index, builder.build());
-        });
-
-        ShipSkin activeSkin = cachedPainter != null ? cachedPainter.getActiveSkin() : null;
-        boolean isSkinActive = activeSkin != null && !activeSkin.isBase();
-
-        applyButton.setEnabled(isSkinActive);
-        if (!isSkinActive) {
-            applyButton.setToolTipText("Select a skin in the chooser above to apply overrides");
-        }
-
-        JButton clearButton = new JButton("Clear Override",
-                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
-        clearButton.setEnabled(isSkinActive && row.hasOverride);
-        clearButton.addActionListener(e -> {
-            commitOverride(row.index, null);
-        });
-
-        buttonPanel.add(clearButton);
-        buttonPanel.add(applyButton);
-
-        GridBagConstraints btnGbc = new GridBagConstraints();
-        btnGbc.gridx = 0;
-        btnGbc.gridy = gridRow;
-        btnGbc.gridwidth = 2;
-        btnGbc.fill = GridBagConstraints.HORIZONTAL;
-        btnGbc.insets = new Insets(8, 4, 4, 4);
-        panel.add(buttonPanel, btnGbc);
+        }, () -> commitOverride(row.index, null));
     }
 
     private void commitOverride(Integer index, EngineDataOverride override) {

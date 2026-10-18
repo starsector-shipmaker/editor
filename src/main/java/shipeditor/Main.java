@@ -10,6 +10,7 @@ import shipeditor.persistence.Settings;
 import shipeditor.persistence.SettingsManager;
 import shipeditor.persistence.database.DatabaseManager;
 import shipeditor.utility.Errors;
+import shipeditor.utility.ToastingExceptionHandler;
 import shipeditor.utility.Utility;
 import shipeditor.utility.text.StringConstants;
 import shipeditor.utility.UtilityEnums.Theme;
@@ -304,6 +305,7 @@ public final class Main {
             // to prevent silent layout crashes on startup!
             StandardOutputRedirector.redirectStandardStreams();
             Errors.initGlobalHandler();
+            ToastingExceptionHandler.install();
         });
     }
 

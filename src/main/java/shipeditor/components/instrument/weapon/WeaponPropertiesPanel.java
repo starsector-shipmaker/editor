@@ -2,8 +2,6 @@ package shipeditor.components.instrument.weapon;
 
 import shipeditor.utility.text.StringManager;
 
-import shipeditor.communication.EventBus;
-import shipeditor.communication.events.components.ComponentEvents.LayerTabUpdated;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.components.viewer.layers.weapon.WeaponLayer;
 import shipeditor.representation.weapon.WeaponEnums.WeaponSize;
@@ -11,7 +9,6 @@ import shipeditor.representation.weapon.WeaponEnums.WeaponType;
 import shipeditor.representation.weapon.WeaponSpecFile;
 import shipeditor.utility.components.CollapsibleSection;
 import shipeditor.utility.components.ComponentUtilities;
-import shipeditor.utility.overseers.StaticController;
 
 import javax.swing.BoxLayout;
 import javax.swing.JCheckBox;
@@ -21,10 +18,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -33,7 +27,6 @@ import java.util.function.Supplier;
  */
 public class WeaponPropertiesPanel extends AbstractWeaponPropertiesPanel {
 
-    private WeaponLayer cachedLayer;
     
 
     // --- Identity section ---
@@ -393,16 +386,6 @@ public class WeaponPropertiesPanel extends AbstractWeaponPropertiesPanel {
         ComponentUtilities.addLabelAndComponent(content, new JLabel(), skipIdleFrameIfZeroBurstDelayCheckbox, row++);
 
         return new CollapsibleSection("Beam", content, true);
-    }
-
-    // ========== processChange ==========
-
-    @Override
-    protected void processChange() {
-        if (cachedLayer != null) {
-            EventBus.publish(new LayerTabUpdated(cachedLayer));
-            StaticController.getScheduler().queueViewerRepaint();
-        }
     }
 
     // ========== Refresh / Clear ==========

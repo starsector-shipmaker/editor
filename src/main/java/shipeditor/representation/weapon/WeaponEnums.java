@@ -1,6 +1,8 @@
 package shipeditor.representation.weapon;
 
 import java.awt.Color;
+import java.util.Locale;
+import java.util.Optional;
 import lombok.Getter;
 import org.kordamp.ikonli.Ikon;
 import org.kordamp.ikonli.boxicons.BoxiconsRegular;
@@ -175,67 +177,71 @@ public class WeaponEnums {
     /**
      * Yeah, this sucks, but... weapon type rules suck in the first place, sorry Alex!
      */
-    @SuppressWarnings({"OverlyComplexBooleanExpression", "RedundantLabeledSwitchRuleCodeBlock", "OverlyComplexMethod"})
     public static boolean isWeaponFitting(SlotData slotPoint, WeaponCSVEntry weaponEntry) {
-        if (slotPoint == null || weaponEntry == null
-                || slotPoint.getWeaponType() == null || slotPoint.getWeaponSize() == null
-                || weaponEntry.getSize() == null || weaponEntry.getType() == null) {
-            return false;
+        return getIncompatibilityReason(slotPoint, weaponEntry).isEmpty();
+    }
+
+    /**
+     * Explains why the weapon cannot be installed into the slot.
+     *
+     * @return empty if the weapon fits, otherwise a human-readable reason
+     * (e.g. "Slot is SMALL, weapon is MEDIUM" or a type mismatch description).
+     */
+    public static Optional<String> getIncompatibilityReason(SlotData slotPoint, WeaponCSVEntry weaponEntry) {
+        if (slotPoint == null || weaponEntry == null) {
+            return Optional.of("No slot or weapon specified");
         }
         WeaponType slotType = slotPoint.getWeaponType();
+        WeaponSize slotSize = slotPoint.getWeaponSize();
         WeaponType weaponType = weaponEntry.getType();
+        WeaponSize weaponSize = weaponEntry.getSize();
+        if (slotType == null || slotSize == null || weaponType == null || weaponSize == null) {
+            return Optional.of("Slot or weapon type/size data is missing");
+        }
+        if (!isTypeAllowed(slotType, weaponType)) {
+            return Optional.of("Slot is " + slotType.getDisplayedName().toUpperCase(Locale.ROOT)
+                    + ", weapon is " + weaponType.getDisplayedName().toUpperCase(Locale.ROOT)
+                    + " (type mismatch)");
+        }
+        boolean sizeMatters = slotType != WeaponType.DECORATIVE;
+        if (sizeMatters && WeaponSize.getSizeDifference(slotSize, weaponSize) < 0) {
+            return Optional.of("Slot is " + slotSize.getId() + ", weapon is " + weaponSize.getId());
+        }
+        return Optional.empty();
+    }
 
-        int sizeDifference = WeaponSize.getSizeDifference(slotPoint.getWeaponSize(), weaponEntry.getSize());
-        boolean isSameOrSmaller = sizeDifference >= 0;
-
+    @SuppressWarnings({"OverlyComplexBooleanExpression", "RedundantLabeledSwitchRuleCodeBlock", "OverlyComplexMethod"})
+    private static boolean isTypeAllowed(WeaponType slotType, WeaponType weaponType) {
         boolean result;
-
         switch (slotType) {
-            case BALLISTIC -> {
-                result = (weaponType == WeaponType.BALLISTIC && isSameOrSmaller)
-                        || (weaponType == WeaponType.HYBRID && isSameOrSmaller)
-                        || (weaponType == WeaponType.COMPOSITE && isSameOrSmaller);
-            }
-            case ENERGY -> {
-                result = (weaponType == WeaponType.ENERGY && isSameOrSmaller)
-                        || (weaponType == WeaponType.HYBRID && isSameOrSmaller)
-                        || (weaponType == WeaponType.SYNERGY && isSameOrSmaller);
-            }
-            case MISSILE -> {
-                result = (weaponType == WeaponType.MISSILE && isSameOrSmaller)
-                        || (weaponType == WeaponType.COMPOSITE && isSameOrSmaller)
-                        || (weaponType == WeaponType.SYNERGY && isSameOrSmaller);
-            }
-            case HYBRID -> {
-                result = (weaponType == WeaponType.HYBRID && isSameOrSmaller)
-                        || (weaponType == WeaponType.BALLISTIC && isSameOrSmaller)
-                        || (weaponType == WeaponType.ENERGY && isSameOrSmaller);
-            }
-            case COMPOSITE -> {
-                result = (weaponType == WeaponType.COMPOSITE && isSameOrSmaller)
-                        || (weaponType == WeaponType.BALLISTIC && isSameOrSmaller)
-                        || (weaponType == WeaponType.MISSILE && isSameOrSmaller);
-            }
-            case SYNERGY -> {
-                result = (weaponType == WeaponType.SYNERGY && isSameOrSmaller)
-                        || (weaponType == WeaponType.ENERGY && isSameOrSmaller)
-                        || (weaponType == WeaponType.MISSILE && isSameOrSmaller);
-            }
-            case UNIVERSAL -> {
-                result = (weaponType == WeaponType.UNIVERSAL && isSameOrSmaller)
-                        || (weaponType != WeaponType.LAUNCH_BAY
-                        && weaponType != WeaponType.BUILT_IN
-                        && weaponType != WeaponType.DECORATIVE
-                        && weaponType != WeaponType.SYSTEM
-                        && weaponType != WeaponType.STATION_MODULE
-                        && isSameOrSmaller);
-            }
-            case BUILT_IN -> result = (weaponType != WeaponType.DECORATIVE && isSameOrSmaller);
-            case DECORATIVE -> result = (weaponType == WeaponType.DECORATIVE);
-            case SYSTEM -> result = (weaponType == WeaponType.SYSTEM && isSameOrSmaller);
-            default -> {
-                result = false;
-            }
+            case BALLISTIC -> result = weaponType == WeaponType.BALLISTIC
+                    || weaponType == WeaponType.HYBRID
+                    || weaponType == WeaponType.COMPOSITE;
+            case ENERGY -> result = weaponType == WeaponType.ENERGY
+                    || weaponType == WeaponType.HYBRID
+                    || weaponType == WeaponType.SYNERGY;
+            case MISSILE -> result = weaponType == WeaponType.MISSILE
+                    || weaponType == WeaponType.COMPOSITE
+                    || weaponType == WeaponType.SYNERGY;
+            case HYBRID -> result = weaponType == WeaponType.HYBRID
+                    || weaponType == WeaponType.BALLISTIC
+                    || weaponType == WeaponType.ENERGY;
+            case COMPOSITE -> result = weaponType == WeaponType.COMPOSITE
+                    || weaponType == WeaponType.BALLISTIC
+                    || weaponType == WeaponType.MISSILE;
+            case SYNERGY -> result = weaponType == WeaponType.SYNERGY
+                    || weaponType == WeaponType.ENERGY
+                    || weaponType == WeaponType.MISSILE;
+            case UNIVERSAL -> result = weaponType == WeaponType.UNIVERSAL
+                    || (weaponType != WeaponType.LAUNCH_BAY
+                    && weaponType != WeaponType.BUILT_IN
+                    && weaponType != WeaponType.DECORATIVE
+                    && weaponType != WeaponType.SYSTEM
+                    && weaponType != WeaponType.STATION_MODULE);
+            case BUILT_IN -> result = weaponType != WeaponType.DECORATIVE;
+            case DECORATIVE -> result = weaponType == WeaponType.DECORATIVE;
+            case SYSTEM -> result = weaponType == WeaponType.SYSTEM;
+            default -> result = false;
         }
         return result;
     }

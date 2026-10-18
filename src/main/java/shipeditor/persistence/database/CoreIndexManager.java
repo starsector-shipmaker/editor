@@ -23,6 +23,7 @@ public class CoreIndexManager {
     private static final Map<String, List<IndexedFile>> CORE_FILES_BY_TYPE = new ConcurrentHashMap<>();
     private static final Map<String, Map<String, IndexedFile>> CORE_FILES_BY_ENTITY_ID = new ConcurrentHashMap<>();
     private static final Map<String, IndexedFile> CORE_FILES_BY_PATH = new ConcurrentHashMap<>();
+    private static final Set<String> CORE_SPEC_EXTENSIONS = Set.of("ship", "skin", "wpn", "variant", "proj");
     private static final Object LOCK = new Object();
     private static volatile boolean isLoaded = false;
 
@@ -142,23 +143,10 @@ public class CoreIndexManager {
 
             // Check if any relevant file in the core folder has been modified since the last scan.
             long dbLastScanned = modInfo.lastScanned();
-            Path dataPath = coreFolder.resolve("data");
-            Path walkTarget = Files.exists(dataPath) && Files.isDirectory(dataPath) ? dataPath : coreFolder;
+            Path walkTarget = IndexScannerTask.resolveDataWalkTarget(coreFolder);
             try (java.util.stream.Stream<Path> pathStream = Files.walk(walkTarget)) {
-                boolean hasNewerFile = pathStream.anyMatch(path -> {
-                    if (!Files.isRegularFile(path)) return false;
-                    Path fileNamePath = path.getFileName();
-                    if (fileNamePath == null) return false;
-                    String fileName = fileNamePath.toString();
-                    int dotIndex = fileName.lastIndexOf('.');
-                    if (dotIndex > 0) {
-                        String ext = fileName.substring(dotIndex + 1).toLowerCase(java.util.Locale.ROOT);
-                        if (Set.of("ship", "skin", "wpn", "variant", "proj").contains(ext)) {
-                            return path.toFile().lastModified() > dbLastScanned;
-                        }
-                    }
-                    return false;
-                });
+                boolean hasNewerFile = pathStream.anyMatch(
+                        path -> IndexScannerTask.isRelevantFileModified(path, dbLastScanned, CORE_SPEC_EXTENSIONS));
                 if (hasNewerFile) {
                     return false;
                 }

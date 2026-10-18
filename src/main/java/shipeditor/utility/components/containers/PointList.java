@@ -74,6 +74,39 @@ public abstract class PointList<T extends BaseWorldPoint> extends SortableList<T
 
     protected abstract void publishPointsSorted(List<T> rearrangedPoints);
 
+    /**
+     * Compares the model against the current points by identity. If they differ, a replacement model is installed
+     * into this list and the previous selection is restored; otherwise the list is only repainted.
+     */
+    public DefaultListModel<T> synchronizeModel(DefaultListModel<T> model, List<? extends T> currentPoints) {
+        boolean modelsEqual = true;
+        if (model.getSize() == currentPoints.size()) {
+            for (int i = 0; i < model.getSize(); i++) {
+                if (model.getElementAt(i) != currentPoints.get(i)) {
+                    modelsEqual = false;
+                    break;
+                }
+            }
+        } else {
+            modelsEqual = false;
+        }
+
+        if (modelsEqual) {
+            this.repaint();
+            return model;
+        }
+
+        int[] cachedSelected = this.getSelectedIndices();
+        DefaultListModel<T> newModel = new DefaultListModel<>();
+        newModel.addAll(currentPoints);
+        this.setModel(newModel);
+        this.setSelectedIndices(cachedSelected);
+        if (!newModel.isEmpty() && cachedSelected.length > 0) {
+            this.ensureIndexIsVisible(cachedSelected[0]);
+        }
+        return newModel;
+    }
+
     private void actOnSelectedPoint(Consumer<T> action) {
         int index = this.getSelectedIndex();
         if (index != -1) {

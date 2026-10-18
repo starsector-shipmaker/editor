@@ -3,6 +3,7 @@ package shipeditor.components.datafiles.trees;
 import shipeditor.utility.text.StringManager;
 
 import shipeditor.utility.components.UIConstants;
+import shipeditor.utility.components.widgets.SimpleDocumentListener;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -11,8 +12,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 
 public abstract class AbstractFilterPanel extends JPanel {
 
@@ -170,7 +169,8 @@ public abstract class AbstractFilterPanel extends JPanel {
             container.add(searchField);
             container.add(Box.createRigidArea(new Dimension(0, 4)));
 
-            searchField.getDocument().addDocumentListener(new FilterDocumentListener(searchField, itemsContainer));
+            searchField.getDocument().addDocumentListener(
+                    new SimpleDocumentListener(() -> updateItemVisibility(searchField, itemsContainer)));
         }
 
         container.add(itemsContainer);
@@ -206,42 +206,17 @@ public abstract class AbstractFilterPanel extends JPanel {
         return container;
     }
 
-    private static class FilterDocumentListener implements DocumentListener {
-        private final JTextField searchField;
-        private final JPanel itemsContainer;
-
-        FilterDocumentListener(JTextField searchField, JPanel itemsContainer) {
-            this.searchField = searchField;
-            this.itemsContainer = itemsContainer;
-        }
-
-        private void updateVisibility() {
-            String text = searchField.getText().toLowerCase(java.util.Locale.ROOT);
-            for (Component c : itemsContainer.getComponents()) {
-                if (c instanceof JPanel row) {
-                    for (Component child : row.getComponents()) {
-                        if (child instanceof JCheckBox cb) {
-                            row.setVisible(cb.getText().toLowerCase(java.util.Locale.ROOT).contains(text));
-                            break;
-                        }
+    private static void updateItemVisibility(JTextField searchField, JPanel itemsContainer) {
+        String text = searchField.getText().toLowerCase(java.util.Locale.ROOT);
+        for (Component c : itemsContainer.getComponents()) {
+            if (c instanceof JPanel row) {
+                for (Component child : row.getComponents()) {
+                    if (child instanceof JCheckBox cb) {
+                        row.setVisible(cb.getText().toLowerCase(java.util.Locale.ROOT).contains(text));
+                        break;
                     }
                 }
             }
-        }
-
-        @Override
-        public void insertUpdate(DocumentEvent e) {
-            updateVisibility();
-        }
-
-        @Override
-        public void removeUpdate(DocumentEvent e) {
-            updateVisibility();
-        }
-
-        @Override
-        public void changedUpdate(DocumentEvent e) {
-            updateVisibility();
         }
     }
 }

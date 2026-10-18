@@ -3,18 +3,10 @@ package shipeditor.components.instrument.ship.skins;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import shipeditor.utility.text.StringManager;
 
-import shipeditor.communication.EventBus;
-import shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated;
-import shipeditor.communication.events.viewer.layers.LayerEvents.LayerWasSelected;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.datafiles.entities.HullmodCSVEntry;
 import shipeditor.components.datafiles.entities.WingCSVEntry;
-import shipeditor.components.viewer.layers.ViewerLayer;
-import shipeditor.components.viewer.layers.ship.ShipLayer;
-import shipeditor.components.viewer.layers.ship.ShipPainter;
-import shipeditor.components.viewer.layers.ship.data.ActiveShipSpec;
 import shipeditor.components.viewer.layers.ship.data.ShipSkin;
-import shipeditor.persistence.SettingsManager;
 import shipeditor.representation.GameDataRepository;
 import shipeditor.undo.UndoOverseer;
 import shipeditor.undo.edits.features.SkinOverrideEdits.SkinListOverrideEdit;
@@ -23,10 +15,10 @@ import shipeditor.utility.components.UIConstants;
 import shipeditor.utility.themes.Themes;
 import org.kordamp.ikonli.boxicons.BoxiconsRegular;
 import org.kordamp.ikonli.swing.FontIcon;
-import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.table.AbstractTableModel;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,35 +26,15 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
-public class SkinRemovalsPanel extends JPanel {
+public class SkinRemovalsPanel extends AbstractSkinOverridesPanel<AbstractTableModel> {
 
-    private final JComboBox<ShipSkin> skinChooser;
-    private final JLabel statusLabel;
     private final JPanel contentContainer;
-    private ShipPainter cachedPainter;
-    private boolean isUpdatingSkinChooser;
 
     public SkinRemovalsPanel() {
+        super(EditorInstrument.SKIN_REMOVALS);
         this.setLayout(new BorderLayout());
 
-        JPanel headerPanel = new JPanel(new BorderLayout(6, 0));
-        headerPanel.setBorder(new EmptyBorder(4, 6, 2, 6));
-        JLabel skinLabel = new JLabel("Skin:");
-        skinChooser = new JComboBox<>();
-        skinChooser.addActionListener(e -> {
-            if (isUpdatingSkinChooser || cachedPainter == null || cachedPainter.isUninitialized()) {
-                return;
-            }
-            ShipSkin chosen = (ShipSkin) skinChooser.getSelectedItem();
-            ActiveShipSpec spec = (chosen != null && !chosen.isBase()) ? ActiveShipSpec.SKIN : ActiveShipSpec.HULL;
-            cachedPainter.setActiveSpec(spec, chosen);
-        });
-        headerPanel.add(skinLabel, BorderLayout.LINE_START);
-        headerPanel.add(skinChooser, BorderLayout.CENTER);
-
-        statusLabel = new JLabel(StringManager.getString("NO_SKIN_ACTIVE"));
-        statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        statusLabel.setBorder(new EmptyBorder(4, 8, 4, 8));
+        JPanel headerPanel = createChooserPanel();
 
         JPanel topContainer = new JPanel(new BorderLayout());
         topContainer.add(headerPanel, BorderLayout.PAGE_START);
@@ -81,57 +53,8 @@ public class SkinRemovalsPanel extends JPanel {
         this.initEventListening();
     }
 
-    private void initEventListening() {
-        EventBus.subscribe(this, event -> {
-            if (event instanceof LayerWasSelected checked) {
-                handleLayerChange(checked.selected());
-            } else if (event instanceof ActiveLayerUpdated checked) {
-                handleLayerChange(checked.updated());
-            }
-        });
-        EventBus.subscribe(this, event -> {
-            if (event instanceof InstrumentRepaintQueued checked) {
-                if (checked.editorMode() == EditorInstrument.SKIN_REMOVALS) {
-                    refreshContent();
-                }
-            }
-        });
-    }
-
-    private void handleLayerChange(ViewerLayer layer) {
-        if (layer instanceof ShipLayer shipLayer) {
-            ShipPainter painter = shipLayer.getPainter();
-            if (painter != null && !painter.isUninitialized()) {
-                this.cachedPainter = painter;
-                refreshContent();
-                return;
-            }
-        }
-        this.cachedPainter = null;
-        refreshContent();
-    }
-
-    private void updateSkinChooser() {
-        isUpdatingSkinChooser = true;
-        skinChooser.removeAllItems();
-        if (cachedPainter != null && !cachedPainter.isUninitialized()) {
-            ShipLayer parentLayer = cachedPainter.getParentLayer();
-            if (parentLayer != null && parentLayer.getSkins() != null) {
-                for (ShipSkin skin : parentLayer.getSkins()) {
-                    skinChooser.addItem(skin);
-                }
-                skinChooser.setSelectedItem(cachedPainter.getActiveSkin());
-                skinChooser.setEnabled(skinChooser.getItemCount() > 0);
-            } else {
-                skinChooser.setEnabled(false);
-            }
-        } else {
-            skinChooser.setEnabled(false);
-        }
-        isUpdatingSkinChooser = false;
-    }
-
-    private void refreshContent() {
+    @Override
+    protected void refreshContent() {
         updateSkinChooser();
         contentContainer.removeAll();
 

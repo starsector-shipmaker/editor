@@ -41,6 +41,13 @@ public final class IndexScannerTask {
     }
 
     private static boolean isRelevantFileModified(Path path, long dbLastScanned) {
+        return isRelevantFileModified(path, dbLastScanned, VALID_EXTENSIONS);
+    }
+
+    /**
+     * Checks whether a regular file with one of the given extensions was modified after {@code dbLastScanned}.
+     */
+    public static boolean isRelevantFileModified(Path path, long dbLastScanned, Set<String> validExtensions) {
         if (!Files.isRegularFile(path)) return false;
         Path fileNamePath = path.getFileName();
         if (fileNamePath == null) return false;
@@ -48,11 +55,36 @@ public final class IndexScannerTask {
         int dotIndex = fileName.lastIndexOf('.');
         if (dotIndex > 0) {
             String ext = fileName.substring(dotIndex + 1).toLowerCase(java.util.Locale.ROOT);
-            if (VALID_EXTENSIONS.contains(ext)) {
+            if (validExtensions.contains(ext)) {
                 return path.toFile().lastModified() > dbLastScanned;
             }
         }
         return false;
+    }
+
+    /**
+     * Resolves the folder to walk when scanning a mod/core folder: its {@code data} subfolder when present,
+     * otherwise the folder itself.
+     */
+    public static Path resolveDataWalkTarget(Path folder) {
+        Path dataPath = folder.resolve("data");
+        return Files.exists(dataPath) && Files.isDirectory(dataPath) ? dataPath : folder;
+    }
+
+    private static boolean hasNewerRelevantFile(Path folder, long dbLastScanned) throws IOException {
+        Path walkTarget = resolveDataWalkTarget(folder);
+        log.debug("Checking for files modified after {} under: {}", dbLastScanned, walkTarget);
+        try (Stream<Path> pathStream = Files.walk(walkTarget)) {
+            return pathStream.anyMatch(path -> isRelevantFileModified(path, dbLastScanned));
+        }
+    }
+
+    private static UUID uuidOrNew(DatabaseQueryService.FileDbInfo dbInfo) {
+        UUID uuid = dbInfo != null ? dbInfo.uuid() : null;
+        if (uuid == null) {
+            uuid = UUID.randomUUID();
+        }
+        return uuid;
     }
 
     private static String extractCSVMetadata(File file, String type) {
@@ -126,13 +158,8 @@ public final class IndexScannerTask {
                 return true;
             }
 
-            Long dbLastScanned = dbModInfo.lastScanned();
-
-            Path dataPath = folder.resolve("data");
-            Path walkTarget = Files.exists(dataPath) && Files.isDirectory(dataPath) ? dataPath : folder;
-            try (Stream<Path> pathStream = Files.walk(walkTarget)) {
-                boolean hasNewerFile = pathStream.anyMatch(path -> isRelevantFileModified(path, dbLastScanned));
-                if (hasNewerFile) {
+            try {
+                if (hasNewerRelevantFile(folder, dbModInfo.lastScanned())) {
                     log.info("isUpdateNeeded: found newer file in mod folder: {}", folder);
                     return true;
                 }
@@ -252,11 +279,8 @@ public final class IndexScannerTask {
             DatabaseQueryService.ModInfo dbModInfo = existingModsMap.get(modId);
             boolean needsScan = firstRun || dbModInfo == null || !folder.toAbsolutePath().toString().equals(dbModInfo.folderPath());
             if (!needsScan && dbModInfo != null) {
-                Long dbLastScanned = dbModInfo.lastScanned();
-                Path dataPath = folder.resolve("data");
-                Path walkTarget = Files.exists(dataPath) && Files.isDirectory(dataPath) ? dataPath : folder;
-                try (Stream<Path> pathStream = Files.walk(walkTarget)) {
-                    needsScan = pathStream.anyMatch(path -> isRelevantFileModified(path, dbLastScanned));
+                try {
+                    needsScan = hasNewerRelevantFile(folder, dbModInfo.lastScanned());
                 } catch (IOException e) {
                     log.warn("Failed to check last modified times for mod folder: {}", folder, e);
                     needsScan = true;
@@ -281,14 +305,7 @@ public final class IndexScannerTask {
                     conn.setAutoCommit(false); // Enable Batch Mode for this mod
                     try {
                         // Upsert mod metadata row
-                        String upsertModSql = """
-                                INSERT INTO mods (id, name, folder_path, last_scanned)
-                                VALUES (?, ?, ?, ?)
-                                ON CONFLICT(id) DO UPDATE SET
-                                    name = excluded.name,
-                                    folder_path = excluded.folder_path,
-                                    last_scanned = excluded.last_scanned;
-                                """;
+                        String upsertModSql = DatabaseQueryService.UPSERT_MOD_SQL;
                         try (PreparedStatement pstmt = conn.prepareStatement(upsertModSql)) {
                             pstmt.setString(1, modId);
                             pstmt.setString(2, modId.equals("starsector-core") ? "Starsector Core" : modId);
@@ -346,22 +363,7 @@ public final class IndexScannerTask {
 
         Map<String, DatabaseQueryService.FileDbInfo> dbInfoMap = DatabaseQueryService.getFilesDbInfoMap(conn, modId);
 
-        String upsertFileSql = """
-                INSERT INTO indexed_files (uuid, mod_id, entity_id, entity_name, entity_type, file_name, file_path, last_modified, file_hash, sprite_path, designation, metadata_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(uuid) DO UPDATE SET
-                    mod_id = excluded.mod_id,
-                    entity_id = excluded.entity_id,
-                    entity_name = excluded.entity_name,
-                    entity_type = excluded.entity_type,
-                    file_name = excluded.file_name,
-                    file_path = excluded.file_path,
-                    last_modified = excluded.last_modified,
-                    file_hash = excluded.file_hash,
-                    sprite_path = excluded.sprite_path,
-                    designation = excluded.designation,
-                    metadata_json = excluded.metadata_json;
-                """;
+        String upsertFileSql = DatabaseQueryService.UPSERT_INDEXED_FILE_SQL;
 
         Map<String, List<File>> allFiles = fetchFilesWithExtensions(modFolder, extensions.keySet());
 
@@ -381,10 +383,7 @@ public final class IndexScannerTask {
                 Long dbLastModified = dbInfo != null ? dbInfo.lastModified() : null;
 
                 if (forceRescan || dbLastModified == null || diskLastModified != dbLastModified) {
-                    UUID uuid = dbInfo != null ? dbInfo.uuid() : null;
-                    if (uuid == null) {
-                        uuid = UUID.randomUUID();
-                    }
+                    UUID uuid = uuidOrNew(dbInfo);
                     parseRequests.add(new FileParseRequest(file, ext, type, absPath, diskLastModified, uuid));
                 }
             }
@@ -473,10 +472,7 @@ public final class IndexScannerTask {
                     Long dbLastModified = dbInfo != null ? dbInfo.lastModified() : null;
 
                     if (dbLastModified == null || diskLastModified != dbLastModified) {
-                        UUID uuid = dbInfo != null ? dbInfo.uuid() : null;
-                        if (uuid == null) {
-                            uuid = UUID.randomUUID();
-                        }
+                        UUID uuid = uuidOrNew(dbInfo);
 
                         pstmt.setString(1, uuid.toString());
                         pstmt.setString(2, modId);
@@ -602,8 +598,7 @@ public final class IndexScannerTask {
             filesMap.put(ext, new ArrayList<>());
         }
 
-        Path dataPath = target.resolve("data");
-        Path walkTarget = Files.exists(dataPath) && Files.isDirectory(dataPath) ? dataPath : target;
+        Path walkTarget = resolveDataWalkTarget(target);
         try (Stream<Path> pathStream = Files.walk(walkTarget)) {
             pathStream.filter(Files::isRegularFile)
                     .forEach(path -> {

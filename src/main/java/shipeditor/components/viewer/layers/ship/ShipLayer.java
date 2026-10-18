@@ -187,21 +187,32 @@ public class ShipLayer extends ViewerLayer {
     }
 
     public void initializeHullData(HullSpecFile hullSpecFile) {
-        ShipHull shipHull = this.getHull();
-        if (shipHull == null) {
-            shipHull = new ShipHull();
+        shipeditor.undo.UndoOverseer.setPaused(true);
+        try {
+            ShipHull shipHull = this.getHull();
+            if (shipHull == null) {
+                shipHull = new ShipHull();
+            }
+            shipHull.initialize(hullSpecFile);
+            this.hull = shipHull;
+            ShipPainter shipPainter = getPainter();
+            shipPainter.initFromHullSpec(hullSpecFile);
+
+            this.loadedVariants.clear();
+            this.skins.clear();
+            this.skins.add(ShipSkin.EMPTY);
+
+            shipPainter.activateEmptySkin();
+            shipPainter.selectVariant(VariantFile.empty());
+        } finally {
+            shipeditor.undo.UndoOverseer.setPaused(false);
         }
-        shipHull.initialize(hullSpecFile);
-        this.hull = shipHull;
-        ShipPainter shipPainter = getPainter();
-        shipPainter.initFromHullSpec(hullSpecFile);
-
-        this.loadedVariants.clear();
-        this.skins.clear();
-        this.skins.add(ShipSkin.EMPTY);
-
-        shipPainter.activateEmptySkin();
-        shipPainter.selectVariant(VariantFile.empty());
+        var layerManager = shipeditor.utility.overseers.StaticController.getLayerManager();
+        if (layerManager != null) {
+            layerManager.markSaved(this, "hull");
+            layerManager.markSaved(this, "variant");
+            layerManager.markSaved(this, "skin");
+        }
     }
 
     @Override

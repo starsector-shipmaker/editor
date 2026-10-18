@@ -2,55 +2,25 @@ package shipeditor.components.instrument.ship.skins;
 
 import shipeditor.utility.text.StringManager;
 
-import shipeditor.communication.EventBus;
-import shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated;
-import shipeditor.communication.events.viewer.layers.LayerEvents.LayerWasSelected;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.viewer.entities.weapon.WeaponSlotOverride;
 import shipeditor.components.viewer.entities.weapon.WeaponSlotPoint;
-import shipeditor.components.viewer.layers.ViewerLayer;
-import shipeditor.components.viewer.layers.ship.ShipLayer;
-import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.components.viewer.layers.ship.data.ShipSkin;
 import shipeditor.components.viewer.painters.points.ship.WeaponSlotPainter;
 import shipeditor.representation.weapon.WeaponEnums.WeaponMount;
 import shipeditor.representation.weapon.WeaponEnums.WeaponSize;
 import shipeditor.representation.weapon.WeaponEnums.WeaponType;
-import shipeditor.undo.UndoOverseer;
-import shipeditor.undo.edits.features.SkinOverrideEdits.SkinMapOverrideEdit;
-import shipeditor.utility.components.ComponentUtilities;
 
-import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSplitPane;
-import javax.swing.JTable;
-import javax.swing.JTextField;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingConstants;
-import javax.swing.UIManager;
-import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
-import javax.swing.table.DefaultTableCellRenderer;
-import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import shipeditor.utility.components.UIConstants;
-import shipeditor.utility.themes.Themes;
-import org.kordamp.ikonli.boxicons.BoxiconsRegular;
-import org.kordamp.ikonli.swing.FontIcon;
-import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 
 /** * Panel for viewing and editing weapon slot overrides defined in skin files.
  * When a skin is active, displays all weapon slots and shows which properties
@@ -100,31 +70,13 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
 
 
     protected void refreshEditorPanel() {
-        JPanel innerEditor = (JPanel) editorPanel.getComponent(0);
-        innerEditor.removeAll();
-
-        int selectedRow = overridesTable.getSelectedRow();
-        if (selectedRow < 0 || selectedRow >= tableModel.getRowCount()) {
-            showNoSelectionHint(innerEditor, StringManager.getString("SELECT_A_SLOT_FROM_THE_TABLE_TO_VIEW_ITS_OVERRIDE"));
-            return;
-        }
-
-        SlotOverrideRow row = tableModel.getRow(selectedRow);
-        populateEditorForRow(innerEditor, row);
-
-        innerEditor.revalidate();
-        innerEditor.repaint();
+        refreshEditorForSelection(StringManager.getString("SELECT_A_SLOT_FROM_THE_TABLE_TO_VIEW_ITS_OVERRIDE"),
+                (panel, rowIndex) -> populateEditorForRow(panel, tableModel.getRow(rowIndex)));
     }
 
     private void populateEditorForRow(JPanel panel, SlotOverrideRow row) {
-        GridBagConstraints labelGbc = new GridBagConstraints();
-        labelGbc.anchor = GridBagConstraints.LINE_START;
-        labelGbc.insets = new Insets(2, 4, 2, 4);
-
-        GridBagConstraints fieldGbc = new GridBagConstraints();
-        fieldGbc.fill = GridBagConstraints.HORIZONTAL;
-        fieldGbc.weightx = 1;
-        fieldGbc.insets = new Insets(2, 4, 2, 4);
+        GridBagConstraints labelGbc = createLabelConstraints();
+        GridBagConstraints fieldGbc = createFieldConstraints();
 
         int gridRow = 0;
 
@@ -134,11 +86,7 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
         addReadOnlyField(panel, "Base Mount:", String.valueOf(row.baseMount), labelGbc, fieldGbc, gridRow++);
         addReadOnlyField(panel, "Base Size:", String.valueOf(row.baseSize), labelGbc, fieldGbc, gridRow++);
 
-        String overrideStatus = row.hasOverride ? "✓ Has Override" : "✗ No Override";
-        Color overrideColor = row.hasOverride
-                ? new Color(100, 200, 100)
-                : UIManager.getColor("Label.disabledForeground");
-        addColoredField(panel, "Status:", overrideStatus, overrideColor, labelGbc, fieldGbc, gridRow++);
+        addOverrideStatusRow(panel, row.hasOverride, new Color(100, 200, 100), labelGbc, fieldGbc, gridRow++);
 
         JComboBox<WeaponType> typeBox = new JComboBox<>(WeaponType.values());
         JComboBox<WeaponMount> mountBox = new JComboBox<>(WeaponMount.values());
@@ -172,10 +120,7 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
         addField(panel, "Override Arc:", arcSpinner, labelGbc, fieldGbc, gridRow++);
         addField(panel, "Render Order Mod:", renderOrderSpinner, labelGbc, fieldGbc, gridRow++);
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 4, 0));
-        JButton applyButton = new JButton(StringManager.getString("APPLY_OVERRIDE"),
-                FontIcon.of(BoxiconsRegular.CHECK_CIRCLE, 16, Themes.getIconColor()));
-        applyButton.addActionListener(e -> {
+        addOverrideButtons(panel, gridRow, row.hasOverride, () -> {
             WeaponSlotOverride.WeaponSlotOverrideBuilder builder = WeaponSlotOverride.builder();
             builder.slotID(row.slotId);
             WeaponType selType = (WeaponType) typeBox.getSelectedItem();
@@ -193,33 +138,7 @@ public class SkinSlotOverridesPanel extends AbstractSkinOverridesPanel<SkinSlotO
             if (rom != 0) builder.renderOrderMod(rom);
 
             commitOverride(row.slotId, builder.build());
-        });
-
-        ShipSkin activeSkin = cachedPainter != null ? cachedPainter.getActiveSkin() : null;
-        boolean isSkinActive = activeSkin != null && !activeSkin.isBase();
-
-        applyButton.setEnabled(isSkinActive);
-        if (!isSkinActive) {
-            applyButton.setToolTipText("Select a skin in the chooser above to apply overrides");
-        }
-
-        JButton clearButton = new JButton(StringManager.getString("CLEAR_OVERRIDE"),
-                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
-        clearButton.setEnabled(isSkinActive && row.hasOverride);
-        clearButton.addActionListener(e -> {
-            commitOverride(row.slotId, null);
-        });
-
-        buttonPanel.add(clearButton);
-        buttonPanel.add(applyButton);
-
-        GridBagConstraints btnGbc = new GridBagConstraints();
-        btnGbc.gridx = 0;
-        btnGbc.gridy = gridRow;
-        btnGbc.gridwidth = 2;
-        btnGbc.fill = GridBagConstraints.HORIZONTAL;
-        btnGbc.insets = new Insets(8, 4, 4, 4);
-        panel.add(buttonPanel, btnGbc);
+        }, () -> commitOverride(row.slotId, null));
     }
 
     private void commitOverride(String slotId, WeaponSlotOverride override) {

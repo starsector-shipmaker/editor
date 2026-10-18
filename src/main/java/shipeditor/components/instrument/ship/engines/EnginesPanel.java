@@ -1,6 +1,5 @@
 package shipeditor.components.instrument.ship.engines;
 
-import shipeditor.utility.text.StringManager;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
@@ -11,25 +10,15 @@ import shipeditor.components.instrument.ship.AbstractShipPropertiesPanel;
 import shipeditor.components.viewer.entities.engine.EnginePoint;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.components.viewer.layers.ship.ShipPainter;
-import shipeditor.components.viewer.ViewerEnums.PainterVisibility;
 import shipeditor.components.viewer.painters.points.ship.EngineSlotPainter;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.objects.Pair;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JCheckBox;
-import javax.swing.JComboBox;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
-import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 import shipeditor.communication.events.viewer.points.PointEvents.EngineInsertedConfirmed;
 import shipeditor.communication.events.viewer.points.PointEvents.PointAddConfirmed;
@@ -88,10 +77,7 @@ public class EnginesPanel extends AbstractShipPropertiesPanel {
         this.dataPanel = new EngineDataPanel();
 
         JPanel northContainer = new JPanel(new BorderLayout());
-        var visibilityWidget = createEnginesVisibilityWidget();
-        Map<JLabel, JComponent> visibilityWidgetMap = Map.of(visibilityWidget.getFirst(), visibilityWidget.getSecond());
-        JPanel visibilityWidgetContainer = this.createWidgetsPanel(visibilityWidgetMap);
-        visibilityWidgetContainer.setBorder(new EmptyBorder(4, 0, 3, 0));
+        JPanel visibilityWidgetContainer = createShipVisibilityPanel(ShipPainter::getEnginePainter, "ENGINES_VIEW");
         northContainer.add(visibilityWidgetContainer, BorderLayout.PAGE_START);
 
         ComponentUtilities.outfitPanelWithTitle(dataPanel, "Engine Data");
@@ -136,33 +122,8 @@ public class EnginesPanel extends AbstractShipPropertiesPanel {
                 }
                 EngineSlotPainter cachedEnginePainter = getCachedEnginePainter();
                 if (cachedEnginePainter != null) {
-                    java.util.List<EnginePoint> currentPoints = cachedEnginePainter.getPointsIndex();
-                    boolean modelsEqual = true;
-                    if (this.model.getSize() == currentPoints.size()) {
-                        for (int i = 0; i < this.model.getSize(); i++) {
-                            if (this.model.getElementAt(i) != currentPoints.get(i)) {
-                                modelsEqual = false;
-                                break;
-                            }
-                        }
-                    } else {
-                        modelsEqual = false;
-                    }
-
-                    if (!modelsEqual) {
-                        int[] cachedSelected = this.enginesContainer.getSelectedIndices();
-                        DefaultListModel<EnginePoint> newModel = new DefaultListModel<>();
-                        newModel.addAll(currentPoints);
-
-                        this.model = newModel;
-                        this.enginesContainer.setModel(newModel);
-                        this.enginesContainer.setSelectedIndices(cachedSelected);
-                        if (!this.model.isEmpty() && cachedSelected.length > 0) {
-                            this.enginesContainer.ensureIndexIsVisible(cachedSelected[0]);
-                        }
-                    } else {
-                        this.enginesContainer.repaint();
-                    }
+                    this.model = this.enginesContainer.synchronizeModel(this.model,
+                            cachedEnginePainter.getPointsIndex());
                 }
 
                 this.refreshEngineControlPane(null);
@@ -188,36 +149,6 @@ public class EnginesPanel extends AbstractShipPropertiesPanel {
                 enginesContainer.setSelectedIndex(model.indexOf(point));
             }
         });
-    }
-
-    private Pair<JLabel, JComboBox<PainterVisibility>> createEnginesVisibilityWidget() {
-        BooleanSupplier readinessChecker = this::isWidgetsReadyForInput;
-        Consumer<PainterVisibility> visibilitySetter = changedValue -> {
-            LayerPainter cachedLayerPainter = getCachedLayerPainter();
-            if (cachedLayerPainter != null) {
-                EngineSlotPainter enginePainter = ((ShipPainter) cachedLayerPainter).getEnginePainter();
-                enginePainter.setVisibilityMode(changedValue);
-                processChange();
-            }
-        };
-
-        BiConsumer<JComponent, Consumer<LayerPainter>> clearerListener = this::registerWidgetClearer;
-        BiConsumer<JComponent, Consumer<LayerPainter>> refresherListener = this::registerWidgetRefresher;
-
-        Function<LayerPainter, PainterVisibility> visibilityGetter = layerPainter -> {
-            EngineSlotPainter enginePainter = ((ShipPainter) layerPainter).getEnginePainter();
-            return enginePainter.getVisibilityMode();
-        };
-
-        var opacityWidget = PainterVisibility.createVisibilityWidget(
-                readinessChecker, visibilityGetter, visibilitySetter,
-                clearerListener, refresherListener
-        );
-
-        JLabel opacityLabel = opacityWidget.getFirst();
-        opacityLabel.setText(StringManager.getString("ENGINES_VIEW"));
-
-        return opacityWidget;
     }
 
 }

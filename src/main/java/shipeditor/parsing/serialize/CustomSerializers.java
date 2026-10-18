@@ -66,26 +66,18 @@ public class CustomSerializers {
     }
 
     public static void writePoint2DForSingle(Point2D point, JsonGenerator gen) throws IOException {
-        String resultX;
-        String resultY;
-
-        double pointX = point.getX();
-        double pointY = point.getY();
-
-        if (pointX % 1 == 0) {
-            resultX = String.valueOf((int)pointX);
-        } else {
-            resultX = String.valueOf(pointX);
-        }
-
-        if (pointY % 1 == 0) {
-            resultY =  String.valueOf((int)pointY);
-        } else {
-            resultY = String.valueOf(pointY);
-        }
+        String resultX = formatIntegralAsInt(point.getX());
+        String resultY = formatIntegralAsInt(point.getY());
 
         gen.writeRaw(resultX);
         gen.writeRaw(", " + resultY);
+    }
+
+    private static String formatIntegralAsInt(double value) {
+        if (value % 1 == 0) {
+            return String.valueOf((int) value);
+        }
+        return String.valueOf(value);
     }
 
 }

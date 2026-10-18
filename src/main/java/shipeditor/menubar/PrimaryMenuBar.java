@@ -85,6 +85,15 @@ public final class PrimaryMenuBar extends JMenuBar {
             dialog.setVisible(true);
         });
         helpMenu.add(logsItem);
+
+        JMenuItem dataProblemsItem = new JMenuItem("Data Problems...");
+        dataProblemsItem.setIcon(FontIcon.of(BoxiconsRegular.ERROR_CIRCLE, 16, Themes.getIconColor()));
+        dataProblemsItem.addActionListener(e -> {
+            shipeditor.utility.components.dialog.DataProblemsDialog dialog =
+                    new shipeditor.utility.components.dialog.DataProblemsDialog(shipeditor.PrimaryWindow.getInstance());
+            dialog.setVisible(true);
+        });
+        helpMenu.add(dataProblemsItem);
         
         return helpMenu;
     }

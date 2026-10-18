@@ -19,6 +19,9 @@ import shipeditor.representation.RepresentationEnums.ShipTypeHints;
 @lombok.extern.log4j.Log4j2
 public class CustomDeserializers {
 
+    private static double asDoubleOrZero(JsonNode node) {
+        return node != null ? node.asDouble() : 0.0;
+    }
 
     public static class ColorArrayRGBADeserializer extends JsonDeserializer<Color> {
 
@@ -121,11 +124,7 @@ public class CustomDeserializers {
                 if (node == null || !node.isArray() || node.size() < 2) {
                     return new Point2D.Double(0, 0);
                 }
-                JsonNode xNode = node.get(0);
-                JsonNode yNode = node.get(1);
-                double x = xNode != null ? xNode.asDouble() : 0.0;
-                double y = yNode != null ? yNode.asDouble() : 0.0;
-                return new Point2D.Double(x, y);
+                return new Point2D.Double(asDoubleOrZero(node.get(0)), asDoubleOrZero(node.get(1)));
             } catch (Exception e) {
                 log.error("Failed to deserialize Point2D", e);
                 return new Point2D.Double(0, 0);
@@ -179,11 +178,7 @@ public class CustomDeserializers {
                     int size = node.size() / 2;
                     Point2D.Double[] points = new Point2D.Double[size];
                     for (int i = 0; i < size; i++) {
-                        JsonNode xNode = node.get(i * 2);
-                        JsonNode yNode = node.get(i * 2 + 1);
-                        double x = xNode != null ? xNode.asDouble() : 0.0;
-                        double y = yNode != null ? yNode.asDouble() : 0.0;
-                        points[i] = new Point2D.Double(x, y);
+                        points[i] = new Point2D.Double(asDoubleOrZero(node.get(i * 2)), asDoubleOrZero(node.get(i * 2 + 1)));
                     }
                     return points;
                 } else {
@@ -192,9 +187,7 @@ public class CustomDeserializers {
                     for (int i = 0; i < size; i++) {
                         JsonNode pointNode = node.get(i);
                         if (pointNode != null && pointNode.isArray() && pointNode.size() >= 2) {
-                            double x = pointNode.get(0) != null ? pointNode.get(0).asDouble() : 0.0;
-                            double y = pointNode.get(1) != null ? pointNode.get(1).asDouble() : 0.0;
-                            points[i] = new Point2D.Double(x, y);
+                            points[i] = new Point2D.Double(asDoubleOrZero(pointNode.get(0)), asDoubleOrZero(pointNode.get(1)));
                         } else {
                             points[i] = new Point2D.Double(0, 0);
                         }

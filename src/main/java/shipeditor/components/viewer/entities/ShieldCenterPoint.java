@@ -1,5 +1,6 @@
 package shipeditor.components.viewer.entities;
 
+import shipeditor.components.viewer.painters.GlColors;
 import shipeditor.utility.text.StringManager;
 
 import shipeditor.utility.graphics.opengl.SpriteRenderer;
@@ -77,21 +78,11 @@ public class ShieldCenterPoint extends BaseWorldPoint {
         org.joml.Vector2f centerWorld = new org.joml.Vector2f((float) position.getX(), (float) position.getY());
 
         Color innerColor = getDisplayedShieldColor(associatedStyle.getShieldInnerColor());
-        org.joml.Vector4f glInnerColor = new org.joml.Vector4f(
-            innerColor.getRed() / 255.0f,
-            innerColor.getGreen() / 255.0f,
-            innerColor.getBlue() / 255.0f,
-            innerColor.getAlpha() / 255.0f
-        );
+        org.joml.Vector4f glInnerColor = GlColors.of(innerColor);
         shapeRenderer.drawCircle(centerWorld, getShieldRadius(), glInnerColor, true);
 
         Color ringColor = associatedStyle.getShieldRingColor();
-        org.joml.Vector4f glRingColor = new org.joml.Vector4f(
-            ringColor.getRed() / 255.0f,
-            ringColor.getGreen() / 255.0f,
-            ringColor.getBlue() / 255.0f,
-            ringColor.getAlpha() / 255.0f
-        );
+        org.joml.Vector4f glRingColor = GlColors.of(ringColor);
         org.lwjgl.opengl.GL11.glLineWidth(GraphicConstants.LINE_WIDTH_THICK);
         shapeRenderer.drawCircle(centerWorld, getShieldRadius(), glRingColor, false);
         org.lwjgl.opengl.GL11.glLineWidth(GraphicConstants.LINE_WIDTH_DEFAULT);
@@ -102,12 +93,7 @@ public class ShieldCenterPoint extends BaseWorldPoint {
         shapeRenderer.begin(projection, new org.joml.Matrix4f());
 
         Color crossColor = getCurrentColor();
-        org.joml.Vector4f glCrossColor = new org.joml.Vector4f(
-            crossColor.getRed() / 255.0f,
-            crossColor.getGreen() / 255.0f,
-            crossColor.getBlue() / 255.0f,
-            1.0f
-        );
+        org.joml.Vector4f glCrossColor = GlColors.of(crossColor, 1.0f);
         Point2D screenLoc = worldToScreen.transform(position, null);
         org.joml.Vector2f screenPos = new org.joml.Vector2f(Math.round(screenLoc.getX()), Math.round(screenLoc.getY()));
 

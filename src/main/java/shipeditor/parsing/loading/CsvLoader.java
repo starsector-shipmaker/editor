@@ -8,6 +8,7 @@ import com.fasterxml.jackson.dataformat.csv.CsvParser;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import lombok.extern.log4j.Log4j2;
 import shipeditor.persistence.SettingsManager;
+import shipeditor.utility.DataProblemsRegistry;
 import shipeditor.utility.Errors;
 import shipeditor.utility.text.StringConstants;
 import java.io.File;
@@ -76,6 +77,7 @@ public final class CsvLoader {
             java.nio.charset.Charset charset) throws IOException {
         List<Map<String, String>> csvData = new ArrayList<>();
         List<Map<String, String>> rawData = new ArrayList<>();
+        int skippedRows = 0;
         try (java.io.Reader reader = Files.newBufferedReader(csvFile.toPath(), charset);
                 MappingIterator<Map<String, String>> iterator = csvMapper.readerFor(Map.class)
                         .with(csvSchema)
@@ -102,7 +104,14 @@ public final class CsvLoader {
                 rawData.add(optimizedRow);
                 if (validationPredicate != null && validationPredicate.test(optimizedRow)) {
                     csvData.add(optimizedRow);
+                } else {
+                    skippedRows++;
+                    log.debug("Skipped CSV row {} in {}: failed validation", rawData.size(), csvFile.getName());
                 }
+            }
+            if (skippedRows > 0) {
+                DataProblemsRegistry.recordSkippedRows(csvFile.getAbsolutePath(), skippedRows);
+                log.info("CSV load: skipped {} blank/comment/invalid row(s) in {}", skippedRows, csvFile);
             }
             shipeditor.representation.GameDataRepository repo = SettingsManager.getGameData();
             if (repo != null) {
@@ -119,7 +128,7 @@ public final class CsvLoader {
             }
             String id = row.get(StringConstants.ID);
             String name = row.get("name");
-            boolean validID = id != null && !id.isEmpty();
+            boolean validID = id != null && !id.isBlank() && !id.trim().startsWith("#");
             return validID && (name == null || !name.startsWith("#"));
         };
     }
@@ -130,7 +139,7 @@ public final class CsvLoader {
                 return false;
             }
             String id = row.get(StringConstants.ID);
-            return id != null && !id.isEmpty() && !id.startsWith("#");
+            return id != null && !id.isBlank() && !id.trim().startsWith("#");
         };
     }
 

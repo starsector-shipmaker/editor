@@ -31,14 +31,18 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
 import javax.swing.JCheckBox;
+import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
+import javax.swing.ToolTipManager;
 import javax.swing.border.CompoundBorder;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
@@ -47,6 +51,7 @@ import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -54,6 +59,8 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Image;
 import java.awt.Insets;
+import java.awt.event.ActionListener;
+import java.awt.event.HierarchyEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -68,6 +75,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 @Log4j2
@@ -102,6 +110,7 @@ public class PickWeaponDialog extends JPanel {
     private final Map<WeaponCSVEntry, ImageIcon> listIconCache = new HashMap<>();
     private WeaponCSVEntry selectedWeapon;
     private final Runnable onDoubleClick;
+    private boolean okGuardInstalled;
 
     public PickWeaponDialog(WeaponSlotPoint slotPoint, Runnable onDoubleClick) {
         this.slotPoint = slotPoint;
@@ -117,6 +126,110 @@ public class PickWeaponDialog extends JPanel {
         this.add(createCenterSplitPane(), BorderLayout.CENTER);
 
         this.applyFilters();
+
+        this.addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) != 0 && this.isShowing()) {
+                installOkGuard();
+            }
+        });
+    }
+
+    /**
+     * @return the reason the currently selected weapon cannot be installed into the slot,
+     * or empty if it fits (or there is no slot/selection to check against).
+     */
+    public Optional<String> getSelectedIncompatibilityReason() {
+        return getIncompatibilityReason(getSelectedWeapon());
+    }
+
+    private Optional<String> getIncompatibilityReason(WeaponCSVEntry weapon) {
+        if (slotPoint == null || weapon == null) {
+            return Optional.empty();
+        }
+        return WeaponType.getIncompatibilityReason(slotPoint, weapon);
+    }
+
+    /**
+     * Confirms the current list selection, unless the weapon is incompatible with the slot,
+     * in which case the reason is shown and the dialog stays open.
+     */
+    private void confirmSelection() {
+        selectedWeapon = weaponList.getSelectedValue();
+        if (selectedWeapon == null || onDoubleClick == null) {
+            return;
+        }
+        Optional<String> reason = getIncompatibilityReason(selectedWeapon);
+        if (reason.isPresent()) {
+            log.debug("Blocked confirmation of weapon {} for slot {}: {}", selectedWeapon.getWeaponID(),
+                    slotPoint.getId(), reason.get());
+            showIncompatibleMessage(reason.get());
+            return;
+        }
+        onDoubleClick.run();
+    }
+
+    private void showIncompatibleMessage(String reason) {
+        previewCompatibilityLabel.setForeground(new Color(255, 100, 100));
+        previewCompatibilityLabel.setText("<html>" + StringManager.getString("INCOMPATIBLE_WITH_SLOT")
+                + slotPoint.getId() + "<br>" + reason + "</html>");
+        JOptionPane.showMessageDialog(this, reason, "Weapon cannot be installed", JOptionPane.WARNING_MESSAGE);
+    }
+
+    /**
+     * The OK button belongs to the enclosing {@link JOptionPane}, so its listeners are wrapped here
+     * to veto confirmation of an incompatible weapon.
+     */
+    private void installOkGuard() {
+        if (okGuardInstalled || slotPoint == null) {
+            return;
+        }
+        try {
+            JOptionPane pane = (JOptionPane) SwingUtilities.getAncestorOfClass(JOptionPane.class, this);
+            if (pane == null) {
+                return;
+            }
+            JButton okButton = findFirstButton(pane);
+            if (okButton == null) {
+                log.debug("OK button not found in option pane, incompatible-weapon guard not installed");
+                return;
+            }
+            log.debug("Installing incompatible weapon guard on OK button '{}'", okButton.getText());
+            ActionListener[] originals = okButton.getActionListeners();
+            for (ActionListener original : originals) {
+                okButton.removeActionListener(original);
+            }
+            okButton.addActionListener(event -> {
+                Optional<String> reason = getSelectedIncompatibilityReason();
+                if (reason.isPresent()) {
+                    showIncompatibleMessage(reason.get());
+                    return;
+                }
+                for (ActionListener original : originals) {
+                    original.actionPerformed(event);
+                }
+            });
+            okGuardInstalled = true;
+        } catch (RuntimeException e) {
+            log.error("Failed to install OK button guard on weapon picker", e);
+        }
+    }
+
+    private JButton findFirstButton(Container container) {
+        for (Component child : container.getComponents()) {
+            if (child == this) {
+                continue;
+            }
+            if (child instanceof JButton button) {
+                return button;
+            }
+            if (child instanceof Container nested) {
+                JButton found = findFirstButton(nested);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     public WeaponCSVEntry getSelectedWeapon() {
@@ -151,12 +264,25 @@ public class PickWeaponDialog extends JPanel {
         Set<String> seenWeaponIds = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         GameDataRepository gameData = SettingsManager.getGameData();
 
-        // 1. Load aggregated weapons from GameDataRepository
+        List<IndexedFile> dbWeaponFiles = DatabaseQueryService.getFilesByType(StringConstants.WEAPON_TYPE);
+        Set<String> indexedSpecIds = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        if (dbWeaponFiles != null) {
+            for (IndexedFile file : dbWeaponFiles) {
+                if (file.getEntityId() != null && !file.getEntityId().isBlank()) {
+                    indexedSpecIds.add(file.getEntityId());
+                }
+            }
+        }
+
+        // 1. Load aggregated weapons from GameDataRepository (filtering out dummy/projectile rows with no .wpn spec)
         if (gameData != null) {
             Map<String, WeaponCSVEntry> allMap = gameData.getAllWeaponEntries();
             if (allMap != null) {
                 for (WeaponCSVEntry weapon : allMap.values()) {
-                    if (weapon.getWeaponID() != null && seenWeaponIds.add(weapon.getWeaponID())) {
+                    String wid = weapon.getWeaponID();
+                    if (wid != null && !wid.isBlank()
+                            && (indexedSpecIds.isEmpty() || indexedSpecIds.contains(wid))
+                            && seenWeaponIds.add(wid)) {
                         allIndexedWeapons.add(weapon);
                         String pkgName = resolvePackageName(weapon.getPackageFolderPath());
                         weaponPackageNameMap.put(weapon, pkgName);
@@ -165,16 +291,15 @@ public class PickWeaponDialog extends JPanel {
             }
         }
 
-        // 3. Query all indexed weapon files from DatabaseQueryService
+        // 2. Query all indexed weapon files from DatabaseQueryService
         // dbWeaponFiles already includes CoreIndexManager files.
         // We process in reverse order so mod files (appended last) take precedence over core files (added first).
-        List<IndexedFile> dbWeaponFiles = DatabaseQueryService.getFilesByType(StringConstants.WEAPON_TYPE);
         if (dbWeaponFiles != null && gameData != null) {
             for (int i = dbWeaponFiles.size() - 1; i >= 0; i--) {
                 IndexedFile file = dbWeaponFiles.get(i);
-                if (file.getEntityId() != null && !seenWeaponIds.contains(file.getEntityId())) {
+                if (file.getEntityId() != null && !file.getEntityId().isBlank() && !seenWeaponIds.contains(file.getEntityId())) {
                     WeaponCSVEntry entry = gameData.getOrCreateWeaponEntry(file);
-                    if (entry != null && seenWeaponIds.add(entry.getWeaponID())) {
+                    if (entry != null && entry.getWeaponID() != null && !entry.getWeaponID().isBlank() && seenWeaponIds.add(entry.getWeaponID())) {
                         allIndexedWeapons.add(entry);
                         String modId = file.getModId();
                         String pkgName = resolveModIdName(modId);
@@ -232,10 +357,7 @@ public class PickWeaponDialog extends JPanel {
                         weaponList.setSelectedIndex(0);
                     }
                 } else if (e.getKeyCode() == KeyEvent.VK_ENTER && onDoubleClick != null) {
-                    selectedWeapon = weaponList.getSelectedValue();
-                    if (selectedWeapon != null) {
-                        onDoubleClick.run();
-                    }
+                    confirmSelection();
                 }
             }
         });
@@ -316,6 +438,7 @@ public class PickWeaponDialog extends JPanel {
         weaponList = new JList<>(listModel);
         weaponList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         weaponList.setCellRenderer(new WeaponRichCellRenderer());
+        ToolTipManager.sharedInstance().registerComponent(weaponList);
 
         weaponList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -329,10 +452,7 @@ public class PickWeaponDialog extends JPanel {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
-                    selectedWeapon = weaponList.getSelectedValue();
-                    if (selectedWeapon != null && onDoubleClick != null) {
-                        onDoubleClick.run();
-                    }
+                    confirmSelection();
                 }
             }
         });
@@ -341,10 +461,7 @@ public class PickWeaponDialog extends JPanel {
             @Override
             public void keyPressed(KeyEvent e) {
                 if (e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    selectedWeapon = weaponList.getSelectedValue();
-                    if (selectedWeapon != null && onDoubleClick != null) {
-                        onDoubleClick.run();
-                    }
+                    confirmSelection();
                 }
             }
         });
@@ -451,12 +568,14 @@ public class PickWeaponDialog extends JPanel {
 
         // Compatibility check
         if (slotPoint != null) {
-            boolean fits = WeaponType.isWeaponFitting(slotPoint, weapon);
-            if (fits) {
+            Optional<String> reason = getIncompatibilityReason(weapon);
+            if (reason.isEmpty()) {
                 previewCompatibilityLabel.setText(StringManager.getString("FITS_SLOT") + slotPoint.getId() + " (" + slotPoint.getWeaponType() + " " + slotPoint.getWeaponSize() + ")");
                 previewCompatibilityLabel.setForeground(new Color(60, 220, 100));
             } else {
-                previewCompatibilityLabel.setText(StringManager.getString("INCOMPATIBLE_WITH_SLOT") + slotPoint.getId() + " (" + slotPoint.getWeaponType() + " " + slotPoint.getWeaponSize() + ")");
+                previewCompatibilityLabel.setText("<html>" + StringManager.getString("INCOMPATIBLE_WITH_SLOT")
+                        + slotPoint.getId() + " (" + slotPoint.getWeaponType() + " " + slotPoint.getWeaponSize()
+                        + ")<br>" + reason.get() + "</html>");
                 previewCompatibilityLabel.setForeground(new Color(255, 100, 100));
             }
         } else {
@@ -577,8 +696,15 @@ public class PickWeaponDialog extends JPanel {
                 String text = entry.toString() + " (" + entry.getWeaponID() + ")  [" + typeStr + " / " + sizeStr + "]  [" + pkgName + "]";
                 setText(text);
 
-                if (!isSelected && type != null && type.getColor() != null) {
-                    setForeground(type.getColor());
+                Optional<String> reason = getIncompatibilityReason(entry);
+                if (reason.isPresent()) {
+                    setForeground(Themes.getDisabledTextColor());
+                    setToolTipText(reason.get());
+                } else {
+                    setToolTipText(null);
+                    if (!isSelected && type != null && type.getColor() != null) {
+                        setForeground(type.getColor());
+                    }
                 }
 
                 ImageIcon cachedIcon = listIconCache.get(entry);

@@ -230,12 +230,7 @@ public class WingCSVEntry implements OrdnancedCSVEntry {
                         if (sprite != null) {
                             String tooltip = Utility.getTooltipForSprite(sprite);
                             JLabel loadedLabel = ComponentUtilities.createIconFromImage(sprite.getImage(), tooltip, maxSize);
-                            label.setIcon(loadedLabel.getIcon());
-                            label.setText(loadedLabel.getText());
-                            label.setToolTipText(loadedLabel.getToolTipText());
-                            label.setBorder(loadedLabel.getBorder());
-                            label.setOpaque(loadedLabel.isOpaque());
-                            label.setBackground(loadedLabel.getBackground());
+                            ComponentUtilities.copyLabelAppearance(label, loadedLabel);
                         } else {
                             label.setText(StringManager.getString("EMPTY_STRING_1"));
                         }

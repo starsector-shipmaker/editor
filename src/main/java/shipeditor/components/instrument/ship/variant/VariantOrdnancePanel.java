@@ -1,5 +1,6 @@
 package shipeditor.components.instrument.ship.variant;
 
+import lombok.extern.log4j.Log4j2;
 import shipeditor.utility.text.StringManager;
 
 import shipeditor.components.datafiles.entities.ShipCSVEntry;
@@ -8,15 +9,21 @@ import shipeditor.components.viewer.layers.ship.ShipLayer;
 import shipeditor.components.viewer.layers.ship.data.ShipHull;
 import shipeditor.utility.Utility;
 import shipeditor.utility.components.ComponentUtilities;
+import shipeditor.utility.themes.Themes;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
+import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 
+@Log4j2
 public class VariantOrdnancePanel extends JPanel {
+    private static final double OP_WARNING_RATIO = 0.85d;
+
     private final JLabel shipOPCap;
     private final JLabel usedOPTotal;
     private final JLabel usedOPInHullmods;
@@ -27,6 +34,7 @@ public class VariantOrdnancePanel extends JPanel {
     private final JLabel totalFluxCapacity;
     private final JLabel totalFluxDissipation;
     private final JLabel opStatusLabel;
+    private final JProgressBar opBar;
 
     public VariantOrdnancePanel() {
         ComponentUtilities.outfitPanelWithTitle(this, "Ordnance & Flux Stats");
@@ -86,10 +94,17 @@ public class VariantOrdnancePanel extends JPanel {
         ComponentUtilities.addLabelAndComponent(this, fluxDissLabel, totalFluxDissipation, 8);
         ComponentUtilities.addLabelAndComponent(this, opStatusTitle, opStatusLabel, 9);
 
+        JLabel opBarLabel = new JLabel("OP usage:");
+        opBarLabel.setBorder(emptyBorder);
+        opBar = new JProgressBar(0, 1);
+        opBar.setStringPainted(true);
+        opBar.setString(StringManager.getString("NOT_INITIALIZED"));
+        ComponentUtilities.addLabelAndComponent(this, opBarLabel, opBar, 10);
+
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.insets = new Insets(3, 6, 0, 3);
         constraints.gridx = 0;
-        constraints.gridy = 10;
+        constraints.gridy = 11;
         constraints.weightx = 0.0;
         constraints.weighty = 1;
         constraints.anchor = GridBagConstraints.LINE_START;
@@ -124,8 +139,10 @@ public class VariantOrdnancePanel extends JPanel {
             int usedVents = activeVariant.getFluxVents();
             int usedCaps = activeVariant.getFluxCapacitors();
 
-            usedVentsAndMax.setText(usedVents + " / " + maxVentsCaps);
-            usedCapsAndMax.setText(usedCaps + " / " + maxVentsCaps);
+            log.debug("Ordnance refresh: OP {}/{}, vents {}/{}, capacitors {}/{}",
+                    totalUsedOP, shipLayer.getTotalOP(), usedVents, maxVentsCaps, usedCaps, maxVentsCaps);
+            applyFluxLimit(usedVentsAndMax, "vents", usedVents, maxVentsCaps);
+            applyFluxLimit(usedCapsAndMax, "capacitors", usedCaps, maxVentsCaps);
 
             ShipCSVEntry shipEntry = activeVariant.getEntryFromShipID();
             if (shipEntry != null) {
@@ -143,18 +160,19 @@ public class VariantOrdnancePanel extends JPanel {
             }
 
             int opCap = shipLayer.getTotalOP();
+            updateOPBar(totalUsedOP, opCap);
             if (opCap > 0) {
                 if (totalUsedOP > opCap) {
                     opStatusLabel.setText(StringManager.getString("OP_EXCEEDED_EXCEEDS_BY") + (totalUsedOP - opCap) + " OP)");
-                    opStatusLabel.setForeground(java.awt.Color.RED);
+                    opStatusLabel.setForeground(Themes.getErrorColor());
                     opStatusLabel.setFont(opStatusLabel.getFont().deriveFont(java.awt.Font.BOLD));
                 } else if (totalUsedOP < opCap) {
                     opStatusLabel.setText(StringManager.getString("WARNING") + (opCap - totalUsedOP) + " unallocated OP remaining!");
-                    opStatusLabel.setForeground(new java.awt.Color(220, 160, 0)); // Dark Orange / Yellow
+                    opStatusLabel.setForeground(Themes.getWarningColor());
                     opStatusLabel.setFont(opStatusLabel.getFont().deriveFont(java.awt.Font.BOLD));
                 } else {
                     opStatusLabel.setText(StringManager.getString("ALL_OP_ALLOCATED"));
-                    opStatusLabel.setForeground(new java.awt.Color(50, 180, 50)); // Green
+                    opStatusLabel.setForeground(Themes.getSuccessColor());
                     opStatusLabel.setFont(opStatusLabel.getFont().deriveFont(java.awt.Font.BOLD));
                 }
             } else {
@@ -165,6 +183,41 @@ public class VariantOrdnancePanel extends JPanel {
             shipOPCap.setText(notInitialized);
             resetFields(notInitialized);
         }
+    }
+
+    /**
+     * Colours the OP bar: green below 85% usage, amber from 85% to 100%, red when over budget.
+     */
+    private void updateOPBar(int usedOP, int opCap) {
+        if (opCap <= 0) {
+            opBar.setMaximum(1);
+            opBar.setValue(0);
+            opBar.setString(StringManager.getString("N_A"));
+            opBar.setForeground(null);
+            return;
+        }
+        double ratio = (double) usedOP / opCap;
+        Color barColor;
+        if (ratio > 1.0d) {
+            barColor = Themes.getErrorColor();
+        } else if (ratio >= OP_WARNING_RATIO) {
+            barColor = Themes.getWarningColor();
+        } else {
+            barColor = Themes.getSuccessColor();
+        }
+        opBar.setMaximum(opCap);
+        opBar.setValue(Math.min(usedOP, opCap));
+        opBar.setString(usedOP + " / " + opCap + " OP (" + Math.round(ratio * 100) + "%)");
+        opBar.setForeground(barColor);
+    }
+
+    /**
+     * Shows 'used / max' for flux vents or capacitors, in the error colour when the hull size limit is exceeded.
+     */
+    private static void applyFluxLimit(JLabel label, String what, int used, int max) {
+        label.setText(used + " / " + max);
+        label.setToolTipText("Maximum flux " + what + " for this hull size: " + max);
+        label.setForeground(used > max ? Themes.getErrorColor() : null);
     }
 
     private void resetFields(String notInitialized) {
@@ -178,5 +231,11 @@ public class VariantOrdnancePanel extends JPanel {
         totalFluxDissipation.setText(notInitialized);
         opStatusLabel.setText(notInitialized);
         opStatusLabel.setForeground(null);
+        usedVentsAndMax.setForeground(null);
+        usedCapsAndMax.setForeground(null);
+        opBar.setMaximum(1);
+        opBar.setValue(0);
+        opBar.setString(notInitialized);
+        opBar.setForeground(null);
     }
 }

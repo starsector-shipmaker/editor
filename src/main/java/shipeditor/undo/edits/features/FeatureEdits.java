@@ -78,7 +78,13 @@ public final class FeatureEdits {
 
         @Override
         public shipeditor.utility.UtilityEnums.EditCategory getCategory() {
-            return shipeditor.utility.UtilityEnums.EditCategory.VARIANT;
+            if (afterAction != null) {
+                return shipeditor.utility.UtilityEnums.EditCategory.SKIN;
+            }
+            if (feature instanceof InstalledFeature installed && installed.isContainedInBuiltIns()) {
+                return shipeditor.utility.UtilityEnums.EditCategory.HULL;
+            }
+            return resolveFeatureCategoryFromMode();
         }
     }
 
@@ -89,11 +95,33 @@ public final class FeatureEdits {
         private final Consumer<Map<String, T>> setter;
         private final Map<String, T> oldCollection;
         private final Map<String, T> newCollection;
+        private final shipeditor.utility.UtilityEnums.EditCategory category;
 
         public FeatureSortEdit(Consumer<Map<String, T>> consumer, Map<String, T> oldMap, Map<String, T> newMap) {
             this.setter = consumer;
             this.oldCollection = oldMap;
             this.newCollection = newMap;
+            this.category = resolveSortCategory(oldMap, newMap);
+        }
+
+        private static <T extends InstallableEntry> shipeditor.utility.UtilityEnums.EditCategory resolveSortCategory(
+                Map<String, T> oldMap, Map<String, T> newMap) {
+            Map<String, T> sampleMap = (newMap != null && !newMap.isEmpty()) ? newMap : oldMap;
+            if (sampleMap != null && !sampleMap.isEmpty()) {
+                T first = sampleMap.values().iterator().next();
+                if (first instanceof InstalledFeature installed && installed.isContainedInBuiltIns()) {
+                    return shipeditor.utility.UtilityEnums.EditCategory.HULL;
+                }
+                if (!(first instanceof InstalledFeature)) {
+                    return shipeditor.utility.UtilityEnums.EditCategory.SKIN;
+                }
+            }
+            EditorInstrument mode = StaticController.getEditorMode();
+            if (mode == EditorInstrument.SKIN_SLOTS || mode == EditorInstrument.SKIN_DATA
+                    || mode == EditorInstrument.SKIN_ENGINES || mode == EditorInstrument.SKIN_REMOVALS) {
+                return shipeditor.utility.UtilityEnums.EditCategory.SKIN;
+            }
+            return shipeditor.utility.UtilityEnums.EditCategory.HULL;
         }
 
         @Override
@@ -119,7 +147,7 @@ public final class FeatureEdits {
 
         @Override
         public shipeditor.utility.UtilityEnums.EditCategory getCategory() {
-            return shipeditor.utility.UtilityEnums.EditCategory.VARIANT;
+            return category;
         }
     }
 
@@ -176,8 +204,32 @@ public final class FeatureEdits {
 
         @Override
         public shipeditor.utility.UtilityEnums.EditCategory getCategory() {
+            if (invalidator != null) {
+                return shipeditor.utility.UtilityEnums.EditCategory.SKIN;
+            }
+            if (collectionBefore != null) {
+                for (T val : collectionBefore.values()) {
+                    if (val instanceof InstalledFeature installed && installed.isContainedInBuiltIns()) {
+                        return shipeditor.utility.UtilityEnums.EditCategory.HULL;
+                    }
+                }
+            }
+            return resolveFeatureCategoryFromMode();
+        }
+    }
+
+    private static shipeditor.utility.UtilityEnums.EditCategory resolveFeatureCategoryFromMode() {
+        EditorInstrument mode = StaticController.getEditorMode();
+        if (mode == null) {
             return shipeditor.utility.UtilityEnums.EditCategory.VARIANT;
         }
+        return switch (mode) {
+            case WEAPON_SLOTS, BUILT_IN_MODS, BUILT_IN_WINGS, LAYER, COLLISION, SHIELD, BOUNDS, LAUNCH_BAYS, ENGINES ->
+                    shipeditor.utility.UtilityEnums.EditCategory.HULL;
+            case SKIN_DATA, SKIN_SLOTS, SKIN_ENGINES, SKIN_REMOVALS ->
+                    shipeditor.utility.UtilityEnums.EditCategory.SKIN;
+            default -> shipeditor.utility.UtilityEnums.EditCategory.VARIANT;
+        };
     }
 
     public static class ModulesSortEdit extends AbstractEdit {

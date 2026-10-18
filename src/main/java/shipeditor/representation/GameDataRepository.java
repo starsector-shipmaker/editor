@@ -236,11 +236,18 @@ public class GameDataRepository {
                 List<Map<String, String>> rows = loadCsvRowsWithCache(csvPath, modId, mapper);
                 if (rows != null) {
                     List<T> entries = new java.util.ArrayList<>();
+                    int skippedRows = 0;
                     for (Map<String, String> row : rows) {
                         if (validator != null && !validator.test(row)) {
+                            skippedRows++;
+                            log.debug("Skipped CSV row {} in {}: failed validation", skippedRows, csvPath);
                             continue;
                         }
                         entries.add(factory.create(row, modFolder, csvPath));
+                    }
+                    if (skippedRows > 0) {
+                        log.info("CSV load: skipped {} blank/comment/invalid row(s) in {}", skippedRows, csvPath);
+                        shipeditor.utility.DataProblemsRegistry.recordSkippedRows(csvPath.toString(), skippedRows);
                     }
                     if (!entries.isEmpty()) {
                         result.put(modFolder, entries);
@@ -287,7 +294,7 @@ public class GameDataRepository {
         if (packageMap != null) {
             for (List<T> list : packageMap.values()) {
                 for (T entry : list) {
-                    if (entry.getID() != null && !entry.getID().isEmpty()) {
+                    if (entry.getID() != null && !entry.getID().isBlank()) {
                         local.put(entry.getID(), entry);
                     }
                 }

@@ -2,24 +2,34 @@ package shipeditor.components.datafiles.trees;
 
 import shipeditor.utility.text.StringManager;
 
+import shipeditor.components.viewer.layers.LayerFactory;
+import shipeditor.components.viewer.layers.ship.ShipLayer;
 import shipeditor.representation.ship.VariantFile;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.MouseoverLabelListener;
+import shipeditor.utility.overseers.StaticController;
 
 import javax.swing.AbstractButton;
 import javax.swing.ButtonGroup;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JRadioButton;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import java.awt.Component;
 import java.awt.Insets;
 import java.awt.dnd.DnDConstants;
 import java.awt.dnd.DragGestureListener;
 import java.awt.dnd.DragSource;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Enumeration;
+import java.util.Objects;
 
 public class DataTreeVariantPanelBuilder {
 
@@ -76,14 +86,87 @@ public class DataTreeVariantPanelBuilder {
         Path variantFilePath = variantFile.getVariantFilePath();
         Path fileNamePath = variantFilePath != null ? variantFilePath.getFileName() : null;
         String fileName = fileNamePath != null ? fileNamePath.toString() : "Unknown";
-        javax.swing.JTextArea variantLabel = ComponentUtilities.createWrappingLabel("Variant file: " + fileName);
+        String displayName = variantFile.getDisplayName();
+        String labelText = "Variant: " + (displayName != null && !displayName.isBlank()
+                ? displayName + " (" + fileName + ")"
+                : fileName);
+        javax.swing.JTextArea variantLabel = ComponentUtilities.createWrappingLabel(labelText);
         variantLabel.setToolTipText(variantFilePath != null ? variantFilePath.toString() : "Unknown");
         variantLabel.setBorder(ComponentUtilities.createLabelSimpleBorder(new Insets(2, 4, 2, 4)));
+
+        JPopupMenu pathContextMenu = variantFilePath != null
+                ? ComponentUtilities.createPathContextMenu(variantFilePath)
+                : new JPopupMenu();
+
+        JMenuItem loadIntoActive = new JMenuItem("Load Variant into Active Ship Layer");
+        loadIntoActive.setEnabled(isVariantCompatibleWithActiveLayer(variantFile));
+        loadIntoActive.addActionListener(e -> {
+            if (StaticController.getActiveLayer() instanceof ShipLayer sl
+                    && sl.getHull() != null
+                    && Objects.equals(sl.getShipID(), variantFile.getHullId())
+                    && sl.getPainter() != null) {
+                sl.getPainter().selectVariant(variantFile);
+            }
+        });
+
+        JMenuItem openAsNewLayer = new JMenuItem("Open Variant as New Ship Layer");
+        openAsNewLayer.addActionListener(e -> {
+            ShipLayer newLayer = LayerFactory.createLayerFromVariant(variantFile);
+            if (newLayer != null && StaticController.getLayerManager() != null) {
+                StaticController.getLayerManager().setActiveLayer(newLayer);
+            }
+        });
+
         if (variantFilePath != null) {
-            JPopupMenu pathContextMenu = ComponentUtilities.createPathContextMenu(variantFilePath);
-            variantLabel.addMouseListener(new MouseoverLabelListener(pathContextMenu, variantLabel));
+            pathContextMenu.insert(loadIntoActive, 0);
+            pathContextMenu.insert(openAsNewLayer, 1);
+            pathContextMenu.insert(new JPopupMenu.Separator(), 2);
+        } else {
+            pathContextMenu.add(loadIntoActive);
+            pathContextMenu.add(openAsNewLayer);
         }
+
+        pathContextMenu.addPopupMenuListener(new PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+                loadIntoActive.setEnabled(isVariantCompatibleWithActiveLayer(variantFile));
+            }
+
+            @Override
+            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+            }
+
+            @Override
+            public void popupMenuCanceled(PopupMenuEvent e) {
+            }
+        });
+
+        variantLabel.addMouseListener(new MouseoverLabelListener(pathContextMenu, variantLabel));
+        variantLabel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == 2) {
+                    if (StaticController.getActiveLayer() instanceof ShipLayer sl
+                            && sl.getHull() != null
+                            && Objects.equals(sl.getShipID(), variantFile.getHullId())
+                            && sl.getPainter() != null) {
+                        sl.getPainter().selectVariant(variantFile);
+                    } else {
+                        ShipLayer newLayer = LayerFactory.createLayerFromVariant(variantFile);
+                        if (newLayer != null && StaticController.getLayerManager() != null) {
+                            StaticController.getLayerManager().setActiveLayer(newLayer);
+                        }
+                    }
+                }
+            }
+        });
         return variantLabel;
+    }
+
+    private static boolean isVariantCompatibleWithActiveLayer(VariantFile variantFile) {
+        return StaticController.getActiveLayer() instanceof ShipLayer sl
+                && sl.getHull() != null
+                && Objects.equals(sl.getShipID(), variantFile.getHullId());
     }
 
     private static void outfitVariantLabelWithSelector(VariantFile variant, JPanel variantLine,

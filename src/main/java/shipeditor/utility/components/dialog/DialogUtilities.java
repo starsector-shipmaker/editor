@@ -42,25 +42,29 @@ public final class DialogUtilities {
 
     public static shipeditor.components.datafiles.entities.WeaponCSVEntry showWeaponPickerDialog(shipeditor.components.viewer.entities.weapon.WeaponSlotPoint slotPoint) {
         final JDialog[] dialogRef = new JDialog[1];
-        
+        final JOptionPane[] optionPaneRef = new JOptionPane[1];
+
         PickWeaponDialog dialogPanel = new PickWeaponDialog(slotPoint, () -> {
+            if (optionPaneRef[0] != null) {
+                optionPaneRef[0].setValue(JOptionPane.OK_OPTION);
+            }
             if (dialogRef[0] != null) {
                 dialogRef[0].dispose();
             }
         });
-        
+
         JOptionPane optionPane = new JOptionPane(dialogPanel, JOptionPane.PLAIN_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
+        optionPaneRef[0] = optionPane;
         JDialog dialog = optionPane.createDialog(null, "Select Weapon");
         dialog.setResizable(true);
         dialogRef[0] = dialog;
-        
+
         dialog.setVisible(true);
-        
+
         Object selectedValue = optionPane.getValue();
-        if (selectedValue != null && selectedValue.equals(JOptionPane.OK_OPTION)) {
+        if (Integer.valueOf(JOptionPane.OK_OPTION).equals(selectedValue)
+                && dialogPanel.getSelectedIncompatibilityReason().isEmpty()) {
             return dialogPanel.getSelectedWeapon();
-        } else if (selectedValue == null && dialogPanel.getSelectedWeapon() != null) {
-             return dialogPanel.getSelectedWeapon();
         }
         return null;
     }
@@ -91,14 +95,19 @@ public final class DialogUtilities {
 
     public static shipeditor.components.datafiles.entities.HullmodCSVEntry showHullmodPickerDialog(shipeditor.representation.RepresentationEnums.HullSize hullSize, java.nio.file.Path shipPackage) {
         final JDialog[] dialogRef = new JDialog[1];
+        final JOptionPane[] optionPaneRef = new JOptionPane[1];
 
         PickHullmodDialog dialogPanel = new PickHullmodDialog(hullSize, shipPackage, () -> {
+            if (optionPaneRef[0] != null) {
+                optionPaneRef[0].setValue(JOptionPane.OK_OPTION);
+            }
             if (dialogRef[0] != null) {
                 dialogRef[0].dispose();
             }
         });
 
         JOptionPane optionPane = new JOptionPane(dialogPanel, JOptionPane.PLAIN_MESSAGE, JOptionPane.OK_CANCEL_OPTION);
+        optionPaneRef[0] = optionPane;
         JDialog dialog = optionPane.createDialog(null, "Select Hullmod");
         dialog.setResizable(true);
         dialogRef[0] = dialog;
@@ -106,9 +115,7 @@ public final class DialogUtilities {
         dialog.setVisible(true);
 
         Object selectedValue = optionPane.getValue();
-        if (selectedValue != null && selectedValue.equals(JOptionPane.OK_OPTION)) {
-            return dialogPanel.getSelectedHullmod();
-        } else if (selectedValue == null && dialogPanel.getSelectedHullmod() != null) {
+        if (Integer.valueOf(JOptionPane.OK_OPTION).equals(selectedValue)) {
             return dialogPanel.getSelectedHullmod();
         }
         return null;

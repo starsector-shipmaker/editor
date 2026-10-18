@@ -152,6 +152,8 @@ public final class PrimaryViewer extends JPanel implements LayerViewer {
             }
         };
 
+        // Tab / Shift+Tab are canvas shortcuts (slot cycling), not focus traversal.
+        glCanvas.setFocusTraversalKeysEnabled(false);
         this.add(glCanvas, BorderLayout.CENTER);
 
         this.paintOrderController = new PaintOrderController(this);

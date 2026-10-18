@@ -2,6 +2,7 @@ package shipeditor.components.viewer.entities;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
+import shipeditor.components.viewer.painters.GlColors;
 import shipeditor.utility.graphics.opengl.OpenGLPainter;
 import shipeditor.utility.graphics.opengl.SpriteRenderer;
 import shipeditor.utility.graphics.opengl.ShapeRenderer;
@@ -185,12 +186,7 @@ public class BaseWorldPoint implements WorldPoint, OpenGLPainter {
 
         // Draw inner colored circle
         Color color = getCurrentColor();
-        cachedGlColor.set(
-            color.getRed() / 255.0f,
-            color.getGreen() / 255.0f,
-            color.getBlue() / 255.0f,
-            color.getAlpha() / 255.0f
-        );
+        GlColors.set(cachedGlColor, color);
         shapeRenderer.drawCircle(cachedScreenPos, radius - 1.5f, cachedGlColor, true);
     }
 

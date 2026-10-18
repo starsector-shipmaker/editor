@@ -1,5 +1,6 @@
 package shipeditor.utility.components.dialog;
 
+import lombok.extern.log4j.Log4j2;
 import shipeditor.communication.EventBus;
 import shipeditor.communication.events.files.FileEvents.HullSaveQueued;
 import shipeditor.communication.events.files.FileEvents.VariantSaveQueued;
@@ -10,10 +11,23 @@ import shipeditor.components.viewer.layers.ship.data.ShipVariant;
 import shipeditor.persistence.SettingsManager;
 import shipeditor.utility.text.StringManager;
 
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import java.awt.Component;
 import java.nio.file.Path;
 
+@Log4j2
 public final class DialogHelper {
+
+    /**
+     * Session-only flag: when true, the pre-save summary dialog is skipped.
+     * Not persisted, because the persisted Settings class is outside the save/load stream.
+     */
+    private static boolean saveSummarySuppressed;
 
     private DialogHelper() {}
 
@@ -22,6 +36,45 @@ public final class DialogHelper {
                 StringManager.getString("INPUT_ID_ALREADY_ASSIGNED_TO_SLOT_MSG"),
                 "Duplicate ID",
                 JOptionPane.ERROR_MESSAGE);
+    }
+
+    /**
+     * Shows a summary of what is about to be written to disk and asks for confirmation.
+     * The "Don't ask again" choice lasts until the application is closed.
+     *
+     * @param summary human-readable description of the files that will be saved
+     * @return true if saving should proceed (including when the dialog is suppressed), false if cancelled
+     */
+    public static boolean confirmSaveSummary(String summary) {
+        if (saveSummarySuppressed) {
+            log.debug("Save summary suppressed for this session; proceeding: {}", summary);
+            return true;
+        }
+        log.debug("Showing save summary dialog: {}", summary);
+
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.PAGE_AXIS));
+        JLabel messageLabel = new JLabel("<html>" + summary.replace("\n", "<br>") + "</html>");
+        messageLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        JCheckBox dontAsk = new JCheckBox("Don't ask again (this session)");
+        dontAsk.setAlignmentX(Component.LEFT_ALIGNMENT);
+        content.add(messageLabel);
+        content.add(Box.createVerticalStrut(8));
+        content.add(dontAsk);
+
+        int choice = JOptionPane.showConfirmDialog(
+                shipeditor.PrimaryWindow.getInstance(),
+                content,
+                "Confirm Save",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (choice != JOptionPane.OK_OPTION) {
+            return false;
+        }
+        if (dontAsk.isSelected()) {
+            saveSummarySuppressed = true;
+        }
+        return true;
     }
 
     public static boolean confirmLayerRemoval(LayerManager manager, ViewerLayer layer) {

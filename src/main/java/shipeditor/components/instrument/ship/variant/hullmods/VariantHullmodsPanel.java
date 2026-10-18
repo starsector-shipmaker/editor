@@ -3,6 +3,7 @@ package shipeditor.components.instrument.ship.variant.hullmods;
 import shipeditor.utility.text.StringManager;
 
 import shipeditor.communication.EventBus;
+import shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated;
 import shipeditor.communication.events.viewer.layers.LayerEvents.LayerWasSelected;
 import shipeditor.components.ComponentEnums.EditorInstrument;
 import shipeditor.components.viewer.layers.ViewerLayer;
@@ -73,6 +74,7 @@ public class VariantHullmodsPanel extends JPanel {
         this.add(infoPanel, BorderLayout.PAGE_START);
 
         this.initLayerListeners();
+        this.refreshAll(StaticController.getActiveLayer());
     }
 
     private JPanel createInfoPanel() {
@@ -101,22 +103,24 @@ public class VariantHullmodsPanel extends JPanel {
     private void initLayerListeners() {
         EventBus.subscribe(this, event -> {
             if (event instanceof LayerWasSelected checked) {
-                ViewerLayer selected = checked.selected();
-                normalModsPanel.refreshListModel(selected);
-                permaModsPanel.refreshListModel(selected);
-                sModsPanel.refreshListModel(selected);
-                suppressedModsPanel.refreshListModel(selected);
-
-                refreshLayerInfo(selected);
-            }
-        });
-        EventBus.subscribe(this, event -> {
-            if (event instanceof InstrumentRepaintQueued checked) {
+                refreshAll(checked.selected());
+            } else if (event instanceof ActiveLayerUpdated checked) {
+                refreshAll(checked.updated());
+            } else if (event instanceof InstrumentRepaintQueued checked) {
                 if (checked.editorMode() == EditorInstrument.VARIANT_DATA) {
-                    this.refreshLayerInfo(StaticController.getActiveLayer());
+                    refreshAll(StaticController.getActiveLayer());
                 }
             }
         });
+    }
+
+    private void refreshAll(ViewerLayer selected) {
+        normalModsPanel.refreshListModel(selected);
+        permaModsPanel.refreshListModel(selected);
+        sModsPanel.refreshListModel(selected);
+        suppressedModsPanel.refreshListModel(selected);
+
+        refreshLayerInfo(selected);
     }
 
     private void refreshLayerInfo(ViewerLayer selected) {

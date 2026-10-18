@@ -6,8 +6,6 @@ import shipeditor.representation.weapon.WeaponEnums.WeaponSize;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -15,6 +13,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Getter;
 import lombok.Setter;
+import shipeditor.representation.UnrecognizedPropertiesHolder;
 import shipeditor.parsing.deserialize.CustomDeserializers.ColorArrayRGBADeserializer;
 import shipeditor.parsing.deserialize.CustomDeserializers.Point2DArrayDeserializer;
 import shipeditor.parsing.deserialize.CustomDeserializers.TextureTypeDeserializer;
@@ -29,16 +28,14 @@ import shipeditor.utility.text.StringConstants;
 import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @SuppressWarnings("ClassWithTooManyFields")
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Getter
 @Setter
 @SuppressFBWarnings({"EI_EXPOSE_REP", "EI_EXPOSE_REP2", "MS_EXPOSE_REP"})
-public class WeaponSpecFile {
+public class WeaponSpecFile extends UnrecognizedPropertiesHolder {
 
     @Setter
     @JsonIgnore
@@ -281,18 +278,5 @@ public class WeaponSpecFile {
 
     @JsonProperty("fireSoundTwo")
     private String fireSoundTwo;
-
-    @JsonIgnore
-    private final Map<String, Object> unrecognizedProperties = new LinkedHashMap<>();
-
-    @JsonAnyGetter
-    public Map<String, Object> getUnrecognizedProperties() {
-        return unrecognizedProperties;
-    }
-
-    @JsonAnySetter
-    public void setUnrecognizedProperty(String name, Object value) {
-        unrecognizedProperties.put(name, value);
-    }
 
 }

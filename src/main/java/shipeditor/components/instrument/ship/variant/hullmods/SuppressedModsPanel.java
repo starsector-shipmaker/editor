@@ -119,22 +119,24 @@ class SuppressedModsPanel extends JPanel {
         if (!(activeLayer instanceof ShipLayer shipLayer)) return;
         ShipPainter painter = shipLayer.getPainter();
         if (painter == null || painter.isUninitialized()) return;
-        ShipVariant variant = painter.getActiveVariant();
-        if (variant == null || variant.isEmpty()) return;
 
         List<String> updatedList = new java.util.ArrayList<>(listModel.getSize());
         for (int i = 0; i < listModel.getSize(); i++) {
             updatedList.add(listModel.getElementAt(i));
         }
-        
+
+        ShipVariant variant = shipeditor.utility.overseers.StaticController.getOrCreateEditableVariant(shipLayer);
+        if (variant == null || variant.isEmpty()) return;
+
         List<String> oldList = variant.getSuppressedMods();
         if (oldList == null) {
             oldList = new java.util.ArrayList<>();
         } else {
             oldList = new java.util.ArrayList<>(oldList);
         }
-        
-        shipeditor.undo.edits.features.FeatureEdits.SuppressedModsEdit edit = new shipeditor.undo.edits.features.FeatureEdits.SuppressedModsEdit(variant, activeLayer, oldList, updatedList);
+
+        shipeditor.undo.edits.features.FeatureEdits.SuppressedModsEdit edit =
+                new shipeditor.undo.edits.features.FeatureEdits.SuppressedModsEdit(variant, activeLayer, oldList, updatedList);
         shipeditor.undo.UndoOverseer.post(edit);
         edit.redo();
     }
@@ -145,6 +147,10 @@ class SuppressedModsPanel extends JPanel {
             this.listModel = newModel;
             this.modsList.setModel(newModel);
             this.modsList.setEnabled(false);
+            if (addField != null) addField.setEnabled(false);
+            if (addButton != null) addButton.setEnabled(false);
+            if (pickButton != null) pickButton.setEnabled(false);
+            if (removeButton != null) removeButton.setEnabled(false);
             return;
         }
         ShipPainter painter = checkedLayer.getPainter();
@@ -155,10 +161,8 @@ class SuppressedModsPanel extends JPanel {
                 if (entries != null) {
                     newModel.addAll(entries);
                 }
-                this.modsList.setEnabled(true);
-            } else {
-                this.modsList.setEnabled(false);
             }
+            this.modsList.setEnabled(true);
         } else {
             this.modsList.setEnabled(false);
         }

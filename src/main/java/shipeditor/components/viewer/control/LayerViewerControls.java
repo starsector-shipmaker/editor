@@ -39,9 +39,12 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.List;
 import shipeditor.communication.events.components.ComponentEvents.DeleteButtonPressed;
 import shipeditor.communication.events.viewer.points.PointEvents.PointCreationQueued;
 import shipeditor.communication.events.viewer.points.PointEvents.PointSelectQueued;
+import shipeditor.communication.events.viewer.points.PointEvents.PointSelectedConfirmed;
 import shipeditor.communication.events.viewer.points.PointEvents.PointRemoveQueued;
 import shipeditor.communication.events.viewer.control.ControlEvents.ViewerMouseReleased;
 import shipeditor.communication.events.viewer.control.ControlEvents.ViewerZoomChanged;
@@ -81,6 +84,7 @@ public final class LayerViewerControls implements ViewerControl {
     private final Point pressPoint = new Point();
 
     private boolean pointDragActive = false;
+    private boolean handCursorActive = false;
     private boolean marqueeSelectionActive = false;
     private Point marqueeStartPoint = null;
     private Point marqueeEndPoint = null;
@@ -181,40 +185,52 @@ public final class LayerViewerControls implements ViewerControl {
                     boolean isTextFieldFocused = focusOwner instanceof javax.swing.text.JTextComponent;
 
                     if (keyCode == LAYER_DRAG_HOTKEY) {
+                        this.handCursorActive = false;
                         this.parentViewer.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
                         this.parentViewer.setRepaintQueued();
                     } else if (!isTextFieldFocused) {
-                        switch (keyCode) {
-                            case KeyEvent.VK_BACK_SPACE -> {
-                                EventBus.publish(new PointRemoveQueued(null, false));
-                                EventBus.publish(new DeleteButtonPressed());
-                            }
-                            case KeyEvent.VK_C -> {
-                                if (isCtrlDown && StaticController.getEditorMode() == EditorInstrument.WEAPON_SLOTS) {
-                                    WeaponSlotPainter painter = StaticController.getSelectedSlotPainter();
-                                    if (painter != null) {
-                                        WeaponSlotPoint selected = painter.getSelected();
-                                        if (selected != null) {
-                                            WeaponSlotClipboard.copy(java.util.List.of(selected));
+                        KeyEvent keyEvent = pressedEvent.keyEvent();
+                        boolean modifierDown = isCtrlDown || keyEvent.isAltDown() || keyEvent.isMetaDown();
+                        CanvasInteractionPolicy.KeyAction keyAction = CanvasInteractionPolicy.resolveKey(
+                                StaticController.getEditorMode(), keyCode, keyEvent.isShiftDown(),
+                                modifierDown, this.isCanvasFocused(focusOwner));
+                        if (keyAction != CanvasInteractionPolicy.KeyAction.NONE) {
+                            log.debug("Key {} resolved to canvas action {}", KeyEvent.getKeyText(keyCode), keyAction);
+                            keyEvent.consume();
+                            this.handleCanvasKeyAction(keyAction);
+                        } else {
+                            switch (keyCode) {
+                                case KeyEvent.VK_BACK_SPACE -> {
+                                    EventBus.publish(new PointRemoveQueued(null, false));
+                                    EventBus.publish(new DeleteButtonPressed());
+                                }
+                                case KeyEvent.VK_C -> {
+                                    if (isCtrlDown && StaticController.getEditorMode() == EditorInstrument.WEAPON_SLOTS) {
+                                        WeaponSlotPainter painter = StaticController.getSelectedSlotPainter();
+                                        if (painter != null) {
+                                            WeaponSlotPoint selected = painter.getSelected();
+                                            if (selected != null) {
+                                                WeaponSlotClipboard.copy(java.util.List.of(selected));
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            case KeyEvent.VK_V -> {
-                                if (isCtrlDown && StaticController.getEditorMode() == EditorInstrument.WEAPON_SLOTS) {
-                                    WeaponSlotPainter painter = StaticController.getSelectedSlotPainter();
-                                    if (painter != null && WeaponSlotClipboard.hasData()) {
-                                        Point2D target = StaticController.getFinalWorldCursor();
-                                        painter.pasteSlots(WeaponSlotClipboard.getClipboard(), target);
+                                case KeyEvent.VK_V -> {
+                                    if (isCtrlDown && StaticController.getEditorMode() == EditorInstrument.WEAPON_SLOTS) {
+                                        WeaponSlotPainter painter = StaticController.getSelectedSlotPainter();
+                                        if (painter != null && WeaponSlotClipboard.hasData()) {
+                                            Point2D target = StaticController.getFinalWorldCursor();
+                                            painter.pasteSlots(WeaponSlotClipboard.getClipboard(), target);
+                                        }
                                     }
                                 }
+                                case KeyEvent.VK_F6 -> {
+                                    EventBus.publish(
+                                            new shipeditor.communication.events.viewer.control.ControlEvents
+                                                    .CycleWeaponFrameQueued());
+                                }
+                                default -> {}
                             }
-                            case KeyEvent.VK_F6 -> {
-                                EventBus.publish(
-                                        new shipeditor.communication.events.viewer.control.ControlEvents
-                                                .CycleWeaponFrameQueued());
-                            }
-                            default -> {}
                         }
                     }
                 }
@@ -222,6 +238,7 @@ public final class LayerViewerControls implements ViewerControl {
                     var releasedEvent = (shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawKeyReleased) event;
                     int keyCode = releasedEvent.keyEvent().getKeyCode();
                     if (keyCode == LAYER_DRAG_HOTKEY) {
+                        this.handCursorActive = false;
                         this.parentViewer.setCursor(Cursor.getDefaultCursor());
                         this.parentViewer.setRepaintQueued();
                     }
@@ -231,27 +248,168 @@ public final class LayerViewerControls implements ViewerControl {
         });
     }
 
-    @Override
-    public void mouseClicked(MouseEvent e) {
-        if (e.getClickCount() == 2 && javax.swing.SwingUtilities.isLeftMouseButton(e)) {
-            EditorInstrument mode = StaticController.getEditorMode();
-            if (mode == EditorInstrument.VARIANT_WEAPONS) {
-                LayerPainter activePainter = parentViewer.getSelectedLayer();
-                if (activePainter instanceof shipeditor.components.viewer.layers.ship.ShipPainter shipPainter) {
-                    shipeditor.components.viewer.entities.weapon.WeaponSlotPoint slot = shipPainter.getWeaponSlotPainter().getSelected();
-                    if (slot != null && slot.isCursorInBounds() && slot.isFittable()) {
-                        var layer = StaticController.getActiveLayer();
-                        if (layer instanceof shipeditor.components.viewer.layers.ship.ShipLayer shipLayer) {
-                            shipeditor.components.datafiles.entities.WeaponCSVEntry picked = 
-                                    shipeditor.utility.components.dialog.DialogUtilities.showWeaponPickerDialog(slot);
-                            if (picked != null) {
-                                shipLayer.getFeaturesOverseer().installWeapon(slot, picked);
-                            }
-                        }
-                    }
+    /**
+     * @param focusOwner component that currently owns keyboard focus, may be null.
+     * @return whether the focus is inside the viewer (the GL canvas).
+     */
+    private boolean isCanvasFocused(java.awt.Component focusOwner) {
+        return focusOwner != null && javax.swing.SwingUtilities.isDescendingFrom(focusOwner, this.parentViewer);
+    }
+
+    private void handleCanvasKeyAction(CanvasInteractionPolicy.KeyAction action) {
+        if (!(parentViewer.getSelectedLayer() instanceof shipeditor.components.viewer.layers.ship.ShipPainter shipPainter)
+                || shipPainter.isUninitialized()) {
+            return;
+        }
+        WeaponSlotPainter slotPainter = shipPainter.getWeaponSlotPainter();
+        if (slotPainter == null) {
+            return;
+        }
+        switch (action) {
+            case OPEN_WEAPON_PICKER -> {
+                WeaponSlotPoint primary = slotPainter.getSelected();
+                if (primary != null && primary.isFittable()) {
+                    // The picker is modal; open it outside of the key dispatcher.
+                    javax.swing.SwingUtilities.invokeLater(() -> this.pickAndInstallWeapon(slotPainter, primary));
                 }
             }
+            case CLEAR_WEAPONS -> this.clearSelectedWeapons(slotPainter);
+            case NEXT_SLOT -> this.cycleSelectedSlot(slotPainter, false);
+            case PREVIOUS_SLOT -> this.cycleSelectedSlot(slotPainter, true);
+            default -> { }
         }
+    }
+
+    private void clearSelectedWeapons(WeaponSlotPainter slotPainter) {
+        WeaponSlotPoint primary = slotPainter.getSelected();
+        var layer = StaticController.getActiveLayer();
+        if (primary == null || !primary.isFittable()
+                || !(layer instanceof shipeditor.components.viewer.layers.ship.ShipLayer shipLayer)) {
+            return;
+        }
+        List<WeaponSlotPoint> targets = this.collectSelectedFittableSlots(slotPainter, primary);
+        log.debug("Clearing weapons on {} selected slot(s)", targets.size());
+        for (WeaponSlotPoint slot : targets) {
+            shipLayer.getFeaturesOverseer().uninstallWeapon(slot);
+        }
+        EventBus.publish(new ViewerRepaintQueued());
+    }
+
+    private void cycleSelectedSlot(WeaponSlotPainter slotPainter, boolean backwards) {
+        List<WeaponSlotPoint> candidates = slotPainter.getEligibleForSelection();
+        WeaponSlotPoint next = CanvasInteractionPolicy.cycle(candidates, slotPainter.getSelected(), backwards);
+        if (next == null) {
+            return;
+        }
+        slotPainter.setSelected(next);
+        EventBus.publish(new PointSelectedConfirmed(next));
+        EventBus.publish(new ViewerRepaintQueued());
+    }
+
+    private boolean isHoveringFittableSlot() {
+        if (!(parentViewer.getSelectedLayer() instanceof shipeditor.components.viewer.layers.ship.ShipPainter shipPainter)
+                || shipPainter.isUninitialized()) {
+            return false;
+        }
+        WeaponSlotPainter slotPainter = shipPainter.getWeaponSlotPainter();
+        if (slotPainter == null) {
+            return false;
+        }
+        for (WeaponSlotPoint slot : slotPainter.getEligibleForSelection()) {
+            if (slot.isFittable() && slot.isCursorInBounds()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Shows the hand cursor over fittable slots in VARIANT_WEAPONS mode and restores
+     * the default cursor otherwise. Does nothing while Shift owns the cursor (layer dragging).
+     */
+    private void updateHoverCursor(MouseEvent event) {
+        if (event.isShiftDown()) {
+            return;
+        }
+        EditorInstrument mode = StaticController.getEditorMode();
+        boolean wantHand = mode == EditorInstrument.VARIANT_WEAPONS
+                && CanvasInteractionPolicy.shouldShowHandCursor(mode, this.isHoveringFittableSlot());
+        if (wantHand == this.handCursorActive) {
+            return;
+        }
+        this.handCursorActive = wantHand;
+        this.parentViewer.setCursor(wantHand ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                : Cursor.getDefaultCursor());
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent e) {
+        EditorInstrument mode = StaticController.getEditorMode();
+        CanvasInteractionPolicy.DoubleClickAction action = CanvasInteractionPolicy.resolveDoubleClick(
+                mode, javax.swing.SwingUtilities.isLeftMouseButton(e), e.getClickCount());
+        if (action != CanvasInteractionPolicy.DoubleClickAction.OPEN_WEAPON_PICKER) {
+            return;
+        }
+        log.debug("Double-click resolved to {} in mode {}", action, mode);
+        LayerPainter activePainter = parentViewer.getSelectedLayer();
+        if (activePainter instanceof shipeditor.components.viewer.layers.ship.ShipPainter shipPainter) {
+            var slotPainter = shipPainter.getWeaponSlotPainter();
+            WeaponSlotPoint slot = slotPainter.getSelected();
+            if (slot == null || !slot.isCursorInBounds()) {
+                BaseWorldPoint closest = slotPainter.findClosestPointToScreen(
+                        e.getPoint(), parentViewer.getWorldToScreen(), 20.0);
+                if (closest instanceof WeaponSlotPoint candidate) {
+                    slot = candidate;
+                    slotPainter.setSelected(slot);
+                    EventBus.publish(new PointSelectedConfirmed(slot));
+                }
+            }
+            if (slot != null && slot.isFittable()) {
+                this.pickAndInstallWeapon(slotPainter, slot);
+            }
+        }
+    }
+
+    /**
+     * Opens the weapon picker for the primary slot and installs the chosen weapon.
+     * When several fittable slots are selected the weapon is applied to all of them.
+     *
+     * @param slotPainter painter owning the selection.
+     * @param primary     primary selected slot, used to configure the picker.
+     */
+    private void pickAndInstallWeapon(WeaponSlotPainter slotPainter, WeaponSlotPoint primary) {
+        var layer = StaticController.getActiveLayer();
+        if (!(layer instanceof shipeditor.components.viewer.layers.ship.ShipLayer shipLayer)) {
+            return;
+        }
+        List<WeaponSlotPoint> targets = this.collectSelectedFittableSlots(slotPainter, primary);
+        log.debug("Opening weapon picker for slot {} with {} target slot(s)", primary.getId(), targets.size());
+        shipeditor.components.datafiles.entities.WeaponCSVEntry picked =
+                shipeditor.utility.components.dialog.DialogUtilities.showWeaponPickerDialog(primary);
+        if (picked == null) {
+            return;
+        }
+        if (targets.size() > 1) {
+            int installed = shipLayer.getFeaturesOverseer().installWeaponOnSlots(targets, picked);
+            log.debug("Installed weapon on {} of {} selected slots", installed, targets.size());
+        } else {
+            shipLayer.getFeaturesOverseer().installWeapon(primary, picked);
+        }
+    }
+
+    /**
+     * @return selected fittable slots, always containing the primary slot first.
+     */
+    private List<WeaponSlotPoint> collectSelectedFittableSlots(WeaponSlotPainter slotPainter,
+                                                               WeaponSlotPoint primary) {
+        List<WeaponSlotPoint> result = new ArrayList<>();
+        result.add(primary);
+        for (BaseWorldPoint point : slotPainter.getSelectedPoints()) {
+            if (point != primary && point instanceof WeaponSlotPoint slot && slot.isFittable()) {
+                result.add(slot);
+            }
+        }
+        return result;
     }
 
     @Override
@@ -277,7 +435,7 @@ public final class LayerViewerControls implements ViewerControl {
         LayerPainter activePainter = parentViewer.getSelectedLayer();
         if (activePainter != null) {
             for (AbstractPointPainter pointPainter : activePainter.getAllPainters()) {
-                if (pointPainter.isInteractionEnabled()) {
+                if (CanvasInteractionPolicy.canSelectPoints(pointPainter)) {
                     for (BaseWorldPoint p : pointPainter.getPointsIndex()) {
                         if (p.isCursorInBounds()) {
                             clickedPoint = p;
@@ -290,33 +448,39 @@ public final class LayerViewerControls implements ViewerControl {
                 if (hoveredOnPoint) break;
             }
         }
-        this.pointDragActive = hoveredOnPoint;
+        this.pointDragActive = CanvasInteractionPolicy.canDragPoints(clickedPainter);
 
         if (javax.swing.SwingUtilities.isLeftMouseButton(e)) {
-            if (clickedPoint != null) {
-                if (e.isShiftDown() || e.isControlDown()) {
-                    if (clickedPainter != null && clickedPainter.getSelectedPoints().contains(clickedPoint)) {
+            CanvasInteractionPolicy.PressAction pressAction = CanvasInteractionPolicy.resolveLeftPress(
+                    clickedPoint != null, e.isShiftDown(), e.isControlDown(), StaticController.getEditorMode());
+            log.debug("Left press resolved to {} (drag allowed: {})", pressAction, this.pointDragActive);
+            switch (pressAction) {
+                case TOGGLE_SELECTION -> {
+                    if (clickedPainter.getSelectedPoints().contains(clickedPoint)) {
                         clickedPainter.removePointFromSelection(clickedPoint);
-                    } else if (clickedPainter != null) {
+                    } else {
                         clickedPainter.addPointToSelection(clickedPoint);
                         if (e.isControlDown()) {
                             clickedPainter.setSelected(clickedPoint);
                         }
                     }
                     this.pointDragActive = false; // toggle selection, don't drag
+                    EventBus.publish(new PointSelectedConfirmed(clickedPainter.getSelected()));
                     EventBus.publish(new ViewerRepaintQueued());
-                } else {
-                    if (clickedPainter != null && !clickedPainter.getSelectedPoints().contains(clickedPoint)) {
+                }
+                case SELECT_POINT -> {
+                    if (!clickedPainter.getSelectedPoints().contains(clickedPoint) || clickedPainter.getSelected() != clickedPoint) {
                         clickedPainter.setSelected(clickedPoint);
                     }
+                    EventBus.publish(new PointSelectedConfirmed(clickedPoint));
+                    EventBus.publish(new ViewerRepaintQueued());
                 }
-            } else {
-                // Clicked on empty space: save marquee start
-                EditorInstrument mode = StaticController.getEditorMode();
-                if (mode != EditorInstrument.COLLISION && mode != EditorInstrument.SHIELD && !e.isControlDown()) {
+                case START_MARQUEE -> {
+                    // Clicked on empty space: save marquee start
                     this.marqueeStartPoint = e.getPoint();
                     this.marqueeEndPoint = e.getPoint();
                 }
+                default -> { }
             }
         }
 
@@ -385,11 +549,15 @@ public final class LayerViewerControls implements ViewerControl {
             }
         } else if (this.marqueeStartPoint != null) {
             // A clean click on empty space (no drag)
-            if (!e.isShiftDown() && !e.isControlDown() && !e.isAltDown() && javax.swing.SwingUtilities.isLeftMouseButton(e)) {
-                LayerPainter activePainter = parentViewer.getSelectedLayer();
-                if (activePainter != null) {
-                    for (AbstractPointPainter pointPainter : activePainter.getAllPainters()) {
+            LayerPainter activePainter = parentViewer.getSelectedLayer();
+            if (activePainter != null) {
+                for (AbstractPointPainter pointPainter : activePainter.getAllPainters()) {
+                    boolean clear = CanvasInteractionPolicy.shouldClearSelectionOnEmptyClick(
+                            CanvasInteractionPolicy.canSelectPoints(pointPainter), e.isShiftDown(),
+                            e.isControlDown(), e.isAltDown(), javax.swing.SwingUtilities.isLeftMouseButton(e));
+                    if (clear) {
                         pointPainter.clearSelection();
+                        EventBus.publish(new PointSelectedConfirmed(null));
                     }
                 }
             }
@@ -405,6 +573,10 @@ public final class LayerViewerControls implements ViewerControl {
 
     @Override
     public void mouseExited(MouseEvent e) {
+        if (this.handCursorActive) {
+            this.handCursorActive = false;
+            this.parentViewer.setCursor(Cursor.getDefaultCursor());
+        }
     }
 
     @Override
@@ -576,6 +748,7 @@ public final class LayerViewerControls implements ViewerControl {
         Point2D corrected = Utility.correctAdjustedCursor(adjusted, screenToWorld);
         EventBus.publish(new ViewerCursorMoved(this.mousePoint, adjusted, corrected));
         this.updateHoverStatesForAllPainters();
+        this.updateHoverCursor(event);
         if (ControlPredicates.SELECT_POINT_PREDICATE.test(event)) {
             Point2D cursor = mousePoint;
             if (ControlPredicates.isCursorSnappingEnabled()) {

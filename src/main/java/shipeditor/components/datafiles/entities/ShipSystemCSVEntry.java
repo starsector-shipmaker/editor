@@ -1,13 +1,10 @@
 package shipeditor.components.datafiles.entities;
 
-import shipeditor.utility.text.StringManager;
-
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import shipeditor.utility.Utility;
-import shipeditor.utility.text.StringConstants;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -49,11 +46,7 @@ public class ShipSystemCSVEntry implements CSVEntry {
 
     @Override
     public String toString() {
-        String displayedName = rowData.get(StringConstants.NAME);
-        if (displayedName == null || displayedName.isEmpty()) {
-            displayedName = StringManager.getString("UNTITLED");
-        }
-        return displayedName;
+        return CSVEntry.nameOrUntitled(rowData);
     }
 
 }

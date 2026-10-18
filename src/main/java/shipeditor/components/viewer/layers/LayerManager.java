@@ -117,6 +117,9 @@ public class LayerManager {
     }
 
     public boolean isLayerDirty(ViewerLayer layer) {
+        if (layer instanceof ShipLayer) {
+            return isHullDirty(layer) || isVariantDirty(layer) || isCategoryDirty(layer, "skin");
+        }
         List<String> types = unsavedChangesRegistry.get(layer);
         return types != null && !types.isEmpty();
     }
@@ -131,6 +134,11 @@ public class LayerManager {
     }
 
     public boolean isVariantDirty(ViewerLayer layer) {
+        if (layer instanceof ShipLayer shipLayer
+                && shipLayer.getActiveVariant() == null
+                && (shipLayer.getLoadedVariants() == null || shipLayer.getLoadedVariants().isEmpty())) {
+            return false;
+        }
         return isCategoryDirty(layer, "variant");
     }
 

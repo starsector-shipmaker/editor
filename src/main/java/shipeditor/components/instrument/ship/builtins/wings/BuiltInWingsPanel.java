@@ -12,10 +12,8 @@ import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.overseers.StaticController;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 import java.awt.BorderLayout;
-import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import shipeditor.communication.events.components.ComponentEvents.InstrumentRepaintQueued;
 
@@ -35,29 +33,11 @@ public class BuiltInWingsPanel extends JPanel {
         this.setLayout(new BorderLayout());
 
         this.baseBuiltInWingsList = new BaseWingListPane(a -> a.getBuiltInWings(), (a, b) -> a.setBuiltInWings(b));
-        ComponentUtilities.outfitPanelWithTitle(baseBuiltInWingsList, StringManager.getString("BASE_BUILT_INS"));
         this.addedBySkinList = new SkinWingListPane(a -> a.getBuiltInWings(), (a, b) -> a.setBuiltInWings(b));
-        ComponentUtilities.outfitPanelWithTitle(addedBySkinList, StringManager.getString("ADDED_BY_SKIN"));
         this.removedBySkinList = new SkinWingListPane(a -> a.getRemoveBuiltInWings(), (a, b) -> a.setRemoveBuiltInWings(b));
-        ComponentUtilities.outfitPanelWithTitle(removedBySkinList, StringManager.getString("REMOVED_BY_SKIN"));
 
-        JPanel container = new JPanel(new GridBagLayout());
-        GridBagConstraints constraints = new GridBagConstraints();
-        constraints.fill = GridBagConstraints.BOTH;
-        constraints.weighty = 0.33;
-        constraints.weightx = 1;
-        constraints.ipady = 40;
-        constraints.gridy = 0;
-
-        container.add(baseBuiltInWingsList, constraints);
-        constraints.gridy = 1;
-        container.add(addedBySkinList, constraints);
-        constraints.gridy = 2;
-        container.add(removedBySkinList, constraints);
-
-        JScrollPane scroller = new JScrollPane(container);
-        JScrollBar verticalScrollBar = scroller.getVerticalScrollBar();
-        verticalScrollBar.setUnitIncrement(16);
+        JScrollPane scroller = ComponentUtilities.createBuiltInListsScroller(baseBuiltInWingsList, addedBySkinList,
+                removedBySkinList);
 
         this.add(scroller, BorderLayout.CENTER);
 

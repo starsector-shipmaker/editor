@@ -15,11 +15,18 @@ import java.util.function.Predicate;
 class GameDataRepositoryPropertiesTest {
 
     private GameDataRepository repository;
+    private shipeditor.persistence.Settings originalSettings;
 
     @BeforeEach
     void setUp() {
+        originalSettings = shipeditor.persistence.SettingsManager.getSettings();
         shipeditor.persistence.SettingsManager.setSettings(shipeditor.persistence.SettingsManager.createDefault());
         repository = new GameDataRepository();
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void tearDown() {
+        shipeditor.persistence.SettingsManager.setSettings(originalSettings);
     }
 
     @Property

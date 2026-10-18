@@ -26,7 +26,10 @@ import shipeditor.components.viewer.entities.weapon.WeaponSlotOverride;
 import shipeditor.components.viewer.entities.weapon.WeaponSlotPoint;
 import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.components.viewer.layers.ship.data.ShipSkin;
+import shipeditor.components.viewer.layers.ship.data.ShipVariant;
 import shipeditor.components.viewer.painters.points.AngledPointPainter;
+import shipeditor.components.viewer.painters.points.ship.features.FittedWeaponGroup;
+import shipeditor.components.viewer.painters.points.ship.features.InstalledFeature;
 import shipeditor.persistence.SettingsManager;
 import shipeditor.representation.weapon.WeaponEnums.WeaponMount;
 import shipeditor.representation.weapon.WeaponEnums.WeaponSize;
@@ -52,6 +55,10 @@ import shipeditor.communication.events.viewer.points.PointEvents.PointSelectQueu
 public class WeaponSlotPainter extends AbstractSlotPainter {
 
     private static final Matrix4f IDENTITY_MATRIX = new Matrix4f();
+
+    private static final float SLOT_TOOLTIP_OFFSET_Y = 12f;
+
+    private static final float SLOT_TOOLTIP_LINE_HEIGHT = 15f;
 
     @Getter @Setter
     private List<WeaponSlotPoint> slotPoints;
@@ -136,22 +143,41 @@ public class WeaponSlotPainter extends AbstractSlotPainter {
     @Override
     protected void initInteractionListeners() {
         super.initInteractionListeners();
-        
+
         EventBus.subscribe(this, event -> {
             if (event instanceof shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawMousePressed checked) {
                 java.awt.event.MouseEvent me = checked.mouseEvent();
+                EditorInstrument mode = StaticController.getEditorMode();
                 boolean isModuleRightClick = javax.swing.SwingUtilities.isRightMouseButton(me)
-                        && StaticController.getEditorMode() == EditorInstrument.VARIANT_MODULES
+                        && mode == EditorInstrument.VARIANT_MODULES
                         && getParentLayer() != null && getParentLayer().isLayerActive();
-                if (!isInteractionEnabled() && !isModuleRightClick) return;
+                boolean isWeaponRightClick = javax.swing.SwingUtilities.isRightMouseButton(me)
+                        && mode == EditorInstrument.VARIANT_WEAPONS
+                        && getParentLayer() != null && getParentLayer().isLayerActive();
+                if (!isInteractionEnabled() && !isModuleRightClick && !isWeaponRightClick) return;
                 if (isModuleRightClick) {
                     Point2D worldTarget = computeWorldTarget(me);
                     WeaponSlotPoint closest = (WeaponSlotPoint) findClosestPoint(worldTarget);
-                    
+
                     if (closest != null && closest.getWeaponType() == WeaponType.STATION_MODULE) {
                         Point2D screenLoc = StaticController.getViewer().getWorldToScreen().transform(closest.getPosition(), null);
-                        if (me.getPoint().distanceSq(screenLoc) <= 144.0) {
+                        if (me.getPoint().distanceSq(screenLoc) <= 225.0) {
                             javax.swing.JPopupMenu contextMenu = createModuleContextMenu(closest);
+                            contextMenu.show(me.getComponent(), me.getX(), me.getY());
+                            me.consume();
+                        }
+                    }
+                } else if (isWeaponRightClick) {
+                    Point2D worldTarget = computeWorldTarget(me);
+                    WeaponSlotPoint closest = (WeaponSlotPoint) findClosestPoint(worldTarget);
+
+                    if (closest != null && closest.isFittable()) {
+                        Point2D screenLoc = StaticController.getViewer().getWorldToScreen().transform(closest.getPosition(), null);
+                        if (me.getPoint().distanceSq(screenLoc) <= 225.0) {
+                            setSelected(closest);
+                            EventBus.publish(new PointSelectedConfirmed(closest));
+                            javax.swing.JPopupMenu contextMenu = WeaponSlotContextMenu.createWeaponContextMenu(
+                                    closest, getParentLayer().getParentLayer());
                             contextMenu.show(me.getComponent(), me.getX(), me.getY());
                             me.consume();
                         }
@@ -597,6 +623,96 @@ public class WeaponSlotPainter extends AbstractSlotPainter {
         }
     }
 
+    /**
+     * Draws a multi-line info box next to the slot currently under the cursor:
+     * ID, type/size, arc, fitted weapon, OP cost and (if a weapon is picked for install) its compatibility.
+     */
+    private void paintSlotTooltip(SpriteRenderer spriteRenderer, Matrix4f projection) {
+        WeaponSlotPoint hovered = null;
+        for (WeaponSlotPoint slot : this.getPointsIndex()) {
+            if (slot.isCursorInBounds()) {
+                hovered = slot;
+                break;
+            }
+        }
+        if (hovered == null) return;
+
+        try {
+            log.trace("Painting hover tooltip for slot {}", hovered.getId());
+            List<String> lines = new ArrayList<>();
+            List<java.awt.Color> colors = new ArrayList<>();
+            buildSlotTooltip(hovered, lines, colors);
+
+            Point2D screenPos = StaticController.getViewer().getWorldToScreen().transform(hovered.getPosition(), null);
+            float drawX = (float) (screenPos.getX() + 25 + StaticController.getZoomLevel() * 0.25);
+            float drawY = (float) screenPos.getY() + SLOT_TOOLTIP_OFFSET_Y;
+            java.awt.Font font = Utility.getOrbitron(11);
+            for (int i = 0; i < lines.size(); i++) {
+                shipeditor.utility.graphics.opengl.TextRenderer.drawTextScreenGL(spriteRenderer, projection,
+                        lines.get(i), font, colors.get(i), drawX, drawY + i * SLOT_TOOLTIP_LINE_HEIGHT, 1.0f);
+            }
+        } catch (RuntimeException e) {
+            log.error("Failed to paint slot tooltip for slot {}", hovered.getId(), e);
+        }
+    }
+
+    private void buildSlotTooltip(WeaponSlotPoint slot, List<String> lines, List<java.awt.Color> colors) {
+        java.awt.Color normal = new java.awt.Color(235, 235, 235);
+        WeaponType slotType = slot.getWeaponType();
+        WeaponSize slotSize = slot.getWeaponSize();
+
+        lines.add((slot.getId() != null ? slot.getId() : "No ID") + "  ["
+                + (slotType != null ? slotType.getDisplayedName() : "?") + " / "
+                + (slotSize != null ? slotSize.getDisplayedName() : "?") + "]");
+        colors.add(slotType != null ? slotType.getColor() : normal);
+
+        lines.add("Arc: " + Utility.round(slot.getArc(), 1) + "\u00B0  Angle: "
+                + Utility.round(slot.getAngle(), 1) + "\u00B0");
+        colors.add(normal);
+
+        InstalledFeature fitted = findFittedWeapon(slot);
+        if (fitted != null) {
+            lines.add("Fitted: " + fitted.getName());
+            colors.add(new java.awt.Color(130, 230, 130));
+            lines.add("OP cost: " + fitted.getOPCost());
+            colors.add(normal);
+        } else {
+            String builtIn = slot.getBuiltInWeaponName();
+            if (builtIn != null) {
+                lines.add("Built-in: " + builtIn);
+                colors.add(new java.awt.Color(195, 195, 195));
+                lines.add("OP cost: 0 (built-in)");
+                colors.add(normal);
+            } else {
+                lines.add("Fitted: (empty)");
+                colors.add(new java.awt.Color(160, 160, 160));
+            }
+        }
+
+        if (StaticController.getEditorMode() == EditorInstrument.VARIANT_WEAPONS
+                && StaticController.getActiveLayer() instanceof shipeditor.components.viewer.layers.ship.ShipLayer layer) {
+            shipeditor.components.datafiles.entities.WeaponCSVEntry picked =
+                    layer.getFeaturesOverseer().getWeaponForInstall();
+            if (picked != null && slot.isFittable()) {
+                Optional<String> reason = WeaponType.getIncompatibilityReason(slot, picked);
+                if (reason.isPresent()) {
+                    lines.add("Cannot fit: " + reason.get());
+                    colors.add(new java.awt.Color(255, 100, 100));
+                }
+            }
+        }
+    }
+
+    private InstalledFeature findFittedWeapon(WeaponSlotPoint slot) {
+        ShipPainter shipPainter = getParentLayer();
+        if (shipPainter == null || slot.getId() == null) return null;
+        ShipVariant variant = shipPainter.getActiveVariant();
+        if (variant == null || variant.isEmpty()) return null;
+        FittedWeaponGroup group = variant.getGroupWithExistingMapping(slot.getId());
+        if (group == null || group.getWeapons() == null) return null;
+        return group.getWeapons().get(slot.getId());
+    }
+
     @Override
     public void paint(SpriteRenderer spriteRenderer, ShapeRenderer shapeRenderer, Matrix4f projection, Matrix4f view) {
         var visibility = this.getVisibilityMode();
@@ -610,6 +726,7 @@ public class WeaponSlotPainter extends AbstractSlotPainter {
             shapeRenderer.end();
             this.paintSlotLabels(spriteRenderer, projection);
             this.paintWeaponPreview(spriteRenderer, shapeRenderer, projection, view);
+            this.paintSlotTooltip(spriteRenderer, projection);
         } else if (visibleForRelatedMode) {
             shapeRenderer.begin(projection, IDENTITY_MATRIX);
             this.handleSelectionHighlight();
@@ -618,6 +735,7 @@ public class WeaponSlotPainter extends AbstractSlotPainter {
             shapeRenderer.end();
             this.paintSlotLabels(spriteRenderer, projection);
             this.paintWeaponPreview(spriteRenderer, shapeRenderer, projection, view);
+            this.paintSlotTooltip(spriteRenderer, projection);
         }
     }
 
@@ -627,6 +745,11 @@ public class WeaponSlotPainter extends AbstractSlotPainter {
 
     private boolean isSlotSelectionEnabled() {
         return this.isInteractionEnabled() || isVisibleForRelatedMode();
+    }
+
+    @Override
+    public boolean isSelectionEnabled() {
+        return isSlotSelectionEnabled();
     }
 
     private class SharedSelectionListener implements BusEventListener {
@@ -641,7 +764,7 @@ public class WeaponSlotPainter extends AbstractSlotPainter {
         private static boolean isRelatedEditorModeActive() {
             EditorInstrument editorMode = StaticController.getEditorMode();
             switch (editorMode) {
-                case VARIANT_WEAPONS, VARIANT_MODULES -> {
+                case VARIANT_WEAPONS, VARIANT_MODULES, SKIN_SLOTS -> {
                     return true;
                 }
                 default -> {

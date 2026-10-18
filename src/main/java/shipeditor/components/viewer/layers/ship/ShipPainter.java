@@ -104,14 +104,20 @@ public class ShipPainter extends LayerPainter {
     }
 
     public void selectVariant(Variant variant) {
-        if (variant instanceof VariantFile checked) {
-            this.installVariant(checked);
-        } else if (variant instanceof ShipVariant checked) {
-            activeVariant = checked;
-        } else if (variant == null) {
-            activeVariant = null;
+        boolean wasPaused = shipeditor.undo.UndoOverseer.isPaused();
+        shipeditor.undo.UndoOverseer.setPaused(true);
+        try {
+            if (variant instanceof VariantFile checked) {
+                this.installVariant(checked);
+            } else if (variant instanceof ShipVariant checked) {
+                activeVariant = checked;
+            } else if (variant == null) {
+                activeVariant = null;
+            }
+            this.notifyLayerUpdate();
+        } finally {
+            shipeditor.undo.UndoOverseer.setPaused(wasPaused);
         }
-        this.notifyLayerUpdate();
     }
 
     private void installVariant(VariantFile file) {
@@ -244,6 +250,9 @@ public class ShipPainter extends LayerPainter {
         EventBus.publish(new InstrumentRepaintQueued(EditorInstrument.SKIN_SLOTS));
         EventBus.publish(new InstrumentRepaintQueued(EditorInstrument.SKIN_ENGINES));
         EventBus.publish(new InstrumentRepaintQueued(EditorInstrument.SKIN_REMOVALS));
+        EventBus.publish(new InstrumentRepaintQueued(EditorInstrument.VARIANT_DATA));
+        EventBus.publish(new InstrumentRepaintQueued(EditorInstrument.VARIANT_WEAPONS));
+        EventBus.publish(new InstrumentRepaintQueued(EditorInstrument.VARIANT_MODULES));
         Events.repaintShipView();
     }
 

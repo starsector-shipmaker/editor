@@ -29,35 +29,23 @@ public class WeaponMuzzleFlashHandler {
     }
 
     public WeaponMuzzleFlashHandler(Supplier<Boolean> readinessChecker, Runnable onChange, Supplier<WeaponSpecFile> specSupplier) {
-        mfLengthEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setLength(value);
-        }, onChange);
+        mfLengthEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange, specSupplier,
+                this::getOrCreate, MuzzleFlashSpec::setLength);
 
-        mfSpreadEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setSpread(value);
-        }, onChange);
+        mfSpreadEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange, specSupplier,
+                this::getOrCreate, MuzzleFlashSpec::setSpread);
 
-        mfParticleSizeMinEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setParticleSizeMin(value);
-        }, onChange);
+        mfParticleSizeMinEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, MuzzleFlashSpec::setParticleSizeMin);
 
-        mfParticleSizeRangeEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setParticleSizeRange(value);
-        }, onChange);
+        mfParticleSizeRangeEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, MuzzleFlashSpec::setParticleSizeRange);
 
-        mfParticleDurationEditor = WeaponFirePanelUtilities.createDoubleField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setParticleDuration(value);
-        }, onChange);
+        mfParticleDurationEditor = WeaponFirePanelUtilities.createSpecDoubleField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, MuzzleFlashSpec::setParticleDuration);
 
-        mfParticleCountEditor = WeaponFirePanelUtilities.createIntField(null, readinessChecker, value -> {
-            WeaponSpecFile spec = specSupplier.get();
-            if (spec != null) getOrCreate(spec).setParticleCount(value);
-        }, onChange);
+        mfParticleCountEditor = WeaponFirePanelUtilities.createSpecIntField(readinessChecker, onChange,
+                specSupplier, this::getOrCreate, MuzzleFlashSpec::setParticleCount);
 
         mfParticleColorValue = new JLabel();
         colorLabel = WeaponFirePanelUtilities.createColorLabel("Particle Color:", mfParticleColorValue,

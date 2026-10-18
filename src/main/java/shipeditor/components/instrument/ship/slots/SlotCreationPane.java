@@ -141,14 +141,19 @@ public class SlotCreationPane extends JPanel {
         return wrapper;
     }
 
-    private static JPanel createSlotTypeSelectors() {
+    private static JPanel createSelectorContainer(String title) {
         JPanel container = new JPanel();
         container.setLayout(new BoxLayout(container, BoxLayout.PAGE_AXIS));
         container.setAlignmentX(0.5f);
         container.setAlignmentY(0);
 
         ComponentUtilities.outfitPanelWithTitle(container,
-                new Insets(1, 0, 0, 0), "Default type");
+                new Insets(1, 0, 0, 0), title);
+        return container;
+    }
+
+    private static JPanel createSlotTypeSelectors() {
+        JPanel container = createSelectorContainer("Default type");
 
         Collection<WeaponType> types = new ArrayList<>(List.of(WeaponType.values()));
         types.remove(WeaponType.LAUNCH_BAY);
@@ -170,52 +175,32 @@ public class SlotCreationPane extends JPanel {
     }
 
     private static JPanel createSlotMountSelectors() {
-        JPanel container = new JPanel();
-        container.setLayout(new BoxLayout(container, BoxLayout.PAGE_AXIS));
-        container.setAlignmentX(0.5f);
-        container.setAlignmentY(0);
-
-        ComponentUtilities.outfitPanelWithTitle(container,
-                new Insets(1, 0, 0, 0), "Default mount");
-
-        Iterable<WeaponMount> mounts = new ArrayList<>(List.of(WeaponMount.values()));
-
-        ButtonGroup selectorButtons = new ButtonGroup();
-
-        for (WeaponMount mount : mounts) {
-            JRadioButton button = new JRadioButton(mount.getDisplayName());
-            button.addActionListener(e -> defaultMount = mount);
-
-            container.add(SlotCreationPane.createSlotKindPane(selectorButtons, button));
-
-            if (mount == defaultMount) {
-                button.setSelected(true);
-            }
-        }
-
-        return container;
+        return createRadioSelectors("Default mount", WeaponMount.values(), WeaponMount::getDisplayName,
+                defaultMount, mount -> defaultMount = mount);
     }
 
     private static JPanel createSlotSizeSelectors() {
-        JPanel container = new JPanel();
-        container.setLayout(new BoxLayout(container, BoxLayout.PAGE_AXIS));
-        container.setAlignmentX(0.5f);
-        container.setAlignmentY(0);
+        return createRadioSelectors("Default size", WeaponSize.values(), WeaponSize::getDisplayedName,
+                defaultSize, size -> defaultSize = size);
+    }
 
-        ComponentUtilities.outfitPanelWithTitle(container,
-                new Insets(1, 0, 0, 0), "Default size");
-
-        Iterable<WeaponSize> sizes = new ArrayList<>(List.of(WeaponSize.values()));
+    /**
+     * Builds a titled column of radio buttons, one per value, preselecting the current default.
+     */
+    private static <E> JPanel createRadioSelectors(String title, E[] values,
+                                                   java.util.function.Function<E, String> labelGetter,
+                                                   E current, java.util.function.Consumer<E> setter) {
+        JPanel container = createSelectorContainer(title);
 
         ButtonGroup selectorButtons = new ButtonGroup();
 
-        for (WeaponSize size : sizes) {
-            JRadioButton button = new JRadioButton(size.getDisplayedName());
-            button.addActionListener(e -> defaultSize = size);
+        for (E value : values) {
+            JRadioButton button = new JRadioButton(labelGetter.apply(value));
+            button.addActionListener(e -> setter.accept(value));
 
             container.add(SlotCreationPane.createSlotKindPane(selectorButtons, button));
 
-            if (size == defaultSize) {
+            if (value == current) {
                 button.setSelected(true);
             }
         }

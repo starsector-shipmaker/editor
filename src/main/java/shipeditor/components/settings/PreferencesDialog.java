@@ -92,27 +92,21 @@ public class PreferencesDialog extends JDialog {
         // 1. Startup & Data Loading Section
         JPanel startupPanel = createSectionPanel("Startup & Loading", BoxiconsRegular.ROCKET);
         
-        JCheckBox autoLoadData = new JCheckBox(StringManager.getString("AUTO_LOAD_DATA_AT_START"));
-        autoLoadData.setAlignmentX(Component.LEFT_ALIGNMENT);
-        autoLoadData.setToolTipText(StringManager.getString("AUTOMATICALLY_LOAD_INDEXED_MOD_DATA_WHEN_THE_EDITOR_STARTS"));
-        autoLoadData.setSelected(SettingsManager.isDataAutoloadEnabled());
-        autoLoadData.addActionListener(event -> settings.setLoadDataAtStart(autoLoadData.isSelected()));
+        JCheckBox autoLoadData = createSettingCheckBox("AUTO_LOAD_DATA_AT_START",
+                "AUTOMATICALLY_LOAD_INDEXED_MOD_DATA_WHEN_THE_EDITOR_STARTS",
+                SettingsManager.isDataAutoloadEnabled(), settings::setLoadDataAtStart);
         startupPanel.add(autoLoadData);
         startupPanel.add(Box.createVerticalStrut(4));
 
-        JCheckBox togglePromptMods = new JCheckBox(StringManager.getString("ALWAYS_SHOW_MOD_SELECTION_AT_STARTUP"));
-        togglePromptMods.setAlignmentX(Component.LEFT_ALIGNMENT);
-        togglePromptMods.setToolTipText(StringManager.getString("FORCE_THE_MOD_SELECTION_DIALOG_TO_APPEAR_EVERY_TIME_YOU_OPEN_THE_EDITOR"));
-        togglePromptMods.setSelected(settings.isPromptForModsAtStart());
-        togglePromptMods.addActionListener(event -> settings.setPromptForModsAtStart(togglePromptMods.isSelected()));
+        JCheckBox togglePromptMods = createSettingCheckBox("ALWAYS_SHOW_MOD_SELECTION_AT_STARTUP",
+                "FORCE_THE_MOD_SELECTION_DIALOG_TO_APPEAR_EVERY_TIME_YOU_OPEN_THE_EDITOR",
+                settings.isPromptForModsAtStart(), settings::setPromptForModsAtStart);
         startupPanel.add(togglePromptMods);
         startupPanel.add(Box.createVerticalStrut(4));
 
-        JCheckBox toggleFileErrorPopups = new JCheckBox(StringManager.getString("ENABLE_FILE_ERROR_POP_UPS"));
-        toggleFileErrorPopups.setAlignmentX(Component.LEFT_ALIGNMENT);
-        toggleFileErrorPopups.setToolTipText(StringManager.getString("SHOW_ERROR_DIALOGS_WHEN_CORRUPTED_FILES_ARE_ENCOUNTERED_DURING_LOADING"));
-        toggleFileErrorPopups.setSelected(SettingsManager.areFileErrorPopupsEnabled());
-        toggleFileErrorPopups.addActionListener(event -> settings.setShowLoadingErrors(toggleFileErrorPopups.isSelected()));
+        JCheckBox toggleFileErrorPopups = createSettingCheckBox("ENABLE_FILE_ERROR_POP_UPS",
+                "SHOW_ERROR_DIALOGS_WHEN_CORRUPTED_FILES_ARE_ENCOUNTERED_DURING_LOADING",
+                SettingsManager.areFileErrorPopupsEnabled(), settings::setShowLoadingErrors);
         startupPanel.add(toggleFileErrorPopups);
 
         mainPanel.add(startupPanel);
@@ -191,16 +185,32 @@ public class PreferencesDialog extends JDialog {
         // 4. Diagnostics Section
         JPanel diagPanel = createSectionPanel("Diagnostics & Logging", BoxiconsRegular.BUG);
 
-        JCheckBox toggleDeveloperMode = new JCheckBox(StringManager.getString("ENABLE_DEVELOPER_MESSAGES_LOGS"));
-        toggleDeveloperMode.setAlignmentX(Component.LEFT_ALIGNMENT);
-        toggleDeveloperMode.setToolTipText(StringManager.getString("ENABLE_EXTENSIVE_DIAGNOSTIC_LOGGING_AND_DEVELOPER_ONLY_WARNINGS"));
-        toggleDeveloperMode.setSelected(SettingsManager.isDeveloperModeEnabled());
-        toggleDeveloperMode.addActionListener(event -> settings.setDeveloperMode(toggleDeveloperMode.isSelected()));
+        JCheckBox toggleDeveloperMode = createSettingCheckBox("ENABLE_DEVELOPER_MESSAGES_LOGS",
+                "ENABLE_EXTENSIVE_DIAGNOSTIC_LOGGING_AND_DEVELOPER_ONLY_WARNINGS",
+                SettingsManager.isDeveloperModeEnabled(), settings::setDeveloperMode);
         diagPanel.add(toggleDeveloperMode);
 
         mainPanel.add(diagPanel);
 
         return mainPanel;
+    }
+
+    /**
+     * Creates a left-aligned checkbox bound to a boolean setting.
+     *
+     * @param textKey    {@link StringManager} key for the checkbox text.
+     * @param tooltipKey {@link StringManager} key for the tooltip.
+     * @param selected   initial state.
+     * @param setter     applies the new state to the settings.
+     */
+    private JCheckBox createSettingCheckBox(String textKey, String tooltipKey, boolean selected,
+                                            java.util.function.Consumer<Boolean> setter) {
+        JCheckBox checkBox = new JCheckBox(StringManager.getString(textKey));
+        checkBox.setAlignmentX(Component.LEFT_ALIGNMENT);
+        checkBox.setToolTipText(StringManager.getString(tooltipKey));
+        checkBox.setSelected(selected);
+        checkBox.addActionListener(event -> setter.accept(checkBox.isSelected()));
+        return checkBox;
     }
 
     private JPanel createSectionPanel(String title, org.kordamp.ikonli.Ikon icon) {

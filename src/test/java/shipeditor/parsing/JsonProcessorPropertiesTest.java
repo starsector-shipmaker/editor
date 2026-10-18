@@ -62,4 +62,21 @@ class JsonProcessorPropertiesTest {
     Arbitrary<Character> suffixGenerator() {
         return Arbitraries.of('f', 'F', 'd', 'D');
     }
+
+    @Example
+    void testCollapsesRedundantCommasAcrossComments() throws Exception {
+        String malformedSkin = """
+                {
+                    "baseHullId":"vanguard",
+                    "skinHullId":"vanguard_lp",
+                    "removeBuiltInWeapons":[], \t\t# weapon slot ids
+                    \t,
+                    "builtInMods":["ill_advised","shared_flux_sink"],
+                }
+                """;
+        String straightened = JsonProcessor.straightenMalformedText(malformedSkin);
+        var tree = FileUtilities.getConfigured().readTree(straightened);
+        Assertions.assertEquals("vanguard", tree.get("baseHullId").asText());
+        Assertions.assertEquals("vanguard_lp", tree.get("skinHullId").asText());
+    }
 }

@@ -39,6 +39,7 @@ public final class DatabaseQueryService {
     }
 
     private static final Map<String, List<IndexedFile>> TYPE_CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, Map<String, IndexedFile>> ENTITY_ID_CACHE = new ConcurrentHashMap<>();
 
     private DatabaseQueryService() {}
 
@@ -48,6 +49,7 @@ public final class DatabaseQueryService {
      */
     public static void clearTypeCache() {
         TYPE_CACHE.clear();
+        ENTITY_ID_CACHE.clear();
     }
 
     // --- Synchronous Modifications (Used by Background Scanner) ---
@@ -286,29 +288,15 @@ public final class DatabaseQueryService {
             return null;
         }
 
-        List<String> activeMods = getActiveModIds();
-        if (!activeMods.isEmpty()) {
-            StringBuilder sql = new StringBuilder("SELECT * FROM indexed_files WHERE entity_id = ? AND entity_type = ? AND mod_id IN (");
-            sql.append(String.join(",", java.util.Collections.nCopies(activeMods.size(), "?")));
-            sql.append(") LIMIT 1;");
-
-            try (Connection conn = DatabaseManager.getConnection();
-                 PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
-
-                pstmt.setString(1, entityId);
-                pstmt.setString(2, type);
-                int paramIndex = 3;
-                for (String modId : activeMods) {
-                    pstmt.setString(paramIndex++, modId);
-                }
-
-                try (ResultSet rs = pstmt.executeQuery()) {
-                    if (rs.next()) {
-                        return mapRowToIndexedFile(rs);
-                    }
-                }
-            } catch (SQLException e) {
-                log.error("Failed to lookup file by entity: {} ({})", entityId, type, e);
+        Map<String, IndexedFile> byEntityId = ENTITY_ID_CACHE.get(type);
+        if (byEntityId == null) {
+            getFilesByType(type);
+            byEntityId = ENTITY_ID_CACHE.get(type);
+        }
+        if (byEntityId != null) {
+            IndexedFile cached = byEntityId.get(entityId);
+            if (cached != null) {
+                return cached;
             }
         }
         
@@ -459,6 +447,13 @@ public final class DatabaseQueryService {
         }
 
         List<IndexedFile> results = new ArrayList<>(deduplicated.values());
+        Map<String, IndexedFile> byEntityId = new ConcurrentHashMap<>();
+        for (IndexedFile file : results) {
+            if (file != null && file.getEntityId() != null) {
+                byEntityId.put(file.getEntityId(), file);
+            }
+        }
+        ENTITY_ID_CACHE.put(type, byEntityId);
         TYPE_CACHE.put(type, results);
         return results;
     }

@@ -77,4 +77,14 @@ class UtilityPropertiesTest {
         // max value is 360 - 90 = 270, min value is 0 - 90 = -90
         assertTrue(transformed >= -90.0 && transformed < 270.0);
     }
+
+    @Example
+    void testGetFrameSpritePath() {
+        assertEquals("graphics/weapons/istl_linearcannonlight_turret_base_01.png",
+                Utility.getFrameSpritePath("graphics/weapons/istl_linearcannonlight_turret_base_00.png", 1));
+        assertEquals("graphics/weapons/anim_turret_3.png",
+                Utility.getFrameSpritePath("graphics/weapons/anim_turret_0.png", 3));
+        assertNull(Utility.getFrameSpritePath("graphics/weapons/istl_socket_turret_sm.png", 1));
+        assertNull(Utility.getFrameSpritePath("graphics/weapons/ionpulser_turret_glow.png", 1));
+    }
 }

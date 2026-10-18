@@ -103,6 +103,7 @@ public class CoreIndexManager {
                                     .lastModified(file.lastModified())
                                     .spritePath(metadata.spritePath())
                                     .designation(metadata.designation())
+                                    .metadataJson(metadata.metaValue() != null ? metadata.metaValue() : "")
                                     .build();
                         } catch (Exception e) {
                             log.error("Failed to parse core file for memory index: {}", file, e);
@@ -182,14 +183,14 @@ public class CoreIndexManager {
             }
 
             // Migration check: detect stale DB entries that used filename as entityName
-            // instead of hullName. If entityName equals entityId for ship files, the old
-            // indexing format is cached and a re-scan is needed.
+            // instead of hullName, or that lack metadata_json.
             List<IndexedFile> shipFiles = CORE_FILES_BY_TYPE.get(StringConstants.SHIP_TYPE);
             if (shipFiles != null && !shipFiles.isEmpty()) {
                 IndexedFile sample = shipFiles.get(0);
-                if (sample.getEntityName() != null && sample.getEntityId() != null
-                        && sample.getEntityName().equals(sample.getEntityId())) {
-                    log.info("Detected stale entity name format in database cache, triggering re-scan.");
+                if ((sample.getEntityName() != null && sample.getEntityId() != null
+                        && sample.getEntityName().equals(sample.getEntityId()))
+                        || sample.getMetadataJson() == null) {
+                    log.info("Detected stale entity metadata format in database cache, triggering re-scan.");
                     CORE_FILES_BY_TYPE.clear();
                     CORE_FILES_BY_ENTITY_ID.clear();
                     CORE_FILES_BY_PATH.clear();

@@ -70,6 +70,10 @@ public class ShipCSVEntry implements LayerableEntry, InstallableEntry {
 
     private List<ShipTypeHints> cachedBaseHullHints;
 
+    private HullSize cachedHullSize;
+
+    private String fallbackHullName;
+
     public ShipCSVEntry(Map<String, String> row, Map.Entry<HullSpecFile, Map<String, SkinSpecFile>> hullWithSkins,
                         Path folder, String fileName) {
         this(row, hullWithSkins, folder, fileName, null);
@@ -90,6 +94,23 @@ public class ShipCSVEntry implements LayerableEntry, InstallableEntry {
         }
     }
 
+    public void enrichFromIndexedFile(IndexedFile file) {
+        if (file == null) {
+            return;
+        }
+        if ((fallbackHullName == null || fallbackHullName.isBlank())
+                && file.getEntityName() != null && !file.getEntityName().isBlank()) {
+            this.fallbackHullName = file.getEntityName();
+        }
+        if (cachedHullSize == null && file.getMetadataJson() != null && !file.getMetadataJson().isBlank()) {
+            try {
+                this.cachedHullSize = HullSize.valueOf(file.getMetadataJson().trim());
+            } catch (IllegalArgumentException ignored) {
+                // Unknown hull size string in metadata; ignore.
+            }
+        }
+    }
+
     public HullSpecFile getHullSpecFile() {
         if (hullSpecFile == null) {
             lazyLoadSpecAndSkins();
@@ -107,29 +128,34 @@ public class ShipCSVEntry implements LayerableEntry, InstallableEntry {
     private java.util.concurrent.CompletableFuture<Void> loadingFuture;
 
     public synchronized java.util.concurrent.CompletableFuture<Void> lazyLoadSpecAndSkins() {
-        if (hullSpecFile != null) return java.util.concurrent.CompletableFuture.completedFuture(null);
         if (loadingFuture != null) return loadingFuture;
+        if (hullSpecFile != null && skins != null) return java.util.concurrent.CompletableFuture.completedFuture(null);
 
-        log.info("Lazily loading spec and skins for base hull ID: {}", hullID);
-        Path hullPath = DatabaseQueryService.getFilePathForEntity(this.hullID, "SHIP");
+        log.debug("Lazily loading spec and skins for base hull ID: {}", hullID);
+        Path hullPath = DatabaseQueryService.getFilePathForEntity(this.hullID, StringConstants.SHIP_TYPE);
         if (hullPath != null) {
             this.hullSpecFile = FileLoading.loadHullFile(hullPath.toFile());
         } else {
             log.error("Failed to locate hull file path for ID: {}", this.hullID);
         }
 
-        this.skins = new HashMap<>();
+        this.skins = new java.util.concurrent.ConcurrentHashMap<>();
         this.activeSkinSpecFile = SkinSpecFile.empty();
         this.skins.put(SkinSpecFile.DEFAULT, this.activeSkinSpecFile);
 
-        Path fileNamePath = this.packageFolderPath.getFileName();
+        Path fileNamePath = this.packageFolderPath != null ? this.packageFolderPath.getFileName() : null;
         String modId = fileNamePath != null ? fileNamePath.toString() : "";
-        if (SettingsManager.isCoreFolder(this.packageFolderPath)) {
+        if (this.packageFolderPath != null && SettingsManager.isCoreFolder(this.packageFolderPath)) {
             modId = "starsector-core";
         }
 
-        loadingFuture = DatabaseQueryService.getFilesByModAndTypeAsync(modId, "SKIN").thenAcceptAsync(skinFiles -> {
+        loadingFuture = DatabaseQueryService.getFilesByModAndTypeAsync(modId, StringConstants.SKIN_TYPE).thenAcceptAsync(skinFiles -> {
             for (IndexedFile skinFile : skinFiles) {
+                String indexedBaseHullId = skinFile.getMetadataJson();
+                if (indexedBaseHullId != null && !indexedBaseHullId.isEmpty()
+                        && !Objects.equals(indexedBaseHullId, this.hullID)) {
+                    continue;
+                }
                 SkinSpecFile skinSpec = FileLoading.loadSkinFile(skinFile.getFilePath().toFile());
                 if (skinSpec != null && Objects.equals(skinSpec.getBaseHullId(), this.hullID)) {
                     this.skins.put(skinFile.getFileName(), skinSpec);
@@ -162,19 +188,43 @@ public class ShipCSVEntry implements LayerableEntry, InstallableEntry {
     }
 
     public HullSize getSize() {
-        HullSpecFile specFile = this.getHullSpecFile();
-        if (specFile == null) {
-            return HullSize.DEFAULT;
+        if (hullSpecFile != null) {
+            String hullSize = hullSpecFile.getHullSize();
+            if (hullSize == null) {
+                return HullSize.DEFAULT;
+            }
+            try {
+                return HullSize.valueOf(hullSize);
+            } catch (IllegalArgumentException e) {
+                return HullSize.DEFAULT;
+            }
         }
-        String hullSize = specFile.getHullSize();
-        if (hullSize == null) {
-            return HullSize.DEFAULT;
+        if (cachedHullSize != null) {
+            return cachedHullSize;
         }
-        try {
-            return HullSize.valueOf(hullSize);
-        } catch (IllegalArgumentException e) {
-            return HullSize.DEFAULT;
+        if (hullID != null) {
+            IndexedFile indexed = DatabaseQueryService.getFileByEntityId(hullID, StringConstants.SHIP_TYPE);
+            if (indexed != null) {
+                enrichFromIndexedFile(indexed);
+                if (cachedHullSize != null) {
+                    return cachedHullSize;
+                }
+                if (indexed.getFilePath() != null) {
+                    var meta = shipeditor.parsing.loading.IndexScannerTask.extractEntityMetadata(
+                            indexed.getFilePath().toFile(), StringConstants.SHIP_TYPE, FileUtilities.getConfigured());
+                    if (meta.metaValue() != null && !meta.metaValue().isBlank()) {
+                        try {
+                            cachedHullSize = HullSize.valueOf(meta.metaValue().trim());
+                            return cachedHullSize;
+                        } catch (IllegalArgumentException ignored) {
+                            // Fall through to DEFAULT.
+                        }
+                    }
+                }
+            }
         }
+        cachedHullSize = HullSize.DEFAULT;
+        return cachedHullSize;
     }
 
     public String getShipID() {
@@ -213,9 +263,20 @@ public class ShipCSVEntry implements LayerableEntry, InstallableEntry {
         if (name != null && !name.isBlank()) {
             return name;
         }
-        HullSpecFile spec = this.getHullSpecFile();
-        if (spec != null && spec.getHullName() != null && !spec.getHullName().isBlank()) {
-            return spec.getHullName();
+        if (hullSpecFile != null && hullSpecFile.getHullName() != null && !hullSpecFile.getHullName().isBlank()) {
+            return hullSpecFile.getHullName();
+        }
+        if (fallbackHullName != null && !fallbackHullName.isBlank()) {
+            return fallbackHullName;
+        }
+        if (hullID != null) {
+            IndexedFile indexed = DatabaseQueryService.getFileByEntityId(hullID, StringConstants.SHIP_TYPE);
+            if (indexed != null) {
+                enrichFromIndexedFile(indexed);
+                if (fallbackHullName != null && !fallbackHullName.isBlank()) {
+                    return fallbackHullName;
+                }
+            }
         }
         return name != null ? name : "";
     }
@@ -375,6 +436,9 @@ public class ShipCSVEntry implements LayerableEntry, InstallableEntry {
         ShipLayer newLayer = FileUtilities.createShipLayerWithSprite(spriteFile);
         newLayer.initializeHullData(spec);
 
+        if (loadingFuture != null && !loadingFuture.isDone()) {
+            loadingFuture.join();
+        }
         if (skins == null || skins.isEmpty()) return newLayer;
 
         Map<String, SkinSpecFile> eligibleSkins = new HashMap<>(skins);

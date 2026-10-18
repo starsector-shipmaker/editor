@@ -525,7 +525,10 @@ public class GameDataRepository {
         if (file == null || file.getEntityId() == null) return null;
         Map<String, ShipCSVEntry> entries = getAllShipEntries();
         ShipCSVEntry existing = entries.get(file.getEntityId());
-        if (existing != null) return existing;
+        if (existing != null) {
+            existing.enrichFromIndexedFile(file);
+            return existing;
+        }
 
         Path folder = SettingsManager.getFolderForModId(file.getModId());
         Map<String, String> row = new HashMap<>();
@@ -537,6 +540,7 @@ public class GameDataRepository {
             row.put(StringConstants.DESIGNATION, file.getDesignation());
         }
         ShipCSVEntry synthetic = new ShipCSVEntry(row, null, folder, file.getFileName());
+        synthetic.enrichFromIndexedFile(file);
         entries.put(file.getEntityId(), synthetic);
         return synthetic;
     }

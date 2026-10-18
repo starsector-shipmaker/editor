@@ -294,20 +294,20 @@ public final class Utility {
         }
         int dotIndex = basePath.lastIndexOf('.');
         if (dotIndex <= 0) {
-            return basePath;
+            return null;
         }
         String baseWithoutExt = basePath.substring(0, dotIndex);
         String ext = basePath.substring(dotIndex);
 
-        if (baseWithoutExt.matches(".*\\d\\d$")) {
+        if (baseWithoutExt.endsWith("00")) {
             return baseWithoutExt.substring(0, baseWithoutExt.length() - 2)
                     + String.format(java.util.Locale.ROOT, "%02d", frameIndex) + ext;
         }
-        if (baseWithoutExt.matches(".*\\d$")) {
+        if (baseWithoutExt.endsWith("0")) {
             return baseWithoutExt.substring(0, baseWithoutExt.length() - 1)
                     + String.format(java.util.Locale.ROOT, "%d", frameIndex) + ext;
         }
-        return baseWithoutExt + String.format(java.util.Locale.ROOT, "%02d", frameIndex) + ext;
+        return null;
     }
 
     public static String translateIntegerValue(Supplier<Integer> getter) {

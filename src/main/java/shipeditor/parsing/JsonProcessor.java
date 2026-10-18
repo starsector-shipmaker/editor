@@ -60,9 +60,23 @@ public final class JsonProcessor {
                 continue;
             }
 
-            // Translate semicolons to commas
-            if (c == ';') {
-                sb.append(',');
+            // Translate semicolons to commas and skip redundant consecutive commas
+            if (c == ';' || c == ',') {
+                int lastIdx = sb.length() - 1;
+                while (lastIdx >= 0) {
+                    char prev = sb.charAt(lastIdx);
+                    if (prev == ' ' || prev == '\t' || prev == '\n' || prev == '\r') {
+                        lastIdx--;
+                    } else {
+                        break;
+                    }
+                }
+                if (lastIdx >= 0) {
+                    char prev = sb.charAt(lastIdx);
+                    if (prev != ',' && prev != '{' && prev != '[') {
+                        sb.append(',');
+                    }
+                }
                 i++;
                 continue;
             }

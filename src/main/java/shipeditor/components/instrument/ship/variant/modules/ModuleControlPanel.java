@@ -67,15 +67,15 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
 
     @Override
     public void refreshContent(LayerPainter layerPainter) {
-        if (refreshVariantsAction != null && variantPicker != null && variantPicker.getItemCount() == 0) {
-            refreshVariantsAction.run();
-        }
         if (!(layerPainter instanceof ShipPainter shipPainter) || shipPainter.isUninitialized()) {
             fireClearingListeners(layerPainter);
 
             moduleAnchorWidget.setCenterPainter(null);
             moduleAnchorWidget.refresh(null);
             return;
+        }
+        if (refreshVariantsAction != null && variantPicker != null && variantPicker.getItemCount() == 0) {
+            refreshVariantsAction.run();
         }
 
         fireRefresherListeners(layerPainter);
@@ -226,19 +226,15 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
             return false;
         }
 
-        // 1. Check HullSpecFile for moduleAnchor and hullSize
-        var spec = GameDataRepository.retrieveSpecByID(hullId);
-        if (spec instanceof HullSpecFile hullSpec) {
-            if (hullSpec.getModuleAnchor() != null) {
-                return true;
-            }
-            String hullSize = hullSpec.getHullSize();
-            if (hullSize != null && "MODULE".equalsIgnoreCase(hullSize)) {
-                return true;
-            }
+        // 1. Check variant ID / hull ID naming heuristics first (zero I/O)
+        String lowerHull = hullId.toLowerCase(Locale.ROOT);
+        String lowerVar = variant.getVariantId() != null ? variant.getVariantId().toLowerCase(Locale.ROOT) : "";
+        if (lowerHull.contains("module") || lowerHull.contains("station")
+                || lowerVar.contains("module") || lowerVar.contains("station")) {
+            return true;
         }
 
-        // 2. Check ShipCSVEntry for hints and tags
+        // 2. Check ShipCSVEntry for hints and tags (in-memory CSV & index lookup)
         ShipCSVEntry csvEntry = GameDataRepository.retrieveShipCSVEntryByID(hullId);
         if (csvEntry != null) {
             List<ShipTypeHints> hints = csvEntry.getBaseHullHints();
@@ -269,10 +265,22 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
             }
         }
 
-        // 3. Check variant ID / hull ID naming heuristics
-        String lowerHull = hullId.toLowerCase(Locale.ROOT);
-        String lowerVar = variant.getVariantId() != null ? variant.getVariantId().toLowerCase(Locale.ROOT) : "";
-        return lowerHull.contains("module") || lowerHull.contains("station") || lowerVar.contains("module") || lowerVar.contains("station");
+        // 3. Check already-loaded HullSpecFile in memory or indexed metadata_json
+        GameDataRepository dataRepo = SettingsManager.getGameData();
+        if (dataRepo != null && dataRepo.getAllSpecEntries() != null) {
+            var loadedSpec = dataRepo.getAllSpecEntries().get(hullId);
+            if (loadedSpec instanceof HullSpecFile hullSpec) {
+                if (hullSpec.getModuleAnchor() != null) {
+                    return true;
+                }
+                String hullSize = hullSpec.getHullSize();
+                if (hullSize != null && "MODULE".equalsIgnoreCase(hullSize)) {
+                    return true;
+                }
+            }
+        }
+        var indexed = shipeditor.persistence.database.DatabaseQueryService.getFileByEntityId(hullId, "SHIP");
+        return indexed != null && "MODULE".equalsIgnoreCase(indexed.getMetadataJson());
     }
 
     private JPanel createModuleActionsPanel() {
@@ -411,9 +419,6 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
         contentPanel.add(controlsRow);
 
         panel.add(contentPanel, BorderLayout.CENTER);
-
-        // Initial population
-        refreshVariants.run();
 
         return panel;
     }

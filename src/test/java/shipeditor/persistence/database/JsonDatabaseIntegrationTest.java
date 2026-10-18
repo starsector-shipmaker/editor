@@ -78,6 +78,7 @@ class JsonDatabaseIntegrationTest {
         assertNotNull(metadata);
         assertEquals("test_ship_id", metadata.id());
         assertEquals("graphics/ships/test_ship.png", metadata.spritePath());
+        assertEquals("FRIGATE", metadata.metaValue());
     }
 
     @Test

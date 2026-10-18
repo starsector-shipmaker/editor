@@ -139,6 +139,11 @@ public final class IndexScannerTask {
             } catch (IOException e) {
                 log.warn("Failed to check last modified times for mod folder: {}", folder, e);
             }
+
+            if (hasStaleShipMetadata(modId)) {
+                log.info("isUpdateNeeded: found stale metadata format for mod: {}", modId);
+                return true;
+            }
         }
 
         // If the database contains extra mods that physically no longer exist, an update is needed to purge them
@@ -149,6 +154,22 @@ public final class IndexScannerTask {
             }
         }
 
+        return false;
+    }
+
+    private static boolean hasStaleShipMetadata(String modId) {
+        List<shipeditor.persistence.database.IndexedFile> modShipFiles =
+                DatabaseQueryService.getFilesByModAndType(modId, StringConstants.SHIP_TYPE);
+        if (!modShipFiles.isEmpty()) {
+            shipeditor.persistence.database.IndexedFile sample = modShipFiles.get(0);
+            if (sample.getEntityName() != null && sample.getEntityId() != null
+                    && sample.getEntityName().equals(sample.getEntityId())) {
+                return true;
+            }
+            if (sample.getMetadataJson() == null) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -241,17 +262,13 @@ public final class IndexScannerTask {
                     needsScan = true;
                 }
             }
-            // Migration check: detect stale entity names (old format used filenames instead of hullName).
+            // Migration check: detect stale entity names or missing metadata_json.
+            boolean staleMetadata = false;
             if (!needsScan) {
-                List<shipeditor.persistence.database.IndexedFile> modShipFiles =
-                        DatabaseQueryService.getFilesByModAndType(modId, StringConstants.SHIP_TYPE);
-                if (!modShipFiles.isEmpty()) {
-                    shipeditor.persistence.database.IndexedFile sample = modShipFiles.get(0);
-                    if (sample.getEntityName() != null && sample.getEntityId() != null
-                            && sample.getEntityName().equals(sample.getEntityId())) {
-                        log.info("Detected stale entity name format for mod '{}', triggering re-scan.", modId);
-                        needsScan = true;
-                    }
+                staleMetadata = hasStaleShipMetadata(modId);
+                if (staleMetadata) {
+                    log.info("Detected stale entity metadata format for mod '{}', triggering re-scan.", modId);
+                    needsScan = true;
                 }
             }
 
@@ -280,7 +297,7 @@ public final class IndexScannerTask {
                             pstmt.executeUpdate();
                         }
 
-                        scanModFolder(conn, folder, modId);
+                        scanModFolder(conn, folder, modId, staleMetadata);
                         
                         conn.commit();
                         // Invalidate CSV cache for this mod so next CSV load re-parses from disk.
@@ -314,7 +331,7 @@ public final class IndexScannerTask {
     private record FileParseRequest(File file, String ext, String type, String absPath,
                                      long diskLastModified, UUID uuid) {}
 
-    private static void scanModFolder(Connection conn, Path modFolder, String modId) throws SQLException {
+    private static void scanModFolder(Connection conn, Path modFolder, String modId, boolean forceRescan) throws SQLException {
         List<String> activePaths = new ArrayList<>();
         ObjectMapper mapper = FileUtilities.getConfigured();
 
@@ -363,7 +380,7 @@ public final class IndexScannerTask {
                 DatabaseQueryService.FileDbInfo dbInfo = dbInfoMap.get(absPath);
                 Long dbLastModified = dbInfo != null ? dbInfo.lastModified() : null;
 
-                if (dbLastModified == null || diskLastModified != dbLastModified) {
+                if (forceRescan || dbLastModified == null || diskLastModified != dbLastModified) {
                     UUID uuid = dbInfo != null ? dbInfo.uuid() : null;
                     if (uuid == null) {
                         uuid = UUID.randomUUID();
@@ -406,7 +423,8 @@ public final class IndexScannerTask {
                 pstmt.setString(9, "");
                 pstmt.setString(10, parsed.metadata.spritePath());
                 pstmt.setString(11, parsed.metadata.designation());
-                pstmt.setString(12, null);
+                String metaValue = parsed.metadata.metaValue() != null ? parsed.metadata.metaValue() : "";
+                pstmt.setString(12, metaValue);
                 pstmt.addBatch();
                 batchCount++;
                 if (batchCount % 500 == 0) {
@@ -486,29 +504,37 @@ public final class IndexScannerTask {
         }
     }
 
-    public record EntityMetadata(String id, String spritePath, String designation, String hullName) {}
+    public record EntityMetadata(String id, String spritePath, String designation, String hullName, String metaValue) {
+        public EntityMetadata(String id, String spritePath, String designation, String hullName) {
+            this(id, spritePath, designation, hullName, null);
+        }
+    }
 
     public static EntityMetadata extractEntityMetadata(File file, String type, ObjectMapper mapper) {
         String keyToFind;
         String spriteKey = null;
         String designationKey = null;
         String hullNameKey = null;
+        String metaKey = null;
 
         switch (type) {
             case StringConstants.SHIP_TYPE -> {
                 keyToFind = "hullId";
                 spriteKey = "spriteName";
                 hullNameKey = "hullName";
+                metaKey = "hullSize";
             }
             case StringConstants.SKIN_TYPE -> {
                 keyToFind = "skinHullId";
                 spriteKey = "spriteName";
                 hullNameKey = "hullName";
                 designationKey = "hullDesignation";
+                metaKey = "baseHullId";
             }
             case StringConstants.VARIANT_TYPE -> {
                 keyToFind = "variantId";
                 hullNameKey = "displayName";
+                metaKey = "hullId";
             }
             case StringConstants.WEAPON_TYPE -> {
                 keyToFind = "id";
@@ -521,6 +547,7 @@ public final class IndexScannerTask {
         String spritePath = null;
         String designation = null;
         String hullName = null;
+        String metaValue = null;
 
         try (com.fasterxml.jackson.core.JsonParser parser = mapper.getFactory().createParser(shipeditor.parsing.JsonProcessor.straightenMalformed(file))) {
             while (parser.nextToken() != null) {
@@ -540,12 +567,16 @@ public final class IndexScannerTask {
                     } else if (hullNameKey != null && hullNameKey.equals(currentName) && hullName == null) {
                         parser.nextToken();
                         hullName = parser.getText();
+                    } else if (metaKey != null && metaKey.equals(currentName) && metaValue == null) {
+                        parser.nextToken();
+                        metaValue = parser.getText();
                     }
                 }
                 // Early exit once all needed fields are found
                 if (id != null && (spriteKey == null || spritePath != null)
                         && (designationKey == null || designation != null)
-                        && (hullNameKey == null || hullName != null)) {
+                        && (hullNameKey == null || hullName != null)
+                        && (metaKey == null || metaValue != null)) {
                     break;
                 }
             }
@@ -562,7 +593,7 @@ public final class IndexScannerTask {
                 .replace(".proj", "");
         }
         
-        return new EntityMetadata(id, spritePath, designation, hullName);
+        return new EntityMetadata(id, spritePath, designation, hullName, metaValue);
     }
 
     public static Map<String, List<File>> fetchFilesWithExtensions(Path target, Set<String> exts) {

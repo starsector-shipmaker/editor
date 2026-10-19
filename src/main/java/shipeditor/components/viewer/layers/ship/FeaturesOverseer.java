@@ -566,6 +566,8 @@ public class FeaturesOverseer {
 
     public void installWeapon(SlotData selected, WeaponCSVEntry forInstall) {
         if (selected == null || forInstall == null) return;
+        if (selected instanceof WeaponSlotPoint sp && !sp.isFittable()) return;
+        if (!WeaponType.isWeaponFitting(selected, forInstall)) return;
         var shipPainter = parent.getPainter();
         var activeVariant = ensureEditableVariant(shipPainter);
         if (activeVariant == null || activeVariant.isEmpty()) return;

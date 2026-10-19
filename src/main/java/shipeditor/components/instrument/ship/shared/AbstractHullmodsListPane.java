@@ -47,7 +47,7 @@ public abstract class AbstractHullmodsListPane<T> extends JPanel {
                             list -> sortSetter.accept(target, list));
                 });
 
-        this.modsList = new HullmodsList(removeAction, modsModel, sortAction);
+        this.modsList = new HullmodsList(removeAction, modsModel, sortAction, this::canAcceptHullmod);
         modsList.setBorder(new LineBorder(Themes.getBorderColor()));
         modsList.setToolTipText("Right-click or press Delete to remove selected hullmod");
 
@@ -66,8 +66,9 @@ public abstract class AbstractHullmodsListPane<T> extends JPanel {
             var shipHull = shipLayer.getHull();
             var shipSize = shipHull != null ? shipHull.getHullSize() : null;
 
-            HullmodCSVEntry picked = DialogUtilities.showHullmodPickerDialog(shipSize, shipLayer);
-            if (picked != null) {
+            HullmodCSVEntry picked = DialogUtilities.showHullmodPickerDialog(
+                    shipSize, shipLayer, shouldExcludeBuiltInHullmods());
+            if (picked != null && canAcceptHullmod(picked)) {
                 actOnTarget((layer, target) -> {
                     var entryList = modsGetter.apply(target);
                     if (entryList != null && !entryList.contains(picked)) {
@@ -83,6 +84,22 @@ public abstract class AbstractHullmodsListPane<T> extends JPanel {
         this.setLayout(new BorderLayout());
         this.add(modsList, BorderLayout.CENTER);
         this.add(buttonPanel, BorderLayout.PAGE_END);
+    }
+
+    protected boolean shouldExcludeBuiltInHullmods() {
+        return false;
+    }
+
+    private boolean canAcceptHullmod(HullmodCSVEntry entry) {
+        if (entry == null) {
+            return false;
+        }
+        if (!shouldExcludeBuiltInHullmods()) {
+            return true;
+        }
+        var activeLayer = StaticController.getActiveLayer();
+        ShipLayer shipLayer = activeLayer instanceof ShipLayer sl ? sl : null;
+        return entry.isFittableOnVariant(shipLayer);
     }
 
     protected abstract void actOnTarget(BiConsumer<ShipLayer, T> action);

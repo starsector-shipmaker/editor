@@ -198,6 +198,12 @@ public class WeaponEnums {
         if (slotType == null || slotSize == null || weaponType == null || weaponSize == null) {
             return Optional.of("Slot or weapon type/size data is missing");
         }
+        if (slotType != WeaponType.BUILT_IN
+                && slotType != WeaponType.SYSTEM
+                && slotType != WeaponType.DECORATIVE
+                && weaponEntry.isBuiltIn()) {
+            return Optional.of("Built-in / system weapon cannot be fitted into a normal slot");
+        }
         if (!isTypeAllowed(slotType, weaponType)) {
             return Optional.of("Slot is " + slotType.getDisplayedName().toUpperCase(Locale.ROOT)
                     + ", weapon is " + weaponType.getDisplayedName().toUpperCase(Locale.ROOT)

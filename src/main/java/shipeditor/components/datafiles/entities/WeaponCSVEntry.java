@@ -152,6 +152,33 @@ public class WeaponCSVEntry implements LayerableEntry, InstallableEntry {
         return getLazyType();
     }
 
+    public boolean hasSystemHint() {
+        if (this.rowData == null) {
+            return false;
+        }
+        String hints = this.rowData.get("hints");
+        if (hints == null || hints.isBlank()) {
+            return false;
+        }
+        for (String token : hints.split(",")) {
+            String trimmed = token.trim();
+            if ("SYSTEM".equalsIgnoreCase(trimmed)
+                    || "BUILT_IN".equalsIgnoreCase(trimmed)
+                    || "DECORATIVE".equalsIgnoreCase(trimmed)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isBuiltIn() {
+        WeaponType type = getType();
+        if (type == WeaponType.BUILT_IN || type == WeaponType.DECORATIVE || type == WeaponType.SYSTEM) {
+            return true;
+        }
+        return hasSystemHint();
+    }
+
     public int getOPCost() {
         var data = this.getRowData();
         String costText = data.get("OPs");

@@ -34,4 +34,9 @@ class VariantHullmodsListPane extends AbstractHullmodsListPane<ShipVariant> {
     protected boolean isValidTarget(ShipVariant target) {
         return target != null;
     }
+
+    @Override
+    protected boolean shouldExcludeBuiltInHullmods() {
+        return true;
+    }
 }

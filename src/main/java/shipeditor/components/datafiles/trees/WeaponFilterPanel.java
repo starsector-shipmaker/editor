@@ -204,28 +204,7 @@ public class WeaponFilterPanel extends JPanel {
 
     private static boolean shouldDisplayBySlot(WeaponCSVEntry csvEntry) {
         if (!filterBySelectedSlot || lastSelectedSlot == null || csvEntry == null) return true;
-        
-        WeaponSize entrySize = csvEntry.getSize();
-        WeaponType entryType = csvEntry.getType();
-
-        WeaponSize slotSize = lastSelectedSlot.getWeaponSize();
-        WeaponType slotType = lastSelectedSlot.getWeaponType();
-        if (entrySize.getNumericSize() > slotSize.getNumericSize()) return false;
-        
-        if (slotType == WeaponType.UNIVERSAL) return true;
-        if (slotType == WeaponType.SYNERGY) {
-            return entryType == WeaponType.ENERGY || entryType == WeaponType.MISSILE;
-        }
-        if (slotType == WeaponType.COMPOSITE) {
-            return entryType == WeaponType.BALLISTIC || entryType == WeaponType.MISSILE;
-        }
-        if (slotType == WeaponType.HYBRID) {
-            return entryType == WeaponType.BALLISTIC || entryType == WeaponType.ENERGY;
-        }
-        if (slotType == WeaponType.STATION_MODULE) {
-            return true; 
-        }
-        return entryType == slotType;
+        return WeaponType.isWeaponFitting(lastSelectedSlot, csvEntry);
     }
 
     private static boolean shouldDisplayBySize(WeaponCSVEntry csvEntry) {

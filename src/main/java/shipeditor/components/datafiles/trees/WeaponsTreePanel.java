@@ -321,6 +321,9 @@ public class WeaponsTreePanel extends DataTreePanel {
     }
 
     private static JLabel createInstallableSlotsLabel(WeaponCSVEntry weapon) {
+        if (weapon.isBuiltIn()) {
+            return new JLabel("Installable in slots: Built-In / System only");
+        }
         WeaponType type = weapon.getType();
         List<String> installableIn = new java.util.ArrayList<>();
         if (type == WeaponType.BALLISTIC || type == WeaponType.HYBRID || type == WeaponType.COMPOSITE) {
@@ -352,19 +355,27 @@ public class WeaponsTreePanel extends DataTreePanel {
     JPopupMenu getContextMenu() {
         JPopupMenu menu = super.getContextMenu();
         DefaultMutableTreeNode cachedSelectForMenu = getCachedSelectForMenu();
-        if (cachedSelectForMenu != null && cachedSelectForMenu.getUserObject() instanceof IndexedFile) {
+        if (cachedSelectForMenu != null && cachedSelectForMenu.getUserObject() instanceof IndexedFile indexedFile) {
             int insertIndex = 0;
             var layer = StaticController.getActiveLayer();
             if (layer instanceof shipeditor.components.viewer.layers.ship.ShipLayer shipLayer) {
                 var slotPainter = shipLayer.getPainter() != null ? shipLayer.getPainter().getWeaponSlotPainter() : null;
                 var selectedSlot = slotPainter != null ? slotPainter.getSelected() : null;
                 if (selectedSlot != null) {
+                    var gameData = SettingsManager.getGameData();
+                    WeaponCSVEntry entry = gameData != null ? gameData.getOrCreateWeaponEntry(indexedFile) : null;
+
                     JMenuItem installBuiltIn = new JMenuItem(StringManager.getString("INSTALL_AS_BUILT_IN_ON") + selectedSlot.getId());
                     installBuiltIn.addActionListener(new InstallAsBuiltInAction());
+                    installBuiltIn.setEnabled(selectedSlot.isBuiltIn()
+                            && entry != null && WeaponType.isWeaponFitting(selectedSlot, entry));
                     menu.insert(installBuiltIn, insertIndex++);
 
                     JMenuItem fitVariant = new JMenuItem(StringManager.getString("FIT_ON") + selectedSlot.getId() + " (Variant)");
                     fitVariant.addActionListener(new FitOnSlotAction());
+                    fitVariant.setEnabled(selectedSlot.isFittable()
+                            && entry != null && !entry.isBuiltIn()
+                            && WeaponType.isWeaponFitting(selectedSlot, entry));
                     menu.insert(fitVariant, insertIndex++);
 
                     menu.insert(new JPopupMenu.Separator(), insertIndex++);

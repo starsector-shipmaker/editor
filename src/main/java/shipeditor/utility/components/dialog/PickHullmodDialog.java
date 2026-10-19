@@ -66,6 +66,8 @@ public class PickHullmodDialog extends JPanel {
 
     private final HullSize currentShipSize;
     private final Path shipPackage;
+    private final shipeditor.components.viewer.layers.ship.ShipLayer shipLayer;
+    private final boolean excludeBuiltIn;
     private final Runnable onDoubleClick;
 
     private List<HullmodCSVEntry> allIndexedHullmods;
@@ -94,8 +96,16 @@ public class PickHullmodDialog extends JPanel {
     private HullmodCSVEntry selectedHullmod;
 
     public PickHullmodDialog(HullSize currentShipSize, Path shipPackage, Runnable onDoubleClick) {
+        this(currentShipSize, shipPackage, null, false, onDoubleClick);
+    }
+
+    public PickHullmodDialog(HullSize currentShipSize, Path shipPackage,
+                             shipeditor.components.viewer.layers.ship.ShipLayer shipLayer,
+                             boolean excludeBuiltIn, Runnable onDoubleClick) {
         this.currentShipSize = currentShipSize != null ? currentShipSize : HullSize.FRIGATE;
         this.shipPackage = shipPackage;
+        this.shipLayer = shipLayer;
+        this.excludeBuiltIn = excludeBuiltIn;
         this.onDoubleClick = onDoubleClick;
 
         this.setLayout(new BorderLayout(6, 6));
@@ -119,6 +129,21 @@ public class PickHullmodDialog extends JPanel {
         return selectedHullmod != null ? selectedHullmod : hullmodList.getSelectedValue();
     }
 
+    private boolean shouldIncludeHullmod(HullmodCSVEntry mod) {
+        if (mod == null || mod.getID() == null) {
+            return false;
+        }
+        if (excludeBuiltIn) {
+            if (!mod.isFittableOnVariant(shipLayer)) {
+                return false;
+            }
+            if (shipLayer != null && mod.isFittedOnVariant(shipLayer.getActiveVariant())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private void initData() {
         allIndexedHullmods = new ArrayList<>();
         hullmodPackageNameMap.clear();
@@ -131,7 +156,7 @@ public class PickHullmodDialog extends JPanel {
             Map<String, HullmodCSVEntry> allMap = gameData.getAllHullmodEntries();
             if (allMap != null) {
                 for (HullmodCSVEntry mod : allMap.values()) {
-                    if (mod.getID() != null && seenIds.add(mod.getID())) {
+                    if (shouldIncludeHullmod(mod) && seenIds.add(mod.getID())) {
                         allIndexedHullmods.add(mod);
                         String pkgName = resolvePackageName(mod.getPackageFolderPath());
                         hullmodPackageNameMap.put(mod, pkgName);
@@ -148,7 +173,7 @@ public class PickHullmodDialog extends JPanel {
                 IndexedFile file = dbFiles.get(i);
                 if (file.getEntityId() != null && !seenIds.contains(file.getEntityId())) {
                     HullmodCSVEntry entry = gameData.getOrCreateHullmodEntry(file.getEntityId());
-                    if (entry != null && seenIds.add(entry.getID())) {
+                    if (shouldIncludeHullmod(entry) && seenIds.add(entry.getID())) {
                         allIndexedHullmods.add(entry);
                         String modId = file.getModId();
                         String pkgName = resolveModIdName(modId);

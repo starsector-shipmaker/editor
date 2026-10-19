@@ -257,9 +257,14 @@ public class PickWeaponDialog extends JPanel {
         return null;
     }
 
+    private boolean shouldExcludeBuiltInWeapons() {
+        return slotPoint == null || slotPoint.isFittable();
+    }
+
     private void initData() {
         allIndexedWeapons = new ArrayList<>();
         weaponPackageNameMap.clear();
+        boolean excludeBuiltIns = shouldExcludeBuiltInWeapons();
 
         Set<String> seenWeaponIds = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         GameDataRepository gameData = SettingsManager.getGameData();
@@ -282,6 +287,7 @@ public class PickWeaponDialog extends JPanel {
                     String wid = weapon.getWeaponID();
                     if (wid != null && !wid.isBlank()
                             && (indexedSpecIds.isEmpty() || indexedSpecIds.contains(wid))
+                            && (!excludeBuiltIns || !weapon.isBuiltIn())
                             && seenWeaponIds.add(wid)) {
                         allIndexedWeapons.add(weapon);
                         String pkgName = resolvePackageName(weapon.getPackageFolderPath());
@@ -299,7 +305,9 @@ public class PickWeaponDialog extends JPanel {
                 IndexedFile file = dbWeaponFiles.get(i);
                 if (file.getEntityId() != null && !file.getEntityId().isBlank() && !seenWeaponIds.contains(file.getEntityId())) {
                     WeaponCSVEntry entry = gameData.getOrCreateWeaponEntry(file);
-                    if (entry != null && entry.getWeaponID() != null && !entry.getWeaponID().isBlank() && seenWeaponIds.add(entry.getWeaponID())) {
+                    if (entry != null && entry.getWeaponID() != null && !entry.getWeaponID().isBlank()
+                            && (!excludeBuiltIns || !entry.isBuiltIn())
+                            && seenWeaponIds.add(entry.getWeaponID())) {
                         allIndexedWeapons.add(entry);
                         String modId = file.getModId();
                         String pkgName = resolveModIdName(modId);
@@ -385,10 +393,16 @@ public class PickWeaponDialog extends JPanel {
         JPanel row2 = new JPanel(new FlowLayout(FlowLayout.LEADING, 6, 2));
 
         row2.add(new JLabel(StringManager.getString("TYPE")));
-        typeComboBox = new JComboBox<>(new String[]{
-                "All Types", "Ballistic", "Energy", "Missile", "Composite",
-                "Synergy", "Hybrid", "Universal", "Built-In", "Decorative", "System"
-        });
+        String[] typeOptions = shouldExcludeBuiltInWeapons()
+                ? new String[]{
+                        "All Types", "Ballistic", "Energy", "Missile", "Composite",
+                        "Synergy", "Hybrid", "Universal"
+                }
+                : new String[]{
+                        "All Types", "Ballistic", "Energy", "Missile", "Composite",
+                        "Synergy", "Hybrid", "Universal", "Built-In", "Decorative", "System"
+                };
+        typeComboBox = new JComboBox<>(typeOptions);
         typeComboBox.addActionListener(e -> applyFilters());
         row2.add(typeComboBox);
 

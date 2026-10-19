@@ -88,6 +88,66 @@ public class HullmodCSVEntry implements OrdnancedCSVEntry {
         return tags != null ? tags : "";
     }
 
+    public boolean isHidden() {
+        if (rowData == null) {
+            return false;
+        }
+        String hidden = rowData.get("hidden");
+        String hiddenEverywhere = rowData.get("hiddenEverywhere");
+        return (hidden != null && "TRUE".equalsIgnoreCase(hidden.trim()))
+                || (hiddenEverywhere != null && "TRUE".equalsIgnoreCase(hiddenEverywhere.trim()));
+    }
+
+    public boolean isBuiltInOnly() {
+        return isHidden();
+    }
+
+    public boolean isBuiltInOnShip(shipeditor.components.viewer.layers.ship.ShipLayer shipLayer) {
+        if (shipLayer == null || hullmodID == null) {
+            return false;
+        }
+        var painter = shipLayer.getPainter();
+        var activeSkin = (painter != null && !painter.isUninitialized()) ? painter.getActiveSkin() : null;
+        if (activeSkin != null && !activeSkin.isBase()) {
+            if (containsById(activeSkin.getBuiltInMods(), hullmodID)) {
+                return true;
+            }
+            if (containsById(activeSkin.getRemoveBuiltInMods(), hullmodID)) {
+                return false;
+            }
+        }
+        var hull = shipLayer.getHull();
+        return hull != null && containsById(hull.getBuiltInMods(), hullmodID);
+    }
+
+    public boolean isFittedOnVariant(shipeditor.components.viewer.layers.ship.data.ShipVariant variant) {
+        if (variant == null || variant.isEmpty() || hullmodID == null) {
+            return false;
+        }
+        return containsById(variant.getHullMods(), hullmodID)
+                || containsById(variant.getPermaMods(), hullmodID)
+                || containsById(variant.getSMods(), hullmodID);
+    }
+
+    public boolean isFittableOnVariant(shipeditor.components.viewer.layers.ship.ShipLayer shipLayer) {
+        if (isBuiltInOnly()) {
+            return false;
+        }
+        return shipLayer == null || !isBuiltInOnShip(shipLayer);
+    }
+
+    private static boolean containsById(java.util.List<HullmodCSVEntry> list, String id) {
+        if (list == null || id == null) {
+            return false;
+        }
+        for (HullmodCSVEntry entry : list) {
+            if (entry != null && id.equalsIgnoreCase(entry.getID())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private volatile BufferedImage cachedSpriteImage;
     private volatile boolean spriteLoaded = false;
 

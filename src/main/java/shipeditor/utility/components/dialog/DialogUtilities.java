@@ -70,8 +70,15 @@ public final class DialogUtilities {
     }
 
     public static shipeditor.components.datafiles.entities.HullmodCSVEntry showHullmodPickerDialog(shipeditor.representation.RepresentationEnums.HullSize hullSize, shipeditor.components.viewer.layers.ship.ShipLayer shipLayer) {
+        return showHullmodPickerDialog(hullSize, shipLayer, false);
+    }
+
+    public static shipeditor.components.datafiles.entities.HullmodCSVEntry showHullmodPickerDialog(
+            shipeditor.representation.RepresentationEnums.HullSize hullSize,
+            shipeditor.components.viewer.layers.ship.ShipLayer shipLayer,
+            boolean excludeBuiltIn) {
         java.nio.file.Path shipPackage = resolveShipPackage(shipLayer);
-        return showHullmodPickerDialog(hullSize, shipPackage);
+        return showHullmodPickerDialog(hullSize, shipPackage, shipLayer, excludeBuiltIn);
     }
 
     public static java.nio.file.Path resolveShipPackage(shipeditor.components.viewer.layers.ship.ShipLayer shipLayer) {
@@ -94,10 +101,18 @@ public final class DialogUtilities {
     }
 
     public static shipeditor.components.datafiles.entities.HullmodCSVEntry showHullmodPickerDialog(shipeditor.representation.RepresentationEnums.HullSize hullSize, java.nio.file.Path shipPackage) {
+        return showHullmodPickerDialog(hullSize, shipPackage, null, false);
+    }
+
+    public static shipeditor.components.datafiles.entities.HullmodCSVEntry showHullmodPickerDialog(
+            shipeditor.representation.RepresentationEnums.HullSize hullSize,
+            java.nio.file.Path shipPackage,
+            shipeditor.components.viewer.layers.ship.ShipLayer shipLayer,
+            boolean excludeBuiltIn) {
         final JDialog[] dialogRef = new JDialog[1];
         final JOptionPane[] optionPaneRef = new JOptionPane[1];
 
-        PickHullmodDialog dialogPanel = new PickHullmodDialog(hullSize, shipPackage, () -> {
+        PickHullmodDialog dialogPanel = new PickHullmodDialog(hullSize, shipPackage, shipLayer, excludeBuiltIn, () -> {
             if (optionPaneRef[0] != null) {
                 optionPaneRef[0].setValue(JOptionPane.OK_OPTION);
             }

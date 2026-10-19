@@ -12,19 +12,30 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public class HullmodsList extends OrdnancedEntryList<HullmodCSVEntry> {
 
     private final Consumer<HullmodCSVEntry> removeAction;
+    private final Predicate<HullmodCSVEntry> dropFilter;
 
     public HullmodsList(Consumer<HullmodCSVEntry> removeSetter, ListModel<HullmodCSVEntry> dataModel,
                         Consumer<List<HullmodCSVEntry>> sortSetter) {
+        this(removeSetter, dataModel, sortSetter, null);
+    }
+
+    public HullmodsList(Consumer<HullmodCSVEntry> removeSetter, ListModel<HullmodCSVEntry> dataModel,
+                        Consumer<List<HullmodCSVEntry>> sortSetter, Predicate<HullmodCSVEntry> dropFilter) {
         super(dataModel, sortSetter);
         this.removeAction = removeSetter;
+        this.dropFilter = dropFilter;
     }
 
     @Override
     protected boolean confirmDrop(int targetIndex, HullmodCSVEntry entry) {
+        if (entry == null) {
+            return false;
+        }
         DefaultListModel<HullmodCSVEntry> model = this.getModel();
         if (model.contains(entry)) {
             int former = model.indexOf(entry);
@@ -33,10 +44,12 @@ public class HullmodsList extends OrdnancedEntryList<HullmodCSVEntry> {
             int insertIndex = Math.max(0, Math.min(model.size(), adjustedIndex));
             model.add(insertIndex, entry);
             setSelectedIndex(insertIndex);
-        } else {
-            super.confirmDrop(targetIndex, entry);
+            return true;
         }
-        return true;
+        if (dropFilter != null && !dropFilter.test(entry)) {
+            return false;
+        }
+        return super.confirmDrop(targetIndex, entry);
     }
 
     @Override

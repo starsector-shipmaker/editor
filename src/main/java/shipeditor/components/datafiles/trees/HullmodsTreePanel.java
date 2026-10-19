@@ -145,12 +145,15 @@ class HullmodsTreePanel extends CSVDataTreePanel<HullmodCSVEntry>{
     private JMenuItem createVariantOption(String text, ViewerLayer activeLayer,
                                           HullmodCSVEntry entry, Function<ShipVariant, List<HullmodCSVEntry>> getter) {
         JMenuItem option = new JMenuItem(text);
+        ShipLayer shipLayer = activeLayer instanceof ShipLayer sl ? sl : null;
+        boolean fittable = entry != null && entry.isFittableOnVariant(shipLayer);
         option.addActionListener(e -> {
+            if (!fittable) return;
             var modsList = HullmodsTreePanel.getOrCreateVariantMods(activeLayer, getter);
             if (modsList == null) return;
             commenceModAddition(modsList, (ShipLayer) activeLayer, entry);
         });
-        if (!DataTreeSupport.isLayerEligibleForVariant(activeLayer)) {
+        if (!DataTreeSupport.isLayerEligibleForVariant(activeLayer) || !fittable) {
             option.setEnabled(false);
         }
         return option;

@@ -195,6 +195,12 @@ public final class Spinners {
      */
     public static JSpinner createWheelable(SpinnerNumberModel model, IncrementType type) {
         JSpinner spinner = new JSpinner(model);
+        if (spinner.getEditor() instanceof JSpinner.DefaultEditor defaultEditor) {
+            JFormattedTextField textField = defaultEditor.getTextField();
+            if (textField.getColumns() > 8 || textField.getColumns() == 0) {
+                textField.setColumns(6);
+            }
+        }
         spinner.addMouseWheelListener(e -> {
             if (e.getScrollType() != MouseWheelEvent.WHEEL_UNIT_SCROLL) {
                 return;

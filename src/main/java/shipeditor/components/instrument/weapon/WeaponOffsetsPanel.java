@@ -56,6 +56,7 @@ class WeaponOffsetsPanel extends JPanel {
         offsetsTable = new JTable(tableModel);
         offsetsTable.setFillsViewportHeight(true);
         offsetsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        offsetsTable.setPreferredScrollableViewportSize(new java.awt.Dimension(260, 200));
 
         JScrollPane scrollPane = new JScrollPane(offsetsTable);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);

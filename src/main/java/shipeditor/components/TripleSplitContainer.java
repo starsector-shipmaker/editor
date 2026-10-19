@@ -143,7 +143,15 @@ final class TripleSplitContainer extends JSplitPane {
         Component viewerComponent = (Component) shipView;
         viewerComponent.setMinimumSize(new Dimension(150, 100));
 
-        secondaryLevel.setLeftComponent(viewerComponent);
+        JSplitPane centerVerticalSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        centerVerticalSplit.setTopComponent(viewerComponent);
+        centerVerticalSplit.setBottomComponent(shipeditor.components.datafiles.trees.InfoConsolePanel.getInstance());
+        centerVerticalSplit.setResizeWeight(0.85);
+        centerVerticalSplit.setOneTouchExpandable(true);
+        centerVerticalSplit.setContinuousLayout(true);
+        centerVerticalSplit.setBorder(null);
+
+        secondaryLevel.setLeftComponent(centerVerticalSplit);
         secondaryLevel.setRightComponent(shipInstrumentsPane);
 
         // Track divider movement to update targetWidth of instruments pane

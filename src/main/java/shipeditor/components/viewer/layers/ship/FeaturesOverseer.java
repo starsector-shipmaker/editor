@@ -25,6 +25,7 @@ import shipeditor.components.viewer.painters.points.ship.features.InstalledFeatu
 import shipeditor.representation.ship.VariantFile;
 import shipeditor.representation.weapon.WeaponSpecFile;
 import shipeditor.representation.weapon.WeaponEnums.WeaponType;
+import shipeditor.components.viewer.control.ControlPredicates;
 import shipeditor.components.viewer.layers.LayerPainter;
 import shipeditor.undo.AbstractEdit;
 import shipeditor.undo.Edit;
@@ -36,6 +37,7 @@ import shipeditor.utility.overseers.StaticController;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -307,6 +309,11 @@ public class FeaturesOverseer {
                         installWeapon(slotPoint, weaponEntry);
                     }
                 }
+                case WEAPON_SLOTS -> {
+                    if (slotPoint.isBuiltIn()) {
+                        installBuiltIn(slotPoint, weaponEntry);
+                    }
+                }
                 default -> {}
             }
         });
@@ -327,9 +334,35 @@ public class FeaturesOverseer {
         installAction.accept(mode, selected);
     }
 
+    private static WeaponSlotPoint getMirroredSlot(SlotData slot, ShipPainter shipPainter) {
+        if (!ControlPredicates.isMirrorModeEnabled() || shipPainter == null
+                || !(slot instanceof WeaponSlotPoint slotPoint)) {
+            return null;
+        }
+        WeaponSlotPainter slotPainter = shipPainter.getWeaponSlotPainter();
+        if (slotPainter == null) {
+            return null;
+        }
+        var counterpart = slotPainter.getMirroredCounterpart(slotPoint);
+        if (counterpart instanceof WeaponSlotPoint mirroredSlot && mirroredSlot != slotPoint) {
+            return mirroredSlot;
+        }
+        return null;
+    }
+
     @SuppressWarnings({"MethodWithMultipleReturnPoints", "OverlyComplexMethod"})
     private static void handleFeatureRemoval(SlotData selected, EditorInstrument mode,
                                              ShipPainter shipPainter) {
+        removeFeatureFromSingleSlot(selected, mode, shipPainter);
+        WeaponSlotPoint mirrored = getMirroredSlot(selected, shipPainter);
+        if (mirrored != null) {
+            removeFeatureFromSingleSlot(mirrored, mode, shipPainter);
+        }
+    }
+
+    @SuppressWarnings({"MethodWithMultipleReturnPoints", "OverlyComplexMethod"})
+    private static void removeFeatureFromSingleSlot(SlotData selected, EditorInstrument mode,
+                                                    ShipPainter shipPainter) {
         String slotID = selected.getId();
         switch (mode) {
             case VARIANT_WEAPONS -> {
@@ -389,12 +422,23 @@ public class FeaturesOverseer {
                 return 0;
             }
 
-            List<SlotData> eligible = new ArrayList<>();
+            Set<SlotData> expandedSlots = new LinkedHashSet<>();
             for (SlotData slot : slots) {
+                if (slot != null) {
+                    expandedSlots.add(slot);
+                    WeaponSlotPoint mirrored = getMirroredSlot(slot, shipPainter);
+                    if (mirrored != null) {
+                        expandedSlots.add(mirrored);
+                    }
+                }
+            }
+
+            List<SlotData> eligible = new ArrayList<>();
+            for (SlotData slot : expandedSlots) {
                 if (slot instanceof WeaponSlotPoint fittableSlot && fittableSlot.isFittable()
                         && WeaponType.isWeaponFitting(slot, weapon)) {
                     eligible.add(slot);
-                } else if (slot != null) {
+                } else {
                     log.debug("Skipping slot {} for weapon {}: not fittable or incompatible",
                             slot.getId(), weapon.getWeaponID());
                 }
@@ -406,7 +450,7 @@ public class FeaturesOverseer {
             return runAsSingleUndoStep(editName, variant, () -> {
                 int installed = 0;
                 for (SlotData slot : eligible) {
-                    installWeapon(slot, weapon);
+                    installWeaponSingle(slot, weapon, variant);
                     installed++;
                 }
                 return installed;
@@ -525,14 +569,28 @@ public class FeaturesOverseer {
         var shipPainter = parent.getPainter();
         var activeVariant = ensureEditableVariant(shipPainter);
         if (activeVariant == null || activeVariant.isEmpty()) return;
+        if (forInstall.getSpecFile() == null) return;
 
+        WeaponSlotPoint mirrored = getMirroredSlot(selected, shipPainter);
+        if (mirrored != null && mirrored.isFittable() && WeaponType.isWeaponFitting(mirrored, forInstall)) {
+            String editName = "Install " + forInstall + " on mirrored slots";
+            runAsSingleUndoStep(editName, activeVariant, () -> {
+                installWeaponSingle(selected, forInstall, activeVariant);
+                installWeaponSingle(mirrored, forInstall, activeVariant);
+                return 2;
+            });
+        } else {
+            installWeaponSingle(selected, forInstall, activeVariant);
+        }
+    }
+
+    private static void installWeaponSingle(SlotData selected, WeaponCSVEntry forInstall, ShipVariant activeVariant) {
         WeaponSpecFile specFile = forInstall.getSpecFile();
         if (specFile == null) {
             return;
         }
 
         String slotID = selected.getId();
-
         List<FittedWeaponGroup> weaponGroups = activeVariant.getWeaponGroups();
 
         WeaponPainter weaponPainter = forInstall.createPainterFromEntry(null, specFile);
@@ -571,6 +629,14 @@ public class FeaturesOverseer {
         var activeVariant = ensureEditableVariant(shipPainter);
         if (activeVariant == null || activeVariant.isEmpty()) return;
 
+        installModuleSingle(selected, variantFile, activeVariant);
+        WeaponSlotPoint mirrored = getMirroredSlot(selected, shipPainter);
+        if (mirrored != null && mirrored.isModule()) {
+            installModuleSingle(mirrored, variantFile, activeVariant);
+        }
+    }
+
+    private static void installModuleSingle(SlotData selected, Variant variantFile, ShipVariant activeVariant) {
         String slotID = selected.getId();
         var modules = activeVariant.getFittedModules();
 
@@ -587,6 +653,14 @@ public class FeaturesOverseer {
     public void uninstallBuiltIn(SlotData selected) {
         var shipPainter = parent.getPainter();
         if (shipPainter == null || shipPainter.isUninitialized()) return;
+        uninstallBuiltInSingle(selected, shipPainter);
+        WeaponSlotPoint mirrored = getMirroredSlot(selected, shipPainter);
+        if (mirrored != null) {
+            uninstallBuiltInSingle(mirrored, shipPainter);
+        }
+    }
+
+    private static void uninstallBuiltInSingle(SlotData selected, ShipPainter shipPainter) {
         String slotID = selected.getId();
         ShipSkin activeSkin = shipPainter.getActiveSkin();
         if (activeSkin != null && !activeSkin.isBase()) {
@@ -607,7 +681,18 @@ public class FeaturesOverseer {
     }
 
     public void installBuiltIn(SlotData selected, WeaponCSVEntry forInstall) {
+        if (selected == null || forInstall == null) return;
         var shipPainter = parent.getPainter();
+        if (shipPainter == null || shipPainter.isUninitialized()) return;
+
+        installBuiltInSingle(selected, forInstall, shipPainter);
+        WeaponSlotPoint mirrored = getMirroredSlot(selected, shipPainter);
+        if (mirrored != null && mirrored.isBuiltIn() && WeaponType.isWeaponFitting(mirrored, forInstall)) {
+            installBuiltInSingle(mirrored, forInstall, shipPainter);
+        }
+    }
+
+    private static void installBuiltInSingle(SlotData selected, WeaponCSVEntry forInstall, ShipPainter shipPainter) {
         var activeSkin = shipPainter.getActiveSkin();
         String slotID = selected.getId();
 
@@ -622,7 +707,6 @@ public class FeaturesOverseer {
             FeaturesOverseer.commenceInstall(slotID, forInstall, skinBuiltIns,
                     invalidator);
         } else {
-            
             var baseBuiltIns = shipPainter.getBuiltInWeapons();
 
             FeaturesOverseer.removeExistingBeforeInstall(baseBuiltIns, activeVariant, slotID, null);

@@ -412,9 +412,14 @@ public class WeaponsTreePanel extends DataTreePanel {
                     if (layer instanceof shipeditor.components.viewer.layers.ship.ShipLayer shipLayer) {
                         var slotPainter = shipLayer.getPainter() != null ? shipLayer.getPainter().getWeaponSlotPainter() : null;
                         var selectedSlot = slotPainter != null ? slotPainter.getSelected() : null;
-                        if (selectedSlot != null && selectedSlot.isFittable()
+                        if (selectedSlot != null
                                 && shipeditor.representation.weapon.WeaponEnums.WeaponType.isWeaponFitting(selectedSlot, entry)) {
-                            shipLayer.getFeaturesOverseer().installWeapon(selectedSlot, entry);
+                            if (StaticController.getEditorMode() == shipeditor.components.ComponentEnums.EditorInstrument.WEAPON_SLOTS
+                                    && selectedSlot.isBuiltIn()) {
+                                shipLayer.getFeaturesOverseer().installBuiltIn(selectedSlot, entry);
+                            } else if (selectedSlot.isFittable()) {
+                                shipLayer.getFeaturesOverseer().installWeapon(selectedSlot, entry);
+                            }
                         }
                     }
                 }

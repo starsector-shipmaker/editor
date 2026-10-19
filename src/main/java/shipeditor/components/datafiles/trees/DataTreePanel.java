@@ -425,7 +425,8 @@ public abstract class DataTreePanel extends JPanel {
         tableContainer.add(buttonsContainer, BorderLayout.PAGE_START);
 
         JPanel consolePanel = getConsolePanel();
-        consolePanel.add(tableContainer);
+        consolePanel.removeAll();
+        consolePanel.add(tableContainer, BorderLayout.CENTER);
         consolePanel.revalidate();
         consolePanel.repaint();
     }

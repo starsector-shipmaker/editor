@@ -17,6 +17,7 @@ import javax.swing.JPanel;
 import javax.swing.border.LineBorder;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.Insets;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -27,7 +28,6 @@ public abstract class AbstractHullmodsListPane<T> extends JPanel {
     private DefaultListModel<HullmodCSVEntry> modsModel;
     private final Function<T, List<HullmodCSVEntry>> modsGetter;
     private final JButton addButton;
-    private final JButton removeButton;
 
     protected AbstractHullmodsListPane(Function<T, List<HullmodCSVEntry>> getter,
                                        BiConsumer<T, List<HullmodCSVEntry>> sortSetter) {
@@ -49,14 +49,14 @@ public abstract class AbstractHullmodsListPane<T> extends JPanel {
 
         this.modsList = new HullmodsList(removeAction, modsModel, sortAction);
         modsList.setBorder(new LineBorder(Themes.getBorderColor()));
+        modsList.setToolTipText("Right-click or press Delete to remove selected hullmod");
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 4, 2));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 2, 1));
         addButton = new JButton(StringManager.getString("ADD"),
-                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
-        removeButton = new JButton(StringManager.getString("REMOVE"),
-                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 14, Themes.getIconColor()));
+        addButton.setMargin(new Insets(1, 6, 1, 6));
+        addButton.setToolTipText("Add hullmod (Right-click or press Delete on an entry to remove)");
         addButton.setEnabled(false);
-        removeButton.setEnabled(false);
 
         addButton.addActionListener(e -> {
             var activeLayer = StaticController.getActiveLayer();
@@ -78,24 +78,7 @@ public abstract class AbstractHullmodsListPane<T> extends JPanel {
             }
         });
 
-        removeButton.addActionListener(e -> {
-            HullmodCSVEntry selected = modsList.getSelectedValue();
-            if (selected == null) return;
-            actOnTarget((layer, target) -> {
-                var entryList = modsGetter.apply(target);
-                if (entryList != null && entryList.contains(selected)) {
-                    EditDispatch.postHullmodRemoved(entryList, layer, selected);
-                    refreshListModel(layer);
-                }
-            });
-        });
-
-        modsList.addListSelectionListener(e -> {
-            removeButton.setEnabled(modsList.getSelectedValue() != null);
-        });
-
         buttonPanel.add(addButton);
-        buttonPanel.add(removeButton);
 
         this.setLayout(new BorderLayout());
         this.add(modsList, BorderLayout.CENTER);
@@ -117,7 +100,6 @@ public abstract class AbstractHullmodsListPane<T> extends JPanel {
             this.modsList.setModel(newModel);
             this.modsList.setEnabled(false);
             this.addButton.setEnabled(false);
-            this.removeButton.setEnabled(false);
             return;
         }
 
@@ -137,7 +119,6 @@ public abstract class AbstractHullmodsListPane<T> extends JPanel {
             this.modsList.setEnabled(false);
             this.addButton.setEnabled(false);
         }
-        this.removeButton.setEnabled(false);
         this.modsModel = newModel;
         this.modsList.setModel(newModel);
     }

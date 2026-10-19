@@ -40,7 +40,7 @@ public class VariantOrdnancePanel extends JPanel {
         ComponentUtilities.outfitPanelWithTitle(this, "Ordnance & Flux Stats");
         this.setLayout(new GridBagLayout());
 
-        Border emptyBorder = new EmptyBorder(2, 0, 8, 0);
+        Border emptyBorder = new EmptyBorder(1, 0, 2, 0);
 
         JLabel shipOPCapLabel = new JLabel(StringManager.getString("TOTAL_OP_CAPACITY"));
         shipOPCapLabel.setBorder(emptyBorder);

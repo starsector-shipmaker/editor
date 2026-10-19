@@ -26,6 +26,18 @@ public abstract class OrdnancedEntryList<T extends OrdnancedCSVEntry> extends So
         this.setCellRenderer(new OrdnancedEntryCellRenderer());
         this.addMouseListener(new ContextMenuListener());
         this.setDragEnabled(true);
+        this.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_DELETE
+                        || e.getKeyCode() == java.awt.event.KeyEvent.VK_BACK_SPACE) {
+                    Consumer<T> action = getRemoveAction();
+                    if (action != null) {
+                        actOnSelectedEntry(action);
+                    }
+                }
+            }
+        });
     }
 
     @Override

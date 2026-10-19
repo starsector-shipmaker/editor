@@ -31,7 +31,6 @@ public class VariantMainPanel extends AbstractVariantPanel {
 
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BorderLayout());
-        this.add(contentPanel, BorderLayout.CENTER);
 
         ordnancePanel = new VariantOrdnancePanel();
         dataPanel = new VariantDataPanel(() -> ordnancePanel.refreshOrdnanceInfo(selectedLayer));
@@ -43,6 +42,13 @@ public class VariantMainPanel extends AbstractVariantPanel {
 
         contentPanel.add(northContent, BorderLayout.PAGE_START);
         contentPanel.add(ordnancePanel, BorderLayout.CENTER);
+
+        javax.swing.JScrollPane scrollPane = new javax.swing.JScrollPane(contentPanel,
+                javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setBorder(null);
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        this.add(scrollPane, BorderLayout.CENTER);
 
         ViewerLayer layer = StaticController.getActiveLayer();
         this.refreshPanel(layer);

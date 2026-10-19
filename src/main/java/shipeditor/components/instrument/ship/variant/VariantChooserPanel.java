@@ -22,16 +22,21 @@ import shipeditor.utility.overseers.StaticController;
 import shipeditor.utility.text.StringManager;
 import shipeditor.utility.themes.Themes;
 
+import javax.swing.AbstractButton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JTextField;
 import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
+import java.awt.Insets;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -48,11 +53,12 @@ public class VariantChooserPanel extends JPanel {
     private final JPanel chooserContainer;
     private final JButton createVariantButton;
     private final JButton cloneVariantButton;
-    private final JButton removeVariantButton;
+    private final AbstractButton removeVariantButton;
     private final JButton loadVariantButton;
     private final JButton saveVariantButton;
-    private final JButton deleteVariantButton;
-    private final JButton saveCopyVariantButton;
+    private final AbstractButton deleteVariantButton;
+    private final AbstractButton saveCopyVariantButton;
+    private final JButton moreActionsButton;
     private Supplier<ShipVariant> variantToRemoveGetter;
     private ShipLayer selectedLayer;
 
@@ -66,15 +72,15 @@ public class VariantChooserPanel extends JPanel {
         GridBagConstraints constraints = new GridBagConstraints();
         constraints.gridx = 0;
         constraints.gridy = 0;
-        constraints.gridwidth = 3;
         constraints.weightx = 1.0;
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.anchor = GridBagConstraints.PAGE_START;
 
         this.add(chooserContainer, constraints);
 
-        createVariantButton = new JButton(StringManager.getString("CREATE"),
-                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
+        createVariantButton = new JButton("New",
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 15, Themes.getIconColor()));
+        createVariantButton.setMargin(new Insets(2, 4, 2, 4));
         createVariantButton.setToolTipText("Create a new blank variant for the current hull");
         createVariantButton.addActionListener(e -> {
             if (selectedLayer == null) return;
@@ -94,14 +100,9 @@ public class VariantChooserPanel extends JPanel {
             shipPainter.selectVariant(created);
         });
 
-        constraints.gridwidth = 1;
-        constraints.weightx = 1.0 / 3.0;
-        constraints.gridx = 0;
-        constraints.gridy = 1;
-        this.add(createVariantButton, constraints);
-
         cloneVariantButton = new JButton("Clone",
-                FontIcon.of(BoxiconsRegular.COPY, 16, Themes.getIconColor()));
+                FontIcon.of(BoxiconsRegular.COPY, 15, Themes.getIconColor()));
+        cloneVariantButton.setMargin(new Insets(2, 4, 2, 4));
         cloneVariantButton.setToolTipText("Clone the currently selected variant into a new editable variant");
         cloneVariantButton.addActionListener(e -> {
             if (selectedLayer == null || variantToRemoveGetter == null) return;
@@ -124,11 +125,7 @@ public class VariantChooserPanel extends JPanel {
             shipPainter.selectVariant(cloned);
         });
 
-        constraints.gridx = 1;
-        constraints.gridy = 1;
-        this.add(cloneVariantButton, constraints);
-
-        removeVariantButton = new JButton(StringManager.getString("REMOVE"),
+        removeVariantButton = new JMenuItem(StringManager.getString("REMOVE"),
                 FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
         String tooltip = Utility.getWithLinebreaks("Remove entry from variants loaded to layer",
                 "Newly created variants will be erased from memory",
@@ -164,21 +161,15 @@ public class VariantChooserPanel extends JPanel {
             }
         });
 
-        constraints.gridx = 2;
-        constraints.gridy = 1;
-        this.add(removeVariantButton, constraints);
-
-        loadVariantButton = new JButton("Load...",
-                FontIcon.of(BoxiconsRegular.FOLDER_OPEN, 16, Themes.getIconColor()));
+        loadVariantButton = new JButton("Load",
+                FontIcon.of(BoxiconsRegular.FOLDER_OPEN, 15, Themes.getIconColor()));
+        loadVariantButton.setMargin(new Insets(2, 4, 2, 4));
         loadVariantButton.setToolTipText("Load a .variant file from disk");
         loadVariantButton.addActionListener(e -> loadVariantFromDisk());
 
-        constraints.gridx = 0;
-        constraints.gridy = 2;
-        this.add(loadVariantButton, constraints);
-
-        saveVariantButton = new JButton("Save...",
-                FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));
+        saveVariantButton = new JButton("Save",
+                FontIcon.of(BoxiconsRegular.SAVE, 15, Themes.getIconColor()));
+        saveVariantButton.setMargin(new Insets(2, 4, 2, 4));
         saveVariantButton.setToolTipText("Save the currently active variant to a .variant file");
         saveVariantButton.addActionListener(e -> {
             if (selectedLayer == null || variantToRemoveGetter == null) return;
@@ -198,30 +189,41 @@ public class VariantChooserPanel extends JPanel {
             }
         });
 
-        constraints.gridx = 1;
-        constraints.gridy = 2;
-        this.add(saveVariantButton, constraints);
-
-        deleteVariantButton = new JButton("Delete...",
+        deleteVariantButton = new JMenuItem("Delete from Disk...",
                 FontIcon.of(BoxiconsRegular.TRASH_ALT, 16, Themes.getIconColor()));
         deleteVariantButton.setToolTipText("Delete the currently selected variant (and its .variant file on disk if saved)");
         deleteVariantButton.addActionListener(e -> deleteActiveVariant());
 
-        constraints.gridx = 2;
-        constraints.gridy = 2;
-        this.add(deleteVariantButton, constraints);
-
-        saveCopyVariantButton = new JButton("Save As Copy...",
+        saveCopyVariantButton = new JMenuItem("Save As Copy...",
                 FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));
         saveCopyVariantButton.setToolTipText(
                 "Save a copy of the active variant under a new file; the copy's ID becomes the file name");
         saveCopyVariantButton.addActionListener(e -> saveActiveVariantAsCopy());
 
+        JPopupMenu moreMenu = new JPopupMenu();
+        moreMenu.add(saveCopyVariantButton);
+        moreMenu.addSeparator();
+        moreMenu.add(removeVariantButton);
+        moreMenu.add(deleteVariantButton);
+
+        moreActionsButton = new JButton("More",
+                FontIcon.of(BoxiconsRegular.DOTS_VERTICAL_ROUNDED, 15, Themes.getIconColor()));
+        moreActionsButton.setMargin(new Insets(2, 4, 2, 4));
+        moreActionsButton.setToolTipText("More variant actions (Save As Copy, Reload/Remove, Delete)");
+        moreActionsButton.addActionListener(e -> moreMenu.show(moreActionsButton, 0, moreActionsButton.getHeight()));
+
+        JPanel toolbarRow = new JPanel(new GridLayout(1, 5, 3, 0));
+        toolbarRow.add(createVariantButton);
+        toolbarRow.add(cloneVariantButton);
+        toolbarRow.add(loadVariantButton);
+        toolbarRow.add(saveVariantButton);
+        toolbarRow.add(moreActionsButton);
+
         constraints.gridx = 0;
-        constraints.gridy = 3;
-        constraints.gridwidth = 3;
+        constraints.gridy = 1;
         constraints.weightx = 1.0;
-        this.add(saveCopyVariantButton, constraints);
+        constraints.insets = new Insets(3, 0, 2, 0);
+        this.add(toolbarRow, constraints);
     }
 
     private void loadVariantFromDisk() {
@@ -325,6 +327,7 @@ public class VariantChooserPanel extends JPanel {
         saveVariantButton.setEnabled(false);
         deleteVariantButton.setEnabled(false);
         saveCopyVariantButton.setEnabled(false);
+        moreActionsButton.setEnabled(false);
         selectedLayer = null;
         variantToRemoveGetter = null;
         chooserContainer.revalidate();
@@ -348,6 +351,7 @@ public class VariantChooserPanel extends JPanel {
             saveVariantButton.setEnabled(false);
             deleteVariantButton.setEnabled(false);
             saveCopyVariantButton.setEnabled(false);
+            moreActionsButton.setEnabled(false);
         } else {
             if (variant.isLoadedFromFile()) {
                 removeVariantButton.setText(StringManager.getString("RELOAD"));
@@ -358,6 +362,7 @@ public class VariantChooserPanel extends JPanel {
             saveVariantButton.setEnabled(true);
             deleteVariantButton.setEnabled(true);
             saveCopyVariantButton.setEnabled(true);
+            moreActionsButton.setEnabled(true);
         }
         chooserContainer.revalidate();
         chooserContainer.repaint();

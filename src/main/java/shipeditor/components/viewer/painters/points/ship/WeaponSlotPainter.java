@@ -521,33 +521,51 @@ public class WeaponSlotPainter extends AbstractSlotPainter {
         }
     }
     private void paintWeaponPreview(SpriteRenderer spriteRenderer, ShapeRenderer shapeRenderer, Matrix4f projection, Matrix4f view) {
-        if (StaticController.getEditorMode() != EditorInstrument.VARIANT_WEAPONS) return;
-        
+        EditorInstrument mode = StaticController.getEditorMode();
+        if (mode != EditorInstrument.VARIANT_WEAPONS && mode != EditorInstrument.WEAPON_SLOTS) return;
+
         shipeditor.components.datafiles.entities.WeaponCSVEntry pickedWeapon = null;
         if (StaticController.getActiveLayer() instanceof shipeditor.components.viewer.layers.ship.ShipLayer layer) {
             pickedWeapon = layer.getFeaturesOverseer().getWeaponForInstall();
         }
         if (pickedWeapon == null) return;
-        
+
         Point2D cursor = StaticController.getCorrectedCursor();
         WeaponSlotPoint hoveredSlot = (WeaponSlotPoint) findClosestPoint(cursor);
         if (hoveredSlot == null) return;
-        
+        if (mode == EditorInstrument.VARIANT_WEAPONS && !hoveredSlot.isFittable()) return;
+        if (mode == EditorInstrument.WEAPON_SLOTS && !hoveredSlot.isBuiltIn()) return;
         if (!WeaponType.isWeaponFitting(hoveredSlot, pickedWeapon)) return;
-        
+
         if (lastPreviewedEntry != pickedWeapon || weaponPreviewFeature == null) {
             shipeditor.components.viewer.layers.weapon.WeaponPainter painter = pickedWeapon.createPainterFromEntry(null, pickedWeapon.getSpecFile());
             weaponPreviewFeature = shipeditor.components.viewer.painters.points.ship.features.InstalledFeature.of(hoveredSlot.getId(), pickedWeapon.getWeaponID(), painter, pickedWeapon);
             lastPreviewedEntry = pickedWeapon;
         }
-        
-        weaponPreviewFeature.refreshPaintCircumstance(hoveredSlot);
-        
+
+        paintPreviewOnSlot(hoveredSlot, spriteRenderer, shapeRenderer, projection, view);
+
+        if (ControlPredicates.isMirrorModeEnabled()) {
+            BaseWorldPoint counterpart = getMirroredCounterpart(hoveredSlot);
+            if (counterpart instanceof WeaponSlotPoint mirroredSlot
+                    && mirroredSlot != hoveredSlot
+                    && WeaponType.isWeaponFitting(mirroredSlot, pickedWeapon)) {
+                boolean eligible = (mode == EditorInstrument.VARIANT_WEAPONS && mirroredSlot.isFittable())
+                        || (mode == EditorInstrument.WEAPON_SLOTS && mirroredSlot.isBuiltIn());
+                if (eligible) {
+                    paintPreviewOnSlot(mirroredSlot, spriteRenderer, shapeRenderer, projection, view);
+                }
+            }
+        }
+    }
+
+    private void paintPreviewOnSlot(WeaponSlotPoint slot, SpriteRenderer spriteRenderer,
+                                    ShapeRenderer shapeRenderer, Matrix4f projection, Matrix4f view) {
+        weaponPreviewFeature.refreshPaintCircumstance(slot);
         shipeditor.components.viewer.layers.LayerPainter featurePainter = weaponPreviewFeature.getFeaturePainter();
         if (featurePainter != null) {
             featurePainter.setSpriteOpacity(0.5f);
         }
-        
         weaponPreviewFeature.paint(spriteRenderer, shapeRenderer, projection, view);
     }
 

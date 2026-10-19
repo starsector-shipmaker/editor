@@ -71,15 +71,7 @@ public final class WindowContentPanes {
     public void loadEditingPanes() {
         tripleSplitter = new TripleSplitContainer();
         tripleSplitter.loadContentPanes(shipView);
-        
-        javax.swing.JSplitPane mainSplitter = new javax.swing.JSplitPane(javax.swing.JSplitPane.VERTICAL_SPLIT);
-        mainSplitter.setTopComponent(tripleSplitter);
-        mainSplitter.setBottomComponent(shipeditor.components.datafiles.trees.InfoConsolePanel.getInstance());
-        mainSplitter.setResizeWeight(0.85); // Give most vertical space to the editor, 15% to the console
-        mainSplitter.setOneTouchExpandable(true);
-        mainSplitter.setBorder(null);
-
-        primaryContentPane.add(mainSplitter, BorderLayout.CENTER);
+        primaryContentPane.add(tripleSplitter, BorderLayout.CENTER);
         this.refreshContent();
     }
 

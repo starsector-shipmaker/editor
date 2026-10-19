@@ -65,6 +65,7 @@ public abstract class AbstractSkinOverridesPanel<M extends AbstractTableModel> e
         overridesTable.setRowHeight(24);
         overridesTable.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         overridesTable.getTableHeader().setReorderingAllowed(false);
+        overridesTable.setPreferredScrollableViewportSize(new java.awt.Dimension(260, 200));
 
         DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
         centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);

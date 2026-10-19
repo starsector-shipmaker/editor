@@ -109,11 +109,14 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
         middleRow.add(weaponIconLabel, BorderLayout.LINE_START);
         middleRow.add(weaponInfoLabel, BorderLayout.CENTER);
 
-        JPanel buttonPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.TRAILING, 4, 0));
+        JPanel buttonPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.TRAILING, 2, 0));
         installButton = new JButton(StringManager.getString("INSTALL"),
-                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
-        removeButton = new JButton(StringManager.getString("REMOVE"),
-                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 14, Themes.getIconColor()));
+        installButton.setMargin(new Insets(1, 5, 1, 5));
+        removeButton = new JButton(
+                FontIcon.of(BoxiconsRegular.TRASH, 14, Themes.getIconColor()));
+        removeButton.setMargin(new Insets(1, 5, 1, 5));
+        removeButton.setToolTipText(StringManager.getString("REMOVE"));
         installButton.setEnabled(false);
         removeButton.setEnabled(false);
 
@@ -140,13 +143,13 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
 
         buttonPanel.add(installButton);
         buttonPanel.add(removeButton);
+        middleRow.add(buttonPanel, BorderLayout.LINE_END);
 
-        JPanel centerContainer = new JPanel(new BorderLayout(0, 4));
+        JPanel centerContainer = new JPanel(new BorderLayout(0, 2));
         centerContainer.add(topRow, BorderLayout.PAGE_START);
         centerContainer.add(middleRow, BorderLayout.CENTER);
 
         panel.add(centerContainer, BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.PAGE_END);
 
         return panel;
     }
@@ -282,11 +285,13 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
             weaponsTree.repopulateTree(activeVariant, checkedLayer);
             this.weaponsTree.selectNode(this.cachedSelectedSlot);
 
-            JPanel buttonContainer = new JPanel(new BorderLayout(0, 4));
-            buttonContainer.setBorder(new EmptyBorder(4, 4, 0, 4));
+            JPanel buttonContainer = new JPanel(new GridLayout(1, 3, 4, 0));
+            buttonContainer.setBorder(new EmptyBorder(4, 4, 2, 4));
 
-            JButton rearrangeGroups = new JButton(StringManager.getString("REARRANGE_WEAPONS"),
-                    FontIcon.of(BoxiconsRegular.GRID_ALT, 16, Themes.getIconColor()));
+            JButton rearrangeGroups = new JButton("Rearrange",
+                    FontIcon.of(BoxiconsRegular.GRID_ALT, 15, Themes.getIconColor()));
+            rearrangeGroups.setMargin(new Insets(2, 4, 2, 4));
+            rearrangeGroups.setToolTipText(StringManager.getString("REARRANGE_WEAPONS"));
 
             List<InstalledFeature> allFittedWeaponsList = activeVariant.getAllFittedWeaponsList();
             if (allFittedWeaponsList.isEmpty()) {
@@ -296,7 +301,8 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
             rearrangeGroups.addActionListener(e -> DialogUtilities.showWeaponGroupsDialog(activeVariant));
 
             JButton addGroupButton = new JButton("Add Group",
-                    FontIcon.of(BoxiconsRegular.LIST_PLUS, 16, Themes.getIconColor()));
+                    FontIcon.of(BoxiconsRegular.LIST_PLUS, 15, Themes.getIconColor()));
+            addGroupButton.setMargin(new Insets(2, 4, 2, 4));
             addGroupButton.setEnabled(activeVariant.isEmpty() || activeVariant.getWeaponGroups().size() < 7);
             addGroupButton.addActionListener(e -> {
                 ShipVariant targetVariant = activeVariant;
@@ -318,7 +324,8 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
             });
 
             JButton clearAllButton = new JButton("Clear All",
-                    FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
+                    FontIcon.of(BoxiconsRegular.TRASH, 15, Themes.getIconColor()));
+            clearAllButton.setMargin(new Insets(2, 4, 2, 4));
             clearAllButton.setEnabled(!allFittedWeaponsList.isEmpty());
             clearAllButton.addActionListener(e -> {
                 for (FittedWeaponGroup group : activeVariant.getWeaponGroups()) {
@@ -333,12 +340,9 @@ public class VariantWeaponsPanel extends AbstractVariantPanel {
                 this.refreshPanel(checkedLayer);
             });
 
-            JPanel secondaryButtons = new JPanel(new GridLayout(1, 2, 4, 0));
-            secondaryButtons.add(addGroupButton);
-            secondaryButtons.add(clearAllButton);
-
-            buttonContainer.add(rearrangeGroups, BorderLayout.PAGE_START);
-            buttonContainer.add(secondaryButtons, BorderLayout.PAGE_END);
+            buttonContainer.add(addGroupButton);
+            buttonContainer.add(rearrangeGroups);
+            buttonContainer.add(clearAllButton);
 
             northPanel.add(buttonContainer, BorderLayout.PAGE_START);
 

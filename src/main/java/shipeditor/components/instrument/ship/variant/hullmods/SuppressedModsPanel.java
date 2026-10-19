@@ -30,8 +30,6 @@ class SuppressedModsPanel extends JPanel {
     private JList<String> modsList;
     private JTextField addField;
     private JButton addButton;
-    private JButton pickButton;
-    private JButton removeButton;
 
     SuppressedModsPanel() {
         this.setLayout(new BorderLayout());
@@ -41,36 +39,50 @@ class SuppressedModsPanel extends JPanel {
         modsList = new JList<>(listModel);
         modsList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         modsList.setBorder(new LineBorder(Themes.getBorderColor()));
+        modsList.setToolTipText("Press Delete to remove selected suppressed hullmod");
         modsList.setEnabled(false);
+        modsList.addKeyListener(new java.awt.event.KeyAdapter() {
+            @Override
+            public void keyPressed(java.awt.event.KeyEvent e) {
+                if (e.getKeyCode() == java.awt.event.KeyEvent.VK_DELETE
+                        || e.getKeyCode() == java.awt.event.KeyEvent.VK_BACK_SPACE) {
+                    String selected = modsList.getSelectedValue();
+                    if (selected != null) {
+                        listModel.removeElement(selected);
+                        syncBackToVariant();
+                    }
+                }
+            }
+        });
         this.add(new JScrollPane(modsList), BorderLayout.CENTER);
 
         JPanel controlPanel = new JPanel(new BorderLayout(4, 0));
         addField = new JTextField();
         addField.setToolTipText(StringManager.getString("ENTER_HULLMOD_ID_TO_SUPPRESS_THEN_PRESS_ADD_OR_ENTER"));
-        addField.putClientProperty("JTextField.placeholderText", "Hullmod ID...");
+        addField.putClientProperty("JTextField.placeholderText", "Hullmod ID (or click Add to browse)...");
         addField.addActionListener(e -> addFromField());
         addField.setEnabled(false);
         controlPanel.add(addField, BorderLayout.CENTER);
 
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 2, 0));
 
-        addButton = new JButton(StringManager.getString("ADD_1"),
-                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
+        addButton = new JButton(StringManager.getString("ADD"),
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 14, Themes.getIconColor()));
+        addButton.setMargin(new java.awt.Insets(1, 6, 1, 6));
+        addButton.setToolTipText("Add typed hullmod ID, or browse to pick if field is empty (press Delete on list to remove)");
         addButton.setEnabled(false);
-        addButton.addActionListener(e -> addFromField());
-        buttonsPanel.add(addButton);
-
-        pickButton = new JButton(StringManager.getString("PICK"),
-                FontIcon.of(BoxiconsRegular.SEARCH, 16, Themes.getIconColor()));
-        pickButton.setToolTipText(StringManager.getString("BROWSE_AND_PICK_A_HULLMOD_TO_SUPPRESS"));
-        pickButton.setEnabled(false);
-        pickButton.addActionListener(e -> {
+        addButton.addActionListener(e -> {
+            String text = addField.getText();
+            if (text != null && !text.isBlank()) {
+                addFromField();
+                return;
+            }
             var activeLayer = shipeditor.utility.overseers.StaticController.getActiveLayer();
             if (!(activeLayer instanceof ShipLayer shipLayer)) return;
             var shipHull = shipLayer.getHull();
             var shipSize = shipHull != null ? shipHull.getHullSize() : null;
 
-            shipeditor.components.datafiles.entities.HullmodCSVEntry picked = 
+            shipeditor.components.datafiles.entities.HullmodCSVEntry picked =
                     shipeditor.utility.components.dialog.DialogUtilities.showHullmodPickerDialog(shipSize, shipLayer);
             if (picked != null) {
                 String id = picked.getID();
@@ -80,22 +92,7 @@ class SuppressedModsPanel extends JPanel {
                 }
             }
         });
-        buttonsPanel.add(pickButton);
-
-        removeButton = new JButton(StringManager.getString("REMOVE"),
-                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
-        removeButton.setEnabled(false);
-        removeButton.addActionListener(e -> {
-            String selected = modsList.getSelectedValue();
-            if (selected == null) return;
-            listModel.removeElement(selected);
-            syncBackToVariant();
-        });
-        buttonsPanel.add(removeButton);
-
-        modsList.addListSelectionListener(e -> {
-            removeButton.setEnabled(modsList.getSelectedValue() != null);
-        });
+        buttonsPanel.add(addButton);
 
         controlPanel.add(buttonsPanel, BorderLayout.LINE_END);
         this.add(controlPanel, BorderLayout.PAGE_END);
@@ -149,8 +146,6 @@ class SuppressedModsPanel extends JPanel {
             this.modsList.setEnabled(false);
             if (addField != null) addField.setEnabled(false);
             if (addButton != null) addButton.setEnabled(false);
-            if (pickButton != null) pickButton.setEnabled(false);
-            if (removeButton != null) removeButton.setEnabled(false);
             return;
         }
         ShipPainter painter = checkedLayer.getPainter();
@@ -171,8 +166,6 @@ class SuppressedModsPanel extends JPanel {
         boolean enabled = this.modsList.isEnabled();
         if (addField != null) addField.setEnabled(enabled);
         if (addButton != null) addButton.setEnabled(enabled);
-        if (pickButton != null) pickButton.setEnabled(enabled);
-        if (removeButton != null) removeButton.setEnabled(false);
     }
 
 }

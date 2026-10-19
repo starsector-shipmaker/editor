@@ -63,7 +63,8 @@ public class DraggedObjectsPainter implements OpenGLPainter {
             paintShipEntryHints(spriteRenderer, projection, shipEntry, isModuleMode, selectedWeaponSlot, font);
 
         } else if (dragged instanceof WeaponCSVEntry weaponEntry) {
-            boolean isWeaponsMode = editorMode == EditorInstrument.VARIANT_WEAPONS;
+            boolean isWeaponsMode = editorMode == EditorInstrument.VARIANT_WEAPONS
+                    || editorMode == EditorInstrument.WEAPON_SLOTS;
             if (!isWeaponsMode) {
                 rotation = 0;
             }

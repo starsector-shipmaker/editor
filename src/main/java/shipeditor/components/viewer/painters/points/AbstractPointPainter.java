@@ -532,9 +532,10 @@ public abstract class AbstractPointPainter implements OpenGLPainter {
 
     public void removePoint(BaseWorldPoint point) {
         this.removePointFromIndex(point);
+        selectedPoints.remove(point);
         WorldPoint currentSelected = this.getSelected();
         if (currentSelected == point) {
-            this.setSelected(null);
+            this.setSelected(selectedPoints.isEmpty() ? null : selectedPoints.iterator().next());
         }
         point.setPointSelected(false);
         EventBus.publish(new PointRemovedConfirmed(point));

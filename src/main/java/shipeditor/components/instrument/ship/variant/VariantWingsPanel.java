@@ -179,62 +179,15 @@ public class VariantWingsPanel extends JPanel {
 
         JList<WingCSVEntry> pickerList = new JList<>(pickerModel);
         pickerList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        pickerList.setCellRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
-                                                          boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof WingCSVEntry entry) {
-                    setText(entry.getEntryName() + " (" + entry.getWingID() + ") - "
-                            + entry.getOrdnanceCost(null) + " OP");
-                }
-                return this;
-            }
-        });
+        pickerList.setCellRenderer(new WingPickerCellRenderer());
         if (!pickerModel.isEmpty()) {
             pickerList.setSelectedIndex(0);
         }
 
         JTextField filterField = new JTextField();
         filterField.putClientProperty("JTextField.placeholderText", "Filter wings by name or ID...");
-        filterField.getDocument().addDocumentListener(new DocumentListener() {
-            private void applyFilter() {
-                String query = filterField.getText();
-                String normalized = query != null ? query.trim().toLowerCase(Locale.ROOT) : "";
-                pickerModel.clear();
-                for (WingCSVEntry entry : allWings) {
-                    if (normalized.isEmpty()) {
-                        pickerModel.addElement(entry);
-                    } else {
-                        String name = entry.getEntryName() != null
-                                ? entry.getEntryName().toLowerCase(Locale.ROOT) : "";
-                        String id = entry.getWingID() != null
-                                ? entry.getWingID().toLowerCase(Locale.ROOT) : "";
-                        if (name.contains(normalized) || id.contains(normalized)) {
-                            pickerModel.addElement(entry);
-                        }
-                    }
-                }
-                if (!pickerModel.isEmpty()) {
-                    pickerList.setSelectedIndex(0);
-                }
-            }
-
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                applyFilter();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                applyFilter();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                applyFilter();
-            }
-        });
+        filterField.getDocument().addDocumentListener(
+                new WingFilterDocumentListener(filterField, pickerModel, pickerList, allWings));
 
         JPanel dialogPanel = new JPanel(new BorderLayout(0, 6));
         dialogPanel.setPreferredSize(new Dimension(380, 320));
@@ -399,6 +352,73 @@ public class VariantWingsPanel extends JPanel {
         }
         this.wingsModel = newModel;
         this.wingsList.setModel(newModel);
+    }
+
+    private static final class WingPickerCellRenderer extends DefaultListCellRenderer {
+        @Override
+        public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                      boolean isSelected, boolean cellHasFocus) {
+            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            if (value instanceof WingCSVEntry entry) {
+                setText(entry.getEntryName() + " (" + entry.getWingID() + ") - "
+                        + entry.getOrdnanceCost(null) + " OP");
+            }
+            return this;
+        }
+    }
+
+    private static final class WingFilterDocumentListener implements DocumentListener {
+        private final JTextField filterField;
+        private final DefaultListModel<WingCSVEntry> pickerModel;
+        private final JList<WingCSVEntry> pickerList;
+        private final List<WingCSVEntry> allWings;
+
+        WingFilterDocumentListener(JTextField filterField,
+                                   DefaultListModel<WingCSVEntry> pickerModel,
+                                   JList<WingCSVEntry> pickerList,
+                                   List<WingCSVEntry> allWings) {
+            this.filterField = filterField;
+            this.pickerModel = pickerModel;
+            this.pickerList = pickerList;
+            this.allWings = allWings;
+        }
+
+        private void applyFilter() {
+            String query = filterField.getText();
+            String normalized = query != null ? query.trim().toLowerCase(Locale.ROOT) : "";
+            pickerModel.clear();
+            for (WingCSVEntry entry : allWings) {
+                if (normalized.isEmpty()) {
+                    pickerModel.addElement(entry);
+                } else {
+                    String name = entry.getEntryName() != null
+                            ? entry.getEntryName().toLowerCase(Locale.ROOT) : "";
+                    String id = entry.getWingID() != null
+                            ? entry.getWingID().toLowerCase(Locale.ROOT) : "";
+                    if (name.contains(normalized) || id.contains(normalized)) {
+                        pickerModel.addElement(entry);
+                    }
+                }
+            }
+            if (!pickerModel.isEmpty()) {
+                pickerList.setSelectedIndex(0);
+            }
+        }
+
+        @Override
+        public void insertUpdate(DocumentEvent e) {
+            applyFilter();
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent e) {
+            applyFilter();
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent e) {
+            applyFilter();
+        }
     }
 
 }

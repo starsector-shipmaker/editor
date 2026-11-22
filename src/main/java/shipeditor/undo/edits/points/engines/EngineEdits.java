@@ -121,23 +121,31 @@ public final class EngineEdits {
     public static class EngineStyleSet extends AbstractEdit {
         private final EnginePoint enginePoint;
         private final EngineStyle oldStyle;
+        private final String oldStyleID;
+        private final boolean oldStyleIsCustom;
+        private final EngineStyle oldCustomStyleSpec;
         private final EngineStyle updatedStyle;
 
         public EngineStyleSet(EnginePoint point, EngineStyle old, EngineStyle updated) {
             this.enginePoint = point;
             this.oldStyle = old;
+            this.oldStyleID = point.getStyleID();
+            this.oldStyleIsCustom = point.isStyleIsCustom();
+            this.oldCustomStyleSpec = point.getCustomStyleSpec();
             this.updatedStyle = updated;
         }
 
         @Override
         public void undo() {
-            enginePoint.setStyle(oldStyle);
+            undoSubEdits();
+            enginePoint.restoreStyleState(oldStyle, oldStyleID, oldStyleIsCustom, oldCustomStyleSpec);
             queueEngineRepaint();
         }
 
         @Override
         public void redo() {
             enginePoint.setStyle(updatedStyle);
+            redoSubEdits();
             queueEngineRepaint();
         }
 

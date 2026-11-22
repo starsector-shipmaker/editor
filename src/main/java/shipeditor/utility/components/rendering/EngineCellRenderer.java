@@ -52,10 +52,11 @@ public class EngineCellRenderer extends PointCellRenderer {
             if (engineStyle != null) {
                 styleOrID = engineStyle.getEngineStyleID();
 
-                Icon color = ComponentUtilities.createIconFromColor(engineStyle.getEngineColor(), 10, 10);
-
-                styleIcon.setIcon(color);
-                styleIcon.setVisible(true);
+                if (engineStyle.getEngineColor() != null) {
+                    Icon color = ComponentUtilities.createIconFromColor(engineStyle.getEngineColor(), 10, 10);
+                    styleIcon.setIcon(color);
+                    styleIcon.setVisible(true);
+                }
             }
             else if (checked.getCustomStyleSpec() != null) {
                 styleOrID = StringConstants.CUSTOM;

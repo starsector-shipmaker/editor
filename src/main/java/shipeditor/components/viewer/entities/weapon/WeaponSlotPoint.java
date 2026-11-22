@@ -128,12 +128,20 @@ public class WeaponSlotPoint extends AngledPoint implements SlotPoint {
         return weaponType;
     }
 
+    public double getBaseArc() {
+        return arc;
+    }
+
     public double getArc() {
         if (skinOverride != null && skinOverride.getBoxedArc() != null) {
             return skinOverride.getBoxedArc();
         } else {
             return arc;
         }
+    }
+
+    public double getBaseAngle() {
+        return angle;
     }
 
     @Override

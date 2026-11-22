@@ -67,6 +67,8 @@ public class EnginePoint extends AngledPoint implements EngineData {
 
     private int flameTextureId = 0;
 
+    private boolean flameTextureDirty = false;
+
     private static int baseFlameCoreTextureId = 0;
 
     static {
@@ -80,9 +82,9 @@ public class EnginePoint extends AngledPoint implements EngineData {
         this.skinOverride = override;
         if (skinOverride != null) {
             EngineStyle overrideStyle = skinOverride.getStyle();
-            this.setSkinStyleOverride(overrideStyle);
+            this.setSkinStyleOverride(overrideStyle != null ? overrideStyle : getBaseStyle());
         } else {
-            this.setStyle(style);
+            handleStyleFlameImage(getBaseStyle());
         }
     }
 
@@ -116,11 +118,10 @@ public class EnginePoint extends AngledPoint implements EngineData {
         return width;
     }
 
-    public EngineStyle getStyle() {
-        if (this.skinOverride != null && skinOverride.getStyle() != null) {
-            return this.skinOverride.getStyle();
+    public EngineStyle getBaseStyle() {
+        if (style != null) {
+            return style;
         }
-        if (style != null) return style;
         if (styleID != null) {
             GameDataRepository gameData = SettingsManager.getGameData();
             if (gameData != null) {
@@ -128,12 +129,34 @@ public class EnginePoint extends AngledPoint implements EngineData {
                 if (allEngineStyles != null) {
                     EngineStyle engineStyle = allEngineStyles.get(styleID);
                     if (engineStyle != null) {
-                        this.setStyle(engineStyle);
+                        this.style = engineStyle;
+                        if (this.skinOverride == null || this.skinOverride.getStyle() == null) {
+                            handleStyleFlameImage(engineStyle);
+                        }
                     }
                 }
             }
         }
         return style;
+    }
+
+    public EngineStyle getStyle() {
+        if (this.skinOverride != null && skinOverride.getStyle() != null) {
+            return this.skinOverride.getStyle();
+        }
+        return getBaseStyle();
+    }
+
+    public double getBaseAngle() {
+        return angle;
+    }
+
+    public double getBaseWidth() {
+        return width;
+    }
+
+    public double getBaseLength() {
+        return length;
     }
 
     @Override
@@ -165,14 +188,14 @@ public class EnginePoint extends AngledPoint implements EngineData {
     public EnginePoint(Point2D pointPosition, ShipPainter layer, EnginePoint valuesSource) {
         super(pointPosition, layer);
         this.flameColored = FLAME;
-        this.setStyle(null);
+        handleStyleFlameImage(null);
         if (valuesSource != null) {
-            this.setAngle(valuesSource.getAngle());
-            this.setWidth(valuesSource.getWidth());
-            this.setLength(valuesSource.getLength());
+            this.setAngle(valuesSource.getBaseAngle());
+            this.setWidth(valuesSource.getBaseWidth());
+            this.setLength(valuesSource.getBaseLength());
             this.setContrailSize((int) valuesSource.getContrailSize());
-            this.setStyleID(valuesSource.getStyleID());
-            this.setStyle(valuesSource.getStyle());
+            this.restoreStyleState(valuesSource.getBaseStyle(), valuesSource.getStyleID(),
+                    valuesSource.isStyleIsCustom(), valuesSource.getCustomStyleSpec());
         }
     }
 
@@ -212,28 +235,42 @@ public class EnginePoint extends AngledPoint implements EngineData {
 
     public void setStyle(EngineStyle engineStyle) {
         this.style = engineStyle;
-
-        this.styleIsCustom = false;
+        this.customStyleSpec = null;
 
         if (engineStyle != null) {
             this.setStyleID(engineStyle.getEngineStyleID());
+            java.nio.file.Path pkg = engineStyle.getContainingPackage();
+            this.styleIsCustom = pkg != null && !SettingsManager.isCoreFolder(pkg);
+        } else {
+            this.styleIsCustom = false;
         }
         handleStyleFlameImage(engineStyle);
     }
 
+    public void restoreStyleState(EngineStyle restoredStyle, String restoredStyleID,
+                                  boolean restoredStyleIsCustom, EngineStyle restoredCustomStyleSpec) {
+        this.style = restoredStyle;
+        this.styleID = restoredStyleID;
+        this.styleIsCustom = restoredStyleIsCustom;
+        this.customStyleSpec = restoredCustomStyleSpec;
+        handleStyleFlameImage(this.skinOverride != null && this.skinOverride.getStyle() != null
+                ? this.skinOverride.getStyle()
+                : restoredStyle);
+    }
+
     private void handleStyleFlameImage(EngineStyle engineStyle) {
         Color flameColor = new Color(255, 125, 25);
-        if (engineStyle != null) {
+        if (engineStyle != null && engineStyle.getEngineColor() != null) {
             flameColor = engineStyle.getEngineColor();
         }
 
-        float[] hue = Color.RGBtoHSB(flameColor.getRed(), flameColor.getGreen(), flameColor.getBlue(), null);
-        BufferedImageOp filter = new HSBAdjustFilter(hue[0], hue[1], hue[2]);
-        flameColored = filter.filter(FLAME, null);
-        if (flameTextureId != 0) {
-            org.lwjgl.opengl.GL11.glDeleteTextures(flameTextureId);
-            flameTextureId = 0;
+        if (FLAME != null) {
+            float[] hue = Color.RGBtoHSB(flameColor.getRed(), flameColor.getGreen(), flameColor.getBlue(), null);
+            BufferedImageOp filter = new HSBAdjustFilter(hue[0], hue[1], hue[2]);
+            flameColored = filter.filter(FLAME, null);
         }
+        // Defer OpenGL texture deletion to drawFlameOpenGL() on the active GL context thread.
+        flameTextureDirty = true;
     }
 
     public EditorInstrument getAssociatedMode() {
@@ -266,8 +303,16 @@ public class EnginePoint extends AngledPoint implements EngineData {
     }
 
     public void drawFlameOpenGL(SpriteRenderer spriteRenderer, Matrix4f projection, Matrix4f view) {
-        if (flameTextureId == 0 && flameColored != null) {
-            flameTextureId = shipeditor.utility.graphics.opengl.TextureLoader.loadTexture(flameColored);
+        if (flameTextureDirty) {
+            if (flameTextureId != 0) {
+                org.lwjgl.opengl.GL11.glDeleteTextures(flameTextureId);
+                flameTextureId = 0;
+            }
+            flameTextureDirty = false;
+        }
+        BufferedImage currentFlame = flameColored;
+        if (flameTextureId == 0 && currentFlame != null) {
+            flameTextureId = shipeditor.utility.graphics.opengl.TextureLoader.loadTexture(currentFlame);
         }
         int coreTextureId = getBaseFlameCoreTextureId();
 

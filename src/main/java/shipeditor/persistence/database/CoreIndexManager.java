@@ -125,8 +125,37 @@ public class CoreIndexManager {
             CORE_FILES_BY_ENTITY_ID.put(type, entityIdMap);
         }
 
+        // Also index core style JSON config files (engine_styles.json, hull_styles.json)
+        Map<Path, String> coreStyleTargets = new LinkedHashMap<>();
+        coreStyleTargets.put(Path.of("data", StringConstants.CONFIG, "engine_styles.json"), StringConstants.ENGINE_STYLE_JSON_TYPE);
+        coreStyleTargets.put(Path.of("data", StringConstants.CONFIG, "hull_styles.json"), StringConstants.HULL_STYLE_JSON_TYPE);
+        for (Map.Entry<Path, String> styleEntry : coreStyleTargets.entrySet()) {
+            Path stylePath = coreFolder.resolve(styleEntry.getKey());
+            if (Files.exists(stylePath) && Files.isRegularFile(stylePath)) {
+                String type = styleEntry.getValue();
+                File styleFile = stylePath.toFile();
+                String fileName = styleFile.getName();
+                IndexedFile indexed = IndexedFile.builder()
+                        .uuid(UUID.randomUUID())
+                        .modId("starsector-core")
+                        .entityId(fileName)
+                        .entityName(fileName)
+                        .entityType(type)
+                        .fileName(fileName)
+                        .filePath(stylePath.toAbsolutePath())
+                        .lastModified(styleFile.lastModified())
+                        .metadataJson("")
+                        .build();
+                CORE_FILES_BY_TYPE.computeIfAbsent(type, k -> new ArrayList<>()).add(indexed);
+                CORE_FILES_BY_ENTITY_ID.computeIfAbsent(type, k -> new ConcurrentHashMap<>()).put(fileName, indexed);
+                CORE_FILES_BY_PATH.put(indexed.getFilePath().toString(), indexed);
+                allIndexedFiles.add(indexed);
+            }
+        }
+
         // Persist to database for faster subsequent startups.
         persistToDatabase(coreFolder, allIndexedFiles);
+        DatabaseQueryService.clearTypeCache();
 
         isLoaded = true;
         log.info("Core memory index loaded in {}ms", System.currentTimeMillis() - startTime);
@@ -140,9 +169,20 @@ public class CoreIndexManager {
             if (modInfo == null) {
                 return false;
             }
+            if (modInfo.folderPath() == null || !modInfo.folderPath().equals(coreFolder.toAbsolutePath().toString())) {
+                log.info("Core folder path changed (cached: {}, current: {}), triggering re-scan.",
+                        modInfo.folderPath(), coreFolder.toAbsolutePath());
+                return false;
+            }
 
             // Check if any relevant file in the core folder has been modified since the last scan.
             long dbLastScanned = modInfo.lastScanned();
+            Path engineStylesPath = coreFolder.resolve(Path.of("data", StringConstants.CONFIG, "engine_styles.json"));
+            Path hullStylesPath = coreFolder.resolve(Path.of("data", StringConstants.CONFIG, "hull_styles.json"));
+            if ((Files.isRegularFile(engineStylesPath) && engineStylesPath.toFile().lastModified() > dbLastScanned)
+                    || (Files.isRegularFile(hullStylesPath) && hullStylesPath.toFile().lastModified() > dbLastScanned)) {
+                return false;
+            }
             Path walkTarget = IndexScannerTask.resolveDataWalkTarget(coreFolder);
             try (java.util.stream.Stream<Path> pathStream = Files.walk(walkTarget)) {
                 boolean hasNewerFile = pathStream.anyMatch(
@@ -168,6 +208,19 @@ public class CoreIndexManager {
                 }
                 
                 CORE_FILES_BY_PATH.put(file.getFilePath().toString(), file);
+            }
+
+            // Ensure core style JSONs present on disk are also present in the DB cache.
+            boolean missingEngineStyles = Files.isRegularFile(engineStylesPath)
+                    && CORE_FILES_BY_TYPE.getOrDefault(StringConstants.ENGINE_STYLE_JSON_TYPE, Collections.emptyList()).isEmpty();
+            boolean missingHullStyles = Files.isRegularFile(hullStylesPath)
+                    && CORE_FILES_BY_TYPE.getOrDefault(StringConstants.HULL_STYLE_JSON_TYPE, Collections.emptyList()).isEmpty();
+            if (missingEngineStyles || missingHullStyles) {
+                log.info("Core style JSON files missing from database cache, triggering re-scan.");
+                CORE_FILES_BY_TYPE.clear();
+                CORE_FILES_BY_ENTITY_ID.clear();
+                CORE_FILES_BY_PATH.clear();
+                return false;
             }
 
             // Migration check: detect stale DB entries that used filename as entityName

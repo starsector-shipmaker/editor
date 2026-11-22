@@ -121,7 +121,7 @@ public final class DataProblemsDialog extends JDialog {
 
     private static final class ProblemsTableModel extends AbstractTableModel {
 
-        private transient List<Problem> rows = new ArrayList<>();
+        private List<Problem> rows = new ArrayList<>();
 
         void setRows(List<Problem> newRows) {
             this.rows = newRows;

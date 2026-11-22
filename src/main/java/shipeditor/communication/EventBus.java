@@ -77,15 +77,16 @@ public final class EventBus {
      * The listener will be kept alive as long as the parent is not garbage collected.
      */
     public static BusEventListener subscribe(Object lifecycleParent, BusEventListener listener) {
-        if (lifecycleParent instanceof javax.swing.JComponent) {
-            javax.swing.JComponent comp = (javax.swing.JComponent) lifecycleParent;
-            @SuppressWarnings("unchecked")
-            java.util.List<BusEventListener> keptAlive = (java.util.List<BusEventListener>) comp.getClientProperty("EventBus.listeners");
-            if (keptAlive == null) {
-                keptAlive = new java.util.ArrayList<>();
-                comp.putClientProperty("EventBus.listeners", keptAlive);
+        if (lifecycleParent instanceof javax.swing.JComponent comp) {
+            synchronized (comp) {
+                @SuppressWarnings("unchecked")
+                java.util.List<BusEventListener> keptAlive = (java.util.List<BusEventListener>) comp.getClientProperty("EventBus.listeners");
+                if (keptAlive == null) {
+                    keptAlive = new java.util.ArrayList<>();
+                    comp.putClientProperty("EventBus.listeners", keptAlive);
+                }
+                keptAlive.add(listener);
             }
-            keptAlive.add(listener);
         } else {
             synchronized (EVENT_BUS.fallbackStrongReferences) {
                 EVENT_BUS.fallbackStrongReferences.computeIfAbsent(lifecycleParent, k -> new java.util.ArrayList<>()).add(listener);
@@ -136,6 +137,11 @@ public final class EventBus {
      * Unsubscribes all listeners bound to the given parent object in O(1) time.
      */
     public static void unsubscribeByParent(Object lifecycleParent) {
+        if (lifecycleParent instanceof javax.swing.JComponent comp) {
+            synchronized (comp) {
+                comp.putClientProperty("EventBus.listeners", null);
+            }
+        }
         synchronized (EVENT_BUS.lifecycleSubscribers) {
             EVENT_BUS.lifecycleSubscribers.remove(lifecycleParent);
         }
@@ -218,9 +224,13 @@ public final class EventBus {
     }
 
     public static void reset() {
-        synchronized (EVENT_BUS) {
+        synchronized (EVENT_BUS.floatingSubscribers) {
             EVENT_BUS.floatingSubscribers.clear();
+        }
+        synchronized (EVENT_BUS.lifecycleSubscribers) {
             EVENT_BUS.lifecycleSubscribers.clear();
+        }
+        synchronized (EVENT_BUS.fallbackStrongReferences) {
             EVENT_BUS.fallbackStrongReferences.clear();
         }
         TRACE_ENABLED = false;

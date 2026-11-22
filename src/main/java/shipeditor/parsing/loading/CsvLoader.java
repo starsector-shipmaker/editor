@@ -53,11 +53,11 @@ public final class CsvLoader {
         Predicate<Map<String, String>> effectivePredicate = validationPredicate != null ? validationPredicate : (row -> true);
         List<Map<String, String>> csvData = new ArrayList<>();
         try {
-            csvData = readCSVWithCharset(csvFile, csvMapper, csvSchema, effectivePredicate, StandardCharsets.ISO_8859_1);
+            csvData = readCSVWithCharset(csvFile, csvMapper, csvSchema, effectivePredicate, StandardCharsets.UTF_8);
         } catch (Throwable exception) {
             log.warn(StringManager.getString("CSV_ISO_LOAD_FAILED"), csvFile.getAbsolutePath(), exception);
             try {
-                csvData = readCSVWithCharset(csvFile, csvMapper, csvSchema, effectivePredicate, StandardCharsets.UTF_8);
+                csvData = readCSVWithCharset(csvFile, csvMapper, csvSchema, effectivePredicate, StandardCharsets.ISO_8859_1);
             } catch (Throwable fallbackException) {
                 log.error(StringManager.getString("CSV_FALLBACK_LOAD_FAILED"), csvFile.getAbsolutePath(), fallbackException);
                 if (SettingsManager.isDeveloperModeEnabled()) {
@@ -159,10 +159,10 @@ public final class CsvLoader {
         }
         Predicate<Map<String, String>> acceptAll = row -> true;
         try {
-            return readCSVWithCharset(csvFile, csvMapper, csvSchema, acceptAll, StandardCharsets.ISO_8859_1);
+            return readCSVWithCharset(csvFile, csvMapper, csvSchema, acceptAll, StandardCharsets.UTF_8);
         } catch (Throwable e) {
             try {
-                return readCSVWithCharset(csvFile, csvMapper, csvSchema, acceptAll, StandardCharsets.UTF_8);
+                return readCSVWithCharset(csvFile, csvMapper, csvSchema, acceptAll, StandardCharsets.ISO_8859_1);
             } catch (Throwable fallback) {
                 log.error(StringManager.getString("CSV_REPARSE_FALLBACK_FAILED"), path, fallback);
                 return null;

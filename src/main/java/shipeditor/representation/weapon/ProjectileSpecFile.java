@@ -7,12 +7,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Getter;
 import lombok.Setter;
 import shipeditor.representation.UnrecognizedPropertiesHolder;
 import shipeditor.parsing.deserialize.CustomDeserializers.ColorArrayRGBADeserializer;
 import shipeditor.parsing.deserialize.CustomDeserializers.Point2DDeserializer;
 import shipeditor.parsing.deserialize.CustomDeserializers.TextureTypeDeserializer;
+import shipeditor.parsing.serialize.CustomSerializers.ColorArrayRGBASerializer;
+import shipeditor.parsing.serialize.points.Point2DSerializer;
 import shipeditor.utility.text.StringConstants;
 
 import java.awt.Color;
@@ -61,6 +64,7 @@ public class ProjectileSpecFile extends UnrecognizedPropertiesHolder {
     private int[] size;
 
     @JsonDeserialize(using = Point2DDeserializer.class)
+    @JsonSerialize(using = Point2DSerializer.class)
     @JsonProperty(StringConstants.CENTER)
     private Point2D.Double center;
 
@@ -86,18 +90,22 @@ public class ProjectileSpecFile extends UnrecognizedPropertiesHolder {
     // Visual effects
 
     @JsonDeserialize(using = ColorArrayRGBADeserializer.class)
+    @JsonSerialize(using = ColorArrayRGBASerializer.class)
     @JsonProperty("fringeColor")
     private Color fringeColor;
 
     @JsonDeserialize(using = ColorArrayRGBADeserializer.class)
+    @JsonSerialize(using = ColorArrayRGBASerializer.class)
     @JsonProperty("coreColor")
     private Color coreColor;
 
     @JsonDeserialize(using = ColorArrayRGBADeserializer.class)
+    @JsonSerialize(using = ColorArrayRGBASerializer.class)
     @JsonProperty("explosionColor")
     private Color explosionColor;
 
     @JsonDeserialize(using = ColorArrayRGBADeserializer.class)
+    @JsonSerialize(using = ColorArrayRGBASerializer.class)
     @JsonProperty("glowColor")
     private Color glowColor;
 

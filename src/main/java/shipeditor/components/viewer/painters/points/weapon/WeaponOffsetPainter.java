@@ -114,6 +114,12 @@ public class WeaponOffsetPainter extends AngledPointPainter {
         return isParentLayerActive();
     }
 
+    @Override
+    public boolean isInteractionEnabled() {
+        WeaponPainter parentLayer = getParentLayer();
+        return super.isInteractionEnabled() && parentLayer != null && parentLayer.getMount() == designatedType;
+    }
+
     // ---- Rendering ----
 
     @Override
@@ -200,8 +206,9 @@ public class WeaponOffsetPainter extends AngledPointPainter {
 
     @Override
     protected void handleCreation(PointCreationQueued event) {
+        if (!isCreationHotkeyPressed()) return;
         OffsetPoint newPoint = new OffsetPoint(event.position(), getParentLayer());
-        this.addPoint(newPoint);
+        shipeditor.undo.EditDispatch.postPointAdded(this, newPoint);
     }
 
     @Override

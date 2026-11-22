@@ -6,14 +6,10 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.extern.log4j.Log4j2;
 import shipeditor.components.datafiles.entities.HullmodCSVEntry;
 import shipeditor.persistence.SettingsManager;
-import shipeditor.persistence.database.CoreIndexManager;
-import shipeditor.persistence.database.DatabaseQueryService;
-import shipeditor.persistence.database.IndexedFile;
 import shipeditor.representation.GameDataRepository;
 import shipeditor.representation.RepresentationEnums.HullSize;
 import shipeditor.utility.components.ComponentUtilities;
 import shipeditor.utility.components.widgets.SimpleDocumentListener;
-import shipeditor.utility.text.StringConstants;
 import shipeditor.utility.themes.Themes;
 
 import javax.swing.BorderFactory;
@@ -165,33 +161,11 @@ public class PickHullmodDialog extends JPanel {
             }
         }
 
-        // 2. Query all indexed hullmod files from DatabaseQueryService
-        // dbFiles already includes CoreIndexManager files. We process in reverse to let mods take precedence.
-        List<IndexedFile> dbFiles = DatabaseQueryService.getFilesByType(StringConstants.HULLMOD_CSV_TYPE);
-        if (dbFiles != null && gameData != null) {
-            for (int i = dbFiles.size() - 1; i >= 0; i--) {
-                IndexedFile file = dbFiles.get(i);
-                if (file.getEntityId() != null && !seenIds.contains(file.getEntityId())) {
-                    HullmodCSVEntry entry = gameData.getOrCreateHullmodEntry(file.getEntityId());
-                    if (shouldIncludeHullmod(entry) && seenIds.add(entry.getID())) {
-                        allIndexedHullmods.add(entry);
-                        String modId = file.getModId();
-                        String pkgName = resolveModIdName(modId);
-                        hullmodPackageNameMap.put(entry, pkgName);
-                    }
-                }
-            }
-        }
-
         allIndexedHullmods.sort(Comparator.comparing(HullmodCSVEntry::getID, String.CASE_INSENSITIVE_ORDER));
     }
 
     private String resolvePackageName(Path packagePath) {
         return DialogHelper.resolvePackageName(packagePath);
-    }
-
-    private String resolveModIdName(String modId) {
-        return DialogHelper.resolveModIdName(modId);
     }
 
     private JPanel createFilterPanel() {

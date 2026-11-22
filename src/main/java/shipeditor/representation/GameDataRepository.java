@@ -183,6 +183,15 @@ public class GameDataRepository {
     @Setter
     private final Map<String, ProjectileSpecFile> allProjectiles = new ConcurrentHashMap<>();
 
+    @lombok.Getter(lombok.AccessLevel.NONE)
+    private final Map<String, HullmodCSVEntry> syntheticHullmodEntries = new ConcurrentHashMap<>();
+
+    @lombok.Getter(lombok.AccessLevel.NONE)
+    private final Map<String, WingCSVEntry> syntheticWingEntries = new ConcurrentHashMap<>();
+
+    @lombok.Getter(lombok.AccessLevel.NONE)
+    private final Map<String, ShipSystemCSVEntry> syntheticShipsystemEntries = new ConcurrentHashMap<>();
+
     @Setter
     private volatile boolean shipDataLoaded;
 
@@ -435,6 +444,9 @@ public class GameDataRepository {
         allEngineStyles = null;
         if (variantsByHullID != null) variantsByHullID.clear();
         if (allProjectiles != null) allProjectiles.clear();
+        syntheticHullmodEntries.clear();
+        syntheticWingEntries.clear();
+        syntheticShipsystemEntries.clear();
         csvCacheByPath.clear();
 
         shipEntriesByPackage = null;
@@ -574,16 +586,16 @@ public class GameDataRepository {
     public HullmodCSVEntry getOrCreateHullmodEntry(String hullmodID) {
         if (hullmodID == null || hullmodID.isBlank()) return null;
         Map<String, HullmodCSVEntry> entries = getAllHullmodEntries();
-        if (entries == null) return null;
-        HullmodCSVEntry existing = entries.get(hullmodID);
-        if (existing != null) return existing;
-
-        Map<String, String> row = new HashMap<>();
-        row.put(StringConstants.ID, hullmodID);
-        row.put(StringConstants.NAME, hullmodID);
-        HullmodCSVEntry synthetic = new HullmodCSVEntry(row, null, null);
-        entries.put(hullmodID, synthetic);
-        return synthetic;
+        if (entries != null) {
+            HullmodCSVEntry existing = entries.get(hullmodID);
+            if (existing != null) return existing;
+        }
+        return syntheticHullmodEntries.computeIfAbsent(hullmodID, id -> {
+            Map<String, String> row = new HashMap<>();
+            row.put(StringConstants.ID, id);
+            row.put(StringConstants.NAME, id);
+            return new HullmodCSVEntry(row, null, null);
+        });
     }
 
     public static HullmodCSVEntry retrieveHullmodCSVEntryByID(String hullmodID) {
@@ -603,16 +615,16 @@ public class GameDataRepository {
     public WingCSVEntry getOrCreateWingEntry(String wingID) {
         if (wingID == null || wingID.isBlank()) return null;
         Map<String, WingCSVEntry> entries = getAllWingEntries();
-        if (entries == null) return null;
-        WingCSVEntry existing = entries.get(wingID);
-        if (existing != null) return existing;
-
-        Map<String, String> row = new HashMap<>();
-        row.put(StringConstants.ID, wingID);
-        row.put(StringConstants.NAME, wingID);
-        WingCSVEntry synthetic = new WingCSVEntry(row, null, null);
-        entries.put(wingID, synthetic);
-        return synthetic;
+        if (entries != null) {
+            WingCSVEntry existing = entries.get(wingID);
+            if (existing != null) return existing;
+        }
+        return syntheticWingEntries.computeIfAbsent(wingID, id -> {
+            Map<String, String> row = new HashMap<>();
+            row.put(StringConstants.ID, id);
+            row.put(StringConstants.NAME, id);
+            return new WingCSVEntry(row, null, null);
+        });
     }
 
     public static WingCSVEntry retrieveWingCSVEntryByID(String wingID) {
@@ -632,16 +644,16 @@ public class GameDataRepository {
     public ShipSystemCSVEntry getOrCreateShipsystemEntry(String systemID) {
         if (systemID == null || systemID.isBlank()) return null;
         Map<String, ShipSystemCSVEntry> entries = getAllShipsystemEntries();
-        if (entries == null) return null;
-        ShipSystemCSVEntry existing = entries.get(systemID);
-        if (existing != null) return existing;
-
-        Map<String, String> row = new HashMap<>();
-        row.put(StringConstants.ID, systemID);
-        row.put(StringConstants.NAME, systemID);
-        ShipSystemCSVEntry synthetic = new ShipSystemCSVEntry(row, null, null);
-        entries.put(systemID, synthetic);
-        return synthetic;
+        if (entries != null) {
+            ShipSystemCSVEntry existing = entries.get(systemID);
+            if (existing != null) return existing;
+        }
+        return syntheticShipsystemEntries.computeIfAbsent(systemID, id -> {
+            Map<String, String> row = new HashMap<>();
+            row.put(StringConstants.ID, id);
+            row.put(StringConstants.NAME, id);
+            return new ShipSystemCSVEntry(row, null, null);
+        });
     }
 
     public static ShipSystemCSVEntry retrieveShipsystemCSVEntryByID(String systemID) {

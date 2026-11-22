@@ -166,20 +166,22 @@ public final class SaveCoordinator {
             String hullId = shipLayer.getHull().getHullID();
             Path existing = findExistingHullPath(hullId);
             Path existingDir = existing != null ? existing.getParent() : null;
-            String name = existing != null ? existing.getFileName().toString() : hullId + ".ship (new file)";
+            Path existingFileName = existing != null ? existing.getFileName() : null;
+            String name = existingFileName != null ? existingFileName.toString() : hullId + ".ship (new file)";
             items.add(new SaveItem("hull " + name, existingDir, false));
         }
         ShipVariant variantToWrite = plan.variant();
         if (variantToWrite != null) {
             Path existing = findExistingVariantPath(variantToWrite);
             Path existingDir = existing != null ? existing.getParent() : null;
+            Path existingFileName = existing != null ? existing.getFileName() : null;
             File defaultDir = FileUtilities.resolveDefaultVariantDirectory(variantToWrite, shipLayer);
             Path targetDir = existingDir != null ? existingDir : (defaultDir != null ? defaultDir.toPath() : null);
             File lastDir = FileUtilities.getLastVariantDirectory();
             boolean newInOtherDir = existing == null && targetDir != null
                     && (lastDir == null || !targetDir.equals(lastDir.toPath()));
-            String name = existing != null
-                    ? existing.getFileName().toString()
+            String name = existingFileName != null
+                    ? existingFileName.toString()
                     : variantToWrite.getVariantId() + ".variant (new file)";
             items.add(new SaveItem("variant " + name, targetDir, newInOtherDir));
         }

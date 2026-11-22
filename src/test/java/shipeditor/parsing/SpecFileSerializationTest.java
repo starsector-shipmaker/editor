@@ -1271,15 +1271,9 @@ class SpecFileSerializationTest {
 
             assertArrayEquals(original.getSize(), roundTripped.getSize());
 
-            // center uses Point2DDeserializer (array format) on input but no custom
-            // serializer,
-            // so Jackson serializes as {"x":8.0,"y":4.0}. Jackson's default deserializer
-            // cannot
-            // reconstruct a Point2D.Double from that object form via the custom array
-            // deserializer.
-            // We verify the scalar fields survive the round-trip instead.
-            assertEquals(original.getId(), roundTripped.getId());
-            assertEquals(original.getSprite(), roundTripped.getSprite());
+            assertNotNull(roundTripped.getCenter());
+            assertEquals(original.getCenter().getX(), roundTripped.getCenter().getX(), 0.001);
+            assertEquals(original.getCenter().getY(), roundTripped.getCenter().getY(), 0.001);
         }
 
         /**

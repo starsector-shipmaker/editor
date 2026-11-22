@@ -304,8 +304,10 @@ public final class PointEdits {
 
         @Override
         public void undo() {
+            undoSubEdits();
             if (painter instanceof MirrorablePointPainter checked && !(painter instanceof LaunchBayPainter)) {
-                checked.insertPoint(removed, indexOfRemoved);
+                int insertIndex = Math.max(0, Math.min(indexOfRemoved, painter.getPointsIndex().size()));
+                checked.insertPoint(removed, insertIndex);
             } else {
                 painter.addPoint(removed);
             }
@@ -325,6 +327,7 @@ public final class PointEdits {
         @Override
         public void redo() {
             painter.removePoint(removed);
+            redoSubEdits();
             Events.repaintShipView();
         }
 

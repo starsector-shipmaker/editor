@@ -228,10 +228,15 @@ public final class UndoOverseer {
 
         Object targetEntity = edit.getTargetEntity();
         if (targetEntity instanceof ShipVariant variant) {
+            boolean matchedLayer = false;
             for (ViewerLayer layer : layerManager.getLayers()) {
                 if (layer instanceof ShipLayer sl && sl.getActiveVariant() == variant) {
                     layerManager.markUnsaved(sl, "variant");
+                    matchedLayer = true;
                 }
+            }
+            if (matchedLayer) {
+                return;
             }
         }
 

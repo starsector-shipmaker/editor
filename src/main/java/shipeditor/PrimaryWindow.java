@@ -100,15 +100,12 @@ public final class PrimaryWindow extends JFrame {
 
         primaryWindow.addWindowListener(new WindowAdapter() {
             private final KeyEventDispatcher hotkeyDispatcher = e -> {
-                if (e.getKeyCode() == KeyEvent.VK_ALT) {
-                    return true;
-                }
                 switch (e.getID()) {
                     case java.awt.event.KeyEvent.KEY_PRESSED -> shipeditor.communication.EventBus.publish(new shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawKeyPressed(e));
                     case java.awt.event.KeyEvent.KEY_RELEASED -> shipeditor.communication.EventBus.publish(new shipeditor.communication.events.viewer.control.ControlEvents.ViewerRawKeyReleased(e));
                     default -> {}
                 }
-                return false;
+                return e.getKeyCode() == KeyEvent.VK_ALT;
             };
 
             @Override
@@ -119,22 +116,6 @@ public final class PrimaryWindow extends JFrame {
             @Override
             public void windowDeactivated(WindowEvent e) {
                 KeyboardFocusManager.getCurrentKeyboardFocusManager().removeKeyEventDispatcher(hotkeyDispatcher);
-            }
-
-            @Override
-            public void windowClosing(WindowEvent e) {
-                if (shipeditor.utility.overseers.StaticController.getViewer() != null) {
-                    java.util.List<String> unsaved = shipeditor.utility.overseers.StaticController.getViewer().getLayerManager().getUnsavedLayerNames();
-                    if (!unsaved.isEmpty()) {
-                        String message = "You have unsaved changes in the following layers:\n\n- " + String.join("\n- ", unsaved) + "\n\nAre you sure you want to exit without saving?";
-                        int result = javax.swing.JOptionPane.showConfirmDialog(primaryWindow, message, "Unsaved Changes", javax.swing.JOptionPane.YES_NO_OPTION, javax.swing.JOptionPane.WARNING_MESSAGE);
-                        if (result != javax.swing.JOptionPane.YES_OPTION) {
-                            return;
-                        }
-                    }
-                }
-                primaryWindow.dispose();
-                System.exit(0);
             }
         });
 
@@ -199,14 +180,25 @@ public final class PrimaryWindow extends JFrame {
             if (layerManager != null) {
                 java.util.List<ViewerLayer> layersCopy = new java.util.ArrayList<>(layerManager.getLayers());
                 for (ViewerLayer layer : layersCopy) {
-                    if (layer instanceof ShipLayer shipLayer) {
-                        if (layerManager.isLayerDirty(shipLayer)) {
-                            layerManager.setActiveLayer(shipLayer);
-                            boolean confirmed = shipeditor.utility.components.dialog.DialogHelper.confirmLayerRemoval(layerManager, shipLayer);
-                            if (!confirmed) {
-                                return; // Abort exit
-                            }
+                    if (layer instanceof ShipLayer shipLayer && layerManager.isLayerDirty(shipLayer)) {
+                        layerManager.setActiveLayer(shipLayer);
+                        boolean confirmed = shipeditor.utility.components.dialog.DialogHelper.confirmLayerRemoval(layerManager, shipLayer);
+                        if (!confirmed) {
+                            return; // Abort exit
                         }
+                    }
+                }
+                java.util.List<String> remainingUnsaved = layerManager.getUnsavedLayerNames();
+                if (!remainingUnsaved.isEmpty()) {
+                    String message = "You have unsaved changes in the following layers:\n\n- "
+                            + String.join("\n- ", remainingUnsaved)
+                            + "\n\nAre you sure you want to exit without saving?";
+                    int result = javax.swing.JOptionPane.showConfirmDialog(
+                            this, message, "Unsaved Changes",
+                            javax.swing.JOptionPane.YES_NO_OPTION,
+                            javax.swing.JOptionPane.WARNING_MESSAGE);
+                    if (result != javax.swing.JOptionPane.YES_OPTION) {
+                        return;
                     }
                 }
             }

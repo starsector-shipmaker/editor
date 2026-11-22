@@ -127,6 +127,10 @@ public class ShipCSVEntry implements LayerableEntry, InstallableEntry {
 
     private java.util.concurrent.CompletableFuture<Void> loadingFuture;
 
+    private synchronized java.util.concurrent.CompletableFuture<Void> getLoadingFuture() {
+        return loadingFuture;
+    }
+
     public synchronized java.util.concurrent.CompletableFuture<Void> lazyLoadSpecAndSkins() {
         if (loadingFuture != null) return loadingFuture;
         if (hullSpecFile != null && skins != null) return java.util.concurrent.CompletableFuture.completedFuture(null);
@@ -436,8 +440,9 @@ public class ShipCSVEntry implements LayerableEntry, InstallableEntry {
         ShipLayer newLayer = FileUtilities.createShipLayerWithSprite(spriteFile);
         newLayer.initializeHullData(spec);
 
-        if (loadingFuture != null && !loadingFuture.isDone()) {
-            loadingFuture.join();
+        var currentLoadingFuture = getLoadingFuture();
+        if (currentLoadingFuture != null && !currentLoadingFuture.isDone()) {
+            currentLoadingFuture.join();
         }
         if (skins == null || skins.isEmpty()) return newLayer;
 

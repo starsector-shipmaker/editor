@@ -136,17 +136,6 @@ final class SaveHullAction {
 
         log.trace("Rebuilding engines...");
         EngineSlot[] serializableEngines = SaveHullAction.rebuildEngineSlots(shipPainter);
-        if (serializableEngines == null) {
-            String shipID = shipLayer.getShipID();
-            log.error("Engine misconfiguration at hull serialization. Ship ID: {}",
-                    shipID);
-            JOptionPane.showMessageDialog(shipeditor.PrimaryWindow.getInstance(),
-                    StringManager.getString("ENGINE_MISCONFIGURATION_AT_HULL_SERIALIZ_MSG") +
-                            "Ship ID: " + shipID,
-                    StringManager.getString("FILE_SAVING_ERROR"),
-                    JOptionPane.ERROR_MESSAGE);
-            return null;
-        }
         result.setEngineSlots(serializableEngines);
 
         WeaponSlot[] serializableWeaponSlots = SaveHullAction.rebuildWeaponSlots(shipPainter);
@@ -243,9 +232,15 @@ final class SaveHullAction {
                 .toArray(Point2D.Double[]::new);
     }
 
-    private static EngineSlot[] rebuildEngineSlots(ShipPainter shipPainter) {
+    static EngineSlot[] rebuildEngineSlots(ShipPainter shipPainter) {
         EngineSlotPainter enginePainter = shipPainter.getEnginePainter();
+        if (enginePainter == null) {
+            return new EngineSlot[0];
+        }
         var enginePoints = enginePainter.getPointsIndex();
+        if (enginePoints == null) {
+            return new EngineSlot[0];
+        }
 
         return enginePoints.stream().map(enginePoint -> {
             EngineSlot serializableSlot = new EngineSlot();
@@ -254,9 +249,10 @@ final class SaveHullAction {
                     shipPainter, CoordsDisplayMode.SHIP_CENTER);
             serializableSlot.setLocation((Point2D.Double) locationRelativeToCenter);
 
-            serializableSlot.setAngle(enginePoint.getAngle());
-            serializableSlot.setWidth(enginePoint.getWidth());
-            serializableSlot.setLength(enginePoint.getLength());
+            // Serialize base hull values rather than active skin overrides.
+            serializableSlot.setAngle(enginePoint.getBaseAngle());
+            serializableSlot.setWidth(enginePoint.getBaseWidth());
+            serializableSlot.setLength(enginePoint.getBaseLength());
             serializableSlot.setContrailSize(enginePoint.getContrailSize());
 
             String engineStyleID = enginePoint.getStyleID();
@@ -272,7 +268,7 @@ final class SaveHullAction {
             } else if (engineStyleID != null && !engineStyleID.isEmpty()) {
                 serializableSlot.setStyle(engineStyleID);
             } else {
-                var engineStyle = enginePoint.getStyle();
+                var engineStyle = enginePoint.getBaseStyle();
                 if (engineStyle != null && engineStyle.getEngineStyleID() != null) {
                     serializableSlot.setStyle(engineStyle.getEngineStyleID());
                 } else {
@@ -315,29 +311,34 @@ final class SaveHullAction {
         }).toArray(WeaponSlot[]::new);
     }
 
-    private static WeaponSlot createSerializable(SlotData slotData) {
+    static WeaponSlot createSerializable(SlotData slotData) {
         WeaponSlot serializableSlot = new WeaponSlot();
-
-        serializableSlot.setAngle(slotData.getAngle());
-        serializableSlot.setArc(slotData.getArc());
 
         serializableSlot.setId(slotData.getId());
 
         WeaponSize weaponSize;
         WeaponType weaponType;
         WeaponMount weaponMount;
+        double angle;
+        double arc;
 
         // This is to ensure we serialize hull with the base values and not with skin overrides.
         if (slotData instanceof WeaponSlotPoint slotPoint) {
             weaponSize = slotPoint.getBaseSize();
             weaponType = slotPoint.getBaseType();
             weaponMount = slotPoint.getBaseMount();
+            angle = slotPoint.getBaseAngle();
+            arc = slotPoint.getBaseArc();
         } else {
             weaponSize = slotData.getWeaponSize();
             weaponType = slotData.getWeaponType();
             weaponMount = slotData.getWeaponMount();
+            angle = slotData.getAngle();
+            arc = slotData.getArc();
         }
 
+        serializableSlot.setAngle(angle);
+        serializableSlot.setArc(arc);
         serializableSlot.setSize(weaponSize.getId());
         serializableSlot.setType(weaponType.getId());
         serializableSlot.setMount(weaponMount.getId());

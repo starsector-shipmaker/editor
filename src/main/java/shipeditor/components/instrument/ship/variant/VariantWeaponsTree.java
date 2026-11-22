@@ -162,13 +162,13 @@ public class VariantWeaponsTree extends DynamicWidthTree {
         Enumeration<TreeNode> groups = rootNode.children();
         while (groups.hasMoreElements()) {
             CustomTreeNode groupNode = (CustomTreeNode) groups.nextElement();
-            FittedWeaponGroup groupObject = (FittedWeaponGroup) groupNode.getUserObject();
-            if (groupObject == group) {
+            if (groupNode.getUserObject() instanceof FittedWeaponGroup groupObject && groupObject == group) {
                 // Bulk uninstalls are all undoable actions.
                 group.uninstallAll();
                 ShipVariant groupParent = group.getParent();
                 groupParent.removeWeaponGroup(group);
                 model.reload();
+                return;
             }
         }
     }
@@ -177,12 +177,12 @@ public class VariantWeaponsTree extends DynamicWidthTree {
         Enumeration<TreeNode> groups = rootNode.children();
         while (groups.hasMoreElements()) {
             CustomTreeNode groupNode = (CustomTreeNode) groups.nextElement();
-            FittedWeaponGroup groupObject = (FittedWeaponGroup) groupNode.getUserObject();
-            if (groupObject == target) {
+            if (groupNode.getUserObject() instanceof FittedWeaponGroup groupObject && groupObject == target) {
                 MutableTreeNode portNode = new CustomTreeNode(feature);
 
                 model.insertNodeInto(portNode, groupNode, groupNode.getChildCount());
                 model.reload();
+                return;
             }
         }
     }

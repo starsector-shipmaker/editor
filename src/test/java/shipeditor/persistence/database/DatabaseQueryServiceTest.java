@@ -147,4 +147,38 @@ class DatabaseQueryServiceTest {
             assertFalse(dbInfoMap.containsKey(orphanFile));
         }
     }
+
+    @Test
+    void testCoreIndexManagerIndexesStyleConfigFiles() throws Exception {
+        Path coreDir = tempDir.resolve("starsector-core");
+        Path configDir = coreDir.resolve("data").resolve("config");
+        java.nio.file.Files.createDirectories(configDir);
+        java.nio.file.Files.writeString(configDir.resolve("engine_styles.json"), "{\"LOW_TECH\":{\"engineColor\":[255,125,25,255]}}");
+        java.nio.file.Files.writeString(configDir.resolve("hull_styles.json"), "{\"LOW_TECH\":{}}");
+
+        var originalSettings = shipeditor.persistence.SettingsManager.getSettings();
+        try {
+            String escapedCore = coreDir.toAbsolutePath().toString().replace("\\", "\\\\");
+            shipeditor.persistence.Settings settings = shipeditor.persistence.SettingsManager
+                    .getMapperForSettingsFile()
+                    .readValue("{\"coreFolderPath\":\"" + escapedCore + "\"}", shipeditor.persistence.Settings.class);
+            shipeditor.persistence.SettingsManager.setSettings(settings);
+            CoreIndexManager.reset();
+            DatabaseQueryService.clearTypeCache();
+
+            List<IndexedFile> engineStyleFiles = DatabaseQueryService.getFilesByType(
+                    shipeditor.utility.text.StringConstants.ENGINE_STYLE_JSON_TYPE);
+            List<IndexedFile> hullStyleFiles = DatabaseQueryService.getFilesByType(
+                    shipeditor.utility.text.StringConstants.HULL_STYLE_JSON_TYPE);
+
+            assertEquals(1, engineStyleFiles.size(), "Core engine_styles.json must be indexed");
+            assertEquals("engine_styles.json", engineStyleFiles.get(0).getFileName());
+            assertEquals(1, hullStyleFiles.size(), "Core hull_styles.json must be indexed");
+            assertEquals("hull_styles.json", hullStyleFiles.get(0).getFileName());
+        } finally {
+            shipeditor.persistence.SettingsManager.setSettings(originalSettings);
+            CoreIndexManager.reset();
+            DatabaseQueryService.clearTypeCache();
+        }
+    }
 }

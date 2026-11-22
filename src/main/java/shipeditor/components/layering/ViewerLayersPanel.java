@@ -10,7 +10,6 @@ import org.kordamp.ikonli.boxicons.BoxiconsRegular;
 import org.kordamp.ikonli.swing.FontIcon;
 
 import shipeditor.communication.EventBus;
-import shipeditor.communication.events.files.FileEvents.HullFileOpened;
 import shipeditor.communication.events.files.FileEvents.HullSaveQueued;
 import shipeditor.communication.events.files.FileEvents.VariantSaveQueued;
 import shipeditor.communication.events.viewer.layers.LayerEvents.ActiveLayerUpdated;
@@ -455,7 +454,7 @@ public final class ViewerLayersPanel extends SortableTabbedPane {
             createHullData.addActionListener(event -> {
                 HullSpecFile created = new HullSpecFile();
                 shipLayer.initializeHullData(created);
-                EventBus.publish(new HullFileOpened(created, null));
+                EventBus.publish(new ActiveLayerUpdated(shipLayer));
             });
             menu.add(createHullData);
 

@@ -17,11 +17,15 @@ public class Point2DSerializer extends JsonSerializer<Point2D.Double> {
                           SerializerProvider serializers) throws IOException {
         gen.writeStartArray();
         PrettyPrinter prettyPrinter = gen.getPrettyPrinter();
-        prettyPrinter.beforeArrayValues(gen);
+        if (prettyPrinter != null) {
+            prettyPrinter.beforeArrayValues(gen);
+        }
 
         SerializationUtilities.writePoint2DForSingle(value, gen);
 
-        writeClosingIndentation(gen);
+        if (prettyPrinter != null) {
+            writeClosingIndentation(gen);
+        }
 
         gen.writeEndArray();
     }

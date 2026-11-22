@@ -197,6 +197,11 @@ public final class SettingsManager {
     }
 
     public static boolean isCoreFolder(Path directory) {
+        if (directory == null) return false;
+        Path corePath = getCoreFolderPath();
+        if (corePath != null && directory.toAbsolutePath().normalize().equals(corePath.toAbsolutePath().normalize())) {
+            return true;
+        }
         Path fileNamePath = directory.getFileName();
         if (fileNamePath == null) return false;
         return SettingsManager.isCoreFolder(fileNamePath.toString());

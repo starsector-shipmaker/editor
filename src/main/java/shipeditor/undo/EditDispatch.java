@@ -195,7 +195,7 @@ public final class EditDispatch {
     }
 
     public static void postEngineSizeChanged(EnginePoint enginePoint, Size2D updated) {
-        Size2D oldSize = enginePoint.getSize();
+        Size2D oldSize = new Size2D(enginePoint.getBaseWidth(), enginePoint.getBaseLength());
         Edit sizeEdit = new EngineSizeSet(enginePoint, oldSize, updated);
         EditDispatch.postContinuousEdit(sizeEdit);
         enginePoint.setSize(updated);
@@ -213,7 +213,7 @@ public final class EditDispatch {
     }
 
     public static void postEngineStyleChanged(EnginePoint enginePoint, EngineStyle updated) {
-        EngineStyle oldStyle = enginePoint.getStyle();
+        EngineStyle oldStyle = enginePoint.getBaseStyle();
         Edit styleEdit = new EngineStyleSet(enginePoint, oldStyle, updated);
         UndoOverseer.post(styleEdit);
         enginePoint.setStyle(updated);

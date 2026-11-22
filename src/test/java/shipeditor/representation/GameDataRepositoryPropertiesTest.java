@@ -92,10 +92,14 @@ class GameDataRepositoryPropertiesTest {
 
     @Test
     void testSyntheticFallbacksForUnknownEntries() {
+        int initialHullmodCount = repository.getAllHullmodEntries().size();
         shipeditor.components.datafiles.entities.HullmodCSVEntry syntheticHullmod = repository.getOrCreateHullmodEntry("unknown_mod");
         Assertions.assertNotNull(syntheticHullmod);
         Assertions.assertEquals("unknown_mod", syntheticHullmod.getID());
         Assertions.assertEquals("unknown_mod", syntheticHullmod.toString());
+        Assertions.assertEquals(initialHullmodCount, repository.getAllHullmodEntries().size(),
+                "Synthetic fallback should not mutate allHullmodEntries");
+        Assertions.assertSame(syntheticHullmod, repository.getOrCreateHullmodEntry("unknown_mod"));
 
         shipeditor.components.datafiles.entities.WingCSVEntry syntheticWing = repository.getOrCreateWingEntry("unknown_wing");
         Assertions.assertNotNull(syntheticWing);

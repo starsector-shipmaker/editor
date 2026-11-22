@@ -15,10 +15,14 @@ import shipeditor.representation.weapon.WeaponEnums.WeaponSize;
 import shipeditor.representation.weapon.WeaponEnums.WeaponType;
 import shipeditor.utility.Utility; // force rebuild
 import shipeditor.utility.overseers.StaticController;
+import shipeditor.utility.themes.Themes;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
+import java.awt.Insets;
 
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -139,9 +143,14 @@ public class SlotDataControlPane extends AbstractSlotValuesPanel {
         JLabel infoLabel = new JLabel(StringManager.getString("NONE"));
         infoLabel.setBorder(new javax.swing.border.EmptyBorder(0, 4, 0, 0));
 
-        JPanel buttonPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.TRAILING, 4, 0));
-        JButton installButton = new JButton(StringManager.getString("INSTALL"));
-        JButton removeButton = new JButton(StringManager.getString("REMOVE"));
+        JPanel buttonPanel = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.TRAILING, 2, 0));
+        JButton installButton = new JButton(StringManager.getString("INSTALL"),
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 14, Themes.getIconColor()));
+        installButton.setMargin(new Insets(1, 5, 1, 5));
+        JButton removeButton = new JButton(
+                FontIcon.of(BoxiconsRegular.TRASH, 14, Themes.getIconColor()));
+        removeButton.setMargin(new Insets(1, 5, 1, 5));
+        removeButton.setToolTipText(StringManager.getString("REMOVE"));
         removeButton.setEnabled(false);
 
         installButton.addActionListener(e -> {

@@ -318,20 +318,6 @@ public abstract class LayerPainter implements OpenGLPainter {
         return this.getSpriteCenter();
     }
 
-    /**
-     * @deprecated Use {@link #getRotationAnchor()} and {@link #getAnchor()} directly.
-     *             This convenience method obscures which center concept is being used
-     *             and is only called from one location.
-     */
-    @Deprecated(forRemoval = true)
-    public Point2D getCenterAnchorDifference() {
-        Point2D layerAnchor = getAnchor();
-        Point2D rotationAnchor = this.getRotationAnchor();
-        double x = rotationAnchor.getX() - layerAnchor.getX();
-        double y = rotationAnchor.getY() - layerAnchor.getY();
-        return new Point2D.Double(x, y);
-    }
-
     public void rotateLayer(double rotationDegrees) {
         EditDispatch.postLayerRotated(this, this.getRotationRadians(), Math.toRadians(rotationDegrees));
     }

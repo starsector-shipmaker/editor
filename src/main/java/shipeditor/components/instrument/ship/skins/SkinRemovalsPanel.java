@@ -129,8 +129,50 @@ public class SkinRemovalsPanel extends AbstractSkinOverridesPanel<AbstractTableM
         jList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         jList.setVisibleRowCount(4);
         jList.setEnabled(isSkinActive);
+        jList.setToolTipText("Right-click or press Delete to remove selected entry");
         JScrollPane scrollPane = new JScrollPane(jList);
         panel.add(scrollPane, BorderLayout.CENTER);
+
+        Runnable removeSelected = () -> {
+            if (!isSkinActive || skin == null) return;
+            int selected = jList.getSelectedIndex();
+            if (selected != -1) {
+                List<T> newList = new ArrayList<>(getter.get());
+                newList.remove(selected);
+                if (newList.isEmpty()) newList = null;
+
+                var edit = new SkinListOverrideEdit<>(setter, getter.get(), newList, EditorInstrument.SKIN_REMOVALS, skin);
+                UndoOverseer.post(edit);
+                edit.redo();
+            }
+        };
+
+        jList.getInputMap(JComponent.WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DELETE, 0), "removeEntry");
+        jList.getInputMap(JComponent.WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_BACK_SPACE, 0), "removeEntry");
+        jList.getActionMap().put("removeEntry", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                removeSelected.run();
+            }
+        });
+        jList.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                if (SwingUtilities.isRightMouseButton(e) && isSkinActive) {
+                    int idx = jList.locationToIndex(e.getPoint());
+                    if (idx >= 0) {
+                        jList.setSelectedIndex(idx);
+                        JPopupMenu menu = new JPopupMenu();
+                        JMenuItem removeItem = new JMenuItem(StringManager.getString("REMOVE"));
+                        removeItem.addActionListener(ev -> removeSelected.run());
+                        menu.add(removeItem);
+                        menu.show(jList, e.getX(), e.getY());
+                    }
+                }
+            }
+        });
 
         JPanel controlPanel = new JPanel(new BorderLayout(4, 0));
         JTextField inputField = new JTextField();
@@ -138,13 +180,11 @@ public class SkinRemovalsPanel extends AbstractSkinOverridesPanel<AbstractTableM
         inputField.putClientProperty("JTextField.placeholderText", inputHint);
         inputField.setEnabled(isSkinActive);
         JButton addButton = new JButton(StringManager.getString("ADD_1"),
-                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 14, Themes.getIconColor()));
+        addButton.setMargin(new Insets(1, 6, 1, 6));
         addButton.setEnabled(isSkinActive);
-        JButton removeButton = new JButton(StringManager.getString("REMOVE"),
-                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
-        removeButton.setEnabled(isSkinActive && !listModel.isEmpty());
 
-        addButton.addActionListener(e -> {
+        Runnable addEntry = () -> {
             if (!isSkinActive || skin == null) return;
             String text = inputField.getText().trim();
             if (text.isEmpty() || listModel.contains(text)) return;
@@ -158,34 +198,13 @@ public class SkinRemovalsPanel extends AbstractSkinOverridesPanel<AbstractTableM
                 UndoOverseer.post(edit);
                 edit.redo();
             }
-        });
+        };
 
-        removeButton.addActionListener(e -> {
-            if (!isSkinActive || skin == null) return;
-            int selected = jList.getSelectedIndex();
-            if (selected != -1) {
-                List<T> newList = new ArrayList<>(getter.get());
-                newList.remove(selected);
-                if (newList.isEmpty()) newList = null;
-
-                var edit = new SkinListOverrideEdit<>(setter, getter.get(), newList, EditorInstrument.SKIN_REMOVALS, skin);
-                UndoOverseer.post(edit);
-                edit.redo();
-            }
-        });
-
-        jList.addListSelectionListener(e -> {
-            if (isSkinActive) {
-                removeButton.setEnabled(jList.getSelectedIndex() != -1);
-            }
-        });
-
-        JPanel btnPanel = new JPanel(new GridLayout(1, 2, 4, 0));
-        btnPanel.add(addButton);
-        btnPanel.add(removeButton);
+        addButton.addActionListener(e -> addEntry.run());
+        inputField.addActionListener(e -> addEntry.run());
 
         controlPanel.add(inputField, BorderLayout.CENTER);
-        controlPanel.add(btnPanel, BorderLayout.LINE_END);
+        controlPanel.add(addButton, BorderLayout.LINE_END);
         controlPanel.setBorder(new EmptyBorder(4, 0, 0, 0));
 
         panel.add(controlPanel, BorderLayout.PAGE_END);

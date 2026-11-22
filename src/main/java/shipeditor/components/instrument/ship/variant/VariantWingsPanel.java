@@ -40,6 +40,7 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -59,8 +60,6 @@ public class VariantWingsPanel extends JPanel {
     private final Function<ShipVariant, List<WingCSVEntry>> wingsGetter;
 
     private final JButton addButton;
-
-    private final JButton removeButton;
 
     private final JButton clearAllButton;
 
@@ -98,6 +97,7 @@ public class VariantWingsPanel extends JPanel {
                 });
 
         this.wingsList = new WingsList(removeAction, wingsModel, sortAction);
+        this.wingsList.setToolTipText("Right-click or press Delete to remove selected wing");
 
         JScrollPane scroller = new JScrollPane(wingsList);
         JScrollBar verticalScrollBar = scroller.getVerticalScrollBar();
@@ -105,35 +105,19 @@ public class VariantWingsPanel extends JPanel {
 
         JPanel infoPanel = createInfoPanel();
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 4, 2));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 2, 1));
 
         addButton = new JButton("Add...",
-                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 14, Themes.getIconColor()));
+        addButton.setMargin(new Insets(1, 6, 1, 6));
+        addButton.setToolTipText("Add wing (Right-click or press Delete on an entry to remove)");
         addButton.setEnabled(false);
         addButton.addActionListener(e -> showWingPickerAndAdd());
         buttonPanel.add(addButton);
 
-        removeButton = new JButton(StringManager.getString("REMOVE"),
-                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
-        removeButton.setEnabled(false);
-        removeButton.addActionListener(e -> {
-            WingCSVEntry selected = wingsList.getSelectedValue();
-            int selectedIndex = wingsList.getSelectedIndex();
-            if (selected == null || selectedIndex < 0) return;
-            StaticController.actOnCurrentVariant((shipLayer, variant) -> {
-                var entryList = wingsGetter.apply(variant);
-                EditDispatch.postWingRemoved(entryList, shipLayer, selected, selectedIndex);
-                refreshListModel(shipLayer);
-                refreshLayerInfo(shipLayer);
-            });
-        });
-        wingsList.addListSelectionListener(e -> {
-            removeButton.setEnabled(wingsList.getSelectedValue() != null);
-        });
-        buttonPanel.add(removeButton);
-
         clearAllButton = new JButton("Clear All",
-                FontIcon.of(BoxiconsRegular.TRASH_ALT, 16, Themes.getIconColor()));
+                FontIcon.of(BoxiconsRegular.TRASH_ALT, 14, Themes.getIconColor()));
+        clearAllButton.setMargin(new Insets(1, 6, 1, 6));
         clearAllButton.setEnabled(false);
         clearAllButton.addActionListener(e -> {
             StaticController.actOnCurrentVariant((shipLayer, variant) -> {
@@ -319,9 +303,6 @@ public class VariantWingsPanel extends JPanel {
             if (addButton != null) {
                 addButton.setEnabled(false);
             }
-            if (removeButton != null) {
-                removeButton.setEnabled(false);
-            }
             if (clearAllButton != null) {
                 clearAllButton.setEnabled(false);
             }
@@ -343,9 +324,6 @@ public class VariantWingsPanel extends JPanel {
         }
         if (addButton != null) {
             addButton.setEnabled(shipReady);
-        }
-        if (removeButton != null) {
-            removeButton.setEnabled(false);
         }
         if (clearAllButton != null) {
             clearAllButton.setEnabled(shipReady && !newModel.isEmpty());

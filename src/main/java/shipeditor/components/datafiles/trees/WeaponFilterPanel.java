@@ -149,10 +149,6 @@ public class WeaponFilterPanel extends JPanel {
         updateTechDropdown();
     }
 
-    public static void invalidateMetadataCache() {
-        // No longer needed, as in-memory GameDataRepository handles caching.
-    }
-
     private void updateTechDropdown() {
         isUpdatingDropdown = true;
         try {

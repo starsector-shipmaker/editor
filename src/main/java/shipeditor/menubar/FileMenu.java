@@ -57,20 +57,25 @@ class FileMenu extends JMenu {
         saveActiveLayer.addActionListener(e -> SaveCoordinator.saveActiveLayer());
         this.add(saveActiveLayer);
 
+        JMenu saveSpecificSubmenu = new JMenu("Save Specific...");
+        saveSpecificSubmenu.setIcon(FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));
+
         JMenuItem saveActiveHull = new JMenuItem("Save Active Hull (.ship)");
         saveActiveHull.setIcon(FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));
         saveActiveHull.addActionListener(e -> SaveCoordinator.saveActiveHull());
-        this.add(saveActiveHull);
+        saveSpecificSubmenu.add(saveActiveHull);
 
         JMenuItem saveActiveVariant = new JMenuItem("Save Active Variant (.variant)");
         saveActiveVariant.setIcon(FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));
         saveActiveVariant.addActionListener(e -> SaveCoordinator.saveActiveVariant());
-        this.add(saveActiveVariant);
+        saveSpecificSubmenu.add(saveActiveVariant);
 
         JMenuItem saveVariantAsCopy = new JMenuItem("Save Variant As Copy...");
         saveVariantAsCopy.setIcon(FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));
         saveVariantAsCopy.addActionListener(e -> SaveCoordinator.saveActiveVariantAsCopy());
-        this.add(saveVariantAsCopy);
+        saveSpecificSubmenu.add(saveVariantAsCopy);
+
+        this.add(saveSpecificSubmenu);
 
         JMenuItem saveAll = new JMenuItem(StringManager.getString("SAVE_ALL_LAYERS"));
         saveAll.setIcon(FontIcon.of(BoxiconsRegular.SAVE, 16, Themes.getIconColor()));

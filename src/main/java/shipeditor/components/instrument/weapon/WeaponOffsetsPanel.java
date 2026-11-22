@@ -11,19 +11,33 @@ import shipeditor.components.viewer.layers.weapon.WeaponPainter;
 import shipeditor.components.viewer.painters.points.weapon.WeaponOffsetPainter;
 import shipeditor.undo.EditDispatch;
 import shipeditor.utility.components.ComponentUtilities;
+import shipeditor.utility.themes.Themes;
+import org.kordamp.ikonli.boxicons.BoxiconsRegular;
+import org.kordamp.ikonli.swing.FontIcon;
 
+import javax.swing.AbstractAction;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
+import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.AbstractTableModel;
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.JCheckBox;
 import javax.swing.JSlider;
 import javax.swing.JTextField;
@@ -57,6 +71,34 @@ class WeaponOffsetsPanel extends JPanel {
         offsetsTable.setFillsViewportHeight(true);
         offsetsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         offsetsTable.setPreferredScrollableViewportSize(new java.awt.Dimension(260, 200));
+        offsetsTable.setToolTipText("Right-click or press Delete to remove selected offset");
+
+        offsetsTable.getInputMap(JComponent.WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0), "removeOffset");
+        offsetsTable.getInputMap(JComponent.WHEN_FOCUSED).put(
+                KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0), "removeOffset");
+        offsetsTable.getActionMap().put("removeOffset", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                removeSelectedOffset();
+            }
+        });
+        offsetsTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (SwingUtilities.isRightMouseButton(e)) {
+                    int row = offsetsTable.rowAtPoint(e.getPoint());
+                    if (row >= 0) {
+                        offsetsTable.setRowSelectionInterval(row, row);
+                        JPopupMenu menu = new JPopupMenu();
+                        JMenuItem removeItem = new JMenuItem(StringManager.getString("REMOVE"));
+                        removeItem.addActionListener(ev -> removeSelectedOffset());
+                        menu.add(removeItem);
+                        menu.show(offsetsTable, e.getX(), e.getY());
+                    }
+                }
+            }
+        });
 
         JScrollPane scrollPane = new JScrollPane(offsetsTable);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
@@ -130,10 +172,24 @@ class WeaponOffsetsPanel extends JPanel {
         }
     }
 
-    private JPanel createButtonPanel() {
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+    private void removeSelectedOffset() {
+        if (cachedPainter == null) return;
+        int selectedRow = offsetsTable.getSelectedRow();
+        if (selectedRow < 0) return;
+        WeaponOffsetPainter offsetPainter = cachedPainter.getOffsetPainter();
+        List<OffsetPoint> points = offsetPainter.getOffsetPoints();
+        if (selectedRow >= points.size()) return;
+        OffsetPoint toRemove = points.get(selectedRow);
+        EditDispatch.postPointRemoved(offsetPainter, toRemove);
+        refreshTableModel();
+    }
 
-        JButton addButton = new JButton(StringManager.getString("ADD_OFFSET"));
+    private JPanel createButtonPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.TRAILING, 2, 1));
+
+        JButton addButton = new JButton(StringManager.getString("ADD_OFFSET"),
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 14, Themes.getIconColor()));
+        addButton.setMargin(new Insets(1, 6, 1, 6));
         addButton.setToolTipText(StringManager.getString("ADD_A_NEW_FIRING_OFFSET_POINT"));
         addButton.addActionListener(e -> {
             if (cachedPainter == null) return;
@@ -145,26 +201,7 @@ class WeaponOffsetsPanel extends JPanel {
             refreshTableModel();
         });
 
-        JButton removeButton = new JButton(StringManager.getString("REMOVE"));
-        removeButton.setToolTipText(StringManager.getString("REMOVE_SELECTED_FIRING_OFFSET_POINT"));
-        removeButton.setEnabled(false);
-        offsetsTable.getSelectionModel().addListSelectionListener(e -> {
-            removeButton.setEnabled(offsetsTable.getSelectedRow() >= 0);
-        });
-        removeButton.addActionListener(e -> {
-            if (cachedPainter == null) return;
-            int selectedRow = offsetsTable.getSelectedRow();
-            if (selectedRow < 0) return;
-            WeaponOffsetPainter offsetPainter = cachedPainter.getOffsetPainter();
-            List<OffsetPoint> points = offsetPainter.getOffsetPoints();
-            if (selectedRow >= points.size()) return;
-            OffsetPoint toRemove = points.get(selectedRow);
-            EditDispatch.postPointRemoved(offsetPainter, toRemove);
-            refreshTableModel();
-        });
-
         panel.add(addButton);
-        panel.add(removeButton);
 
         return panel;
     }

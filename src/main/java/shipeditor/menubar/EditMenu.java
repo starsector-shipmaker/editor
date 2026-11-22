@@ -7,11 +7,7 @@ import org.kordamp.ikonli.swing.FontIcon;
 import shipeditor.communication.EventBus;
 import shipeditor.components.viewer.control.ControlPredicates;
 import shipeditor.components.viewer.ViewerEnums.PointSelectionMode;
-import shipeditor.components.viewer.layers.LayerManager;
-import shipeditor.components.viewer.layers.ship.ShipLayer;
-import shipeditor.components.viewer.layers.ship.ShipPainter;
 import shipeditor.undo.UndoOverseer;
-import shipeditor.utility.overseers.StaticController;
 import shipeditor.utility.themes.Themes;
 
 import javax.swing.ButtonGroup;
@@ -50,21 +46,6 @@ class EditMenu extends JMenu {
         KeyStroke keyStrokeToRedo = KeyStroke.getKeyStroke(KeyEvent.VK_Y, InputEvent.CTRL_DOWN_MASK);
         redo.setAccelerator(keyStrokeToRedo);
         this.add(redo);
-
-        this.addSeparator();
-
-        JMenuItem flipShip = new JMenuItem(StringManager.getString("FLIP_ACTIVE_SHIP_HORIZONTALLY"));
-        flipShip.setIcon(FontIcon.of(BoxiconsRegular.REFRESH, 16, Themes.getIconColor()));
-        flipShip.addActionListener(e -> {
-            LayerManager layerManager = StaticController.getLayerManager();
-            if (layerManager != null && layerManager.getActiveLayer() instanceof ShipLayer shipLayer) {
-                ShipPainter painter = shipLayer.getPainter();
-                if (painter != null) {
-                    painter.flipShipPointsHorizontally();
-                }
-            }
-        });
-        this.add(flipShip);
 
         this.addSeparator();
 
@@ -107,13 +88,6 @@ class EditMenu extends JMenu {
         snappingMenu.add(toggleRotationRounding);
 
         this.add(snappingMenu);
-
-        this.addSeparator();
-
-        JMenuItem slotDefaults = new JMenuItem(StringManager.getString("WEAPON_SLOT_CREATION_DEFAULTS"));
-        slotDefaults.setIcon(FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
-        slotDefaults.addActionListener(e -> shipeditor.utility.components.dialog.DialogUtilities.showSlotCreationDialog());
-        this.add(slotDefaults);
     }
 
     private JMenu createPointSelectionModeOptions() {

@@ -39,8 +39,6 @@ class DataMenu extends JMenu {
         }
         this.add(reloadAllGameData);
 
-        this.addSeparator();
-
         JMenuItem reindexData = new JMenuItem(StringManager.getString("RE_INDEX_MOD_FOLDERS_RELOAD"));
         reindexData.setIcon(FontIcon.of(BoxiconsRegular.REFRESH, 16, Themes.getIconColor()));
         reindexData.addActionListener(event -> {
@@ -86,7 +84,8 @@ class DataMenu extends JMenu {
         JMenuItem jsonCorrector = DataMenu.getJSONCorrector();
         this.add(jsonCorrector);
 
-        this.addSeparator();
+        JMenu qaSubmenu = new JMenu("QA Reports");
+        qaSubmenu.setIcon(FontIcon.of(BoxiconsRegular.SHIELD_QUARTER, 16, Themes.getIconColor()));
 
         JMenuItem qaReport = new JMenuItem(StringManager.getString("WEAPON_OFFSET_QA_REPORT"));
         qaReport.setIcon(FontIcon.of(BoxiconsRegular.SHIELD_QUARTER, 16, Themes.getIconColor()));
@@ -94,7 +93,7 @@ class DataMenu extends JMenu {
             shipeditor.utility.components.dialog.WeaponQAReportDialog dialog = new shipeditor.utility.components.dialog.WeaponQAReportDialog();
             dialog.setVisible(true);
         });
-        this.add(qaReport);
+        qaSubmenu.add(qaReport);
 
         JMenuItem hullQaReport = new JMenuItem(StringManager.getString("HULL_QA_REPORT"));
         hullQaReport.setIcon(FontIcon.of(BoxiconsRegular.SHIELD_QUARTER, 16, Themes.getIconColor()));
@@ -102,7 +101,9 @@ class DataMenu extends JMenu {
             shipeditor.utility.components.dialog.HullQAReportDialog dialog = new shipeditor.utility.components.dialog.HullQAReportDialog();
             dialog.setVisible(true);
         });
-        this.add(hullQaReport);
+        qaSubmenu.add(hullQaReport);
+
+        this.add(qaSubmenu);
     }
 
     private static JMenuItem getJSONCorrector() {

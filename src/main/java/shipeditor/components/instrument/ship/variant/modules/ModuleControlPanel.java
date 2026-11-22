@@ -18,8 +18,8 @@ import shipeditor.representation.GameDataRepository;
 import shipeditor.representation.RepresentationEnums.ShipTypeHints;
 import shipeditor.representation.ship.HullSpecFile;
 import shipeditor.representation.ship.VariantFile;
-import shipeditor.undo.EditDispatch;
 import shipeditor.utility.Utility;
+import shipeditor.utility.components.widgets.SimpleDocumentListener;
 import shipeditor.utility.objects.Pair;
 import shipeditor.utility.themes.Themes;
 import org.kordamp.ikonli.boxicons.BoxiconsRegular;
@@ -37,11 +37,9 @@ import javax.swing.JSlider;
 import javax.swing.JTextField;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
-import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Insets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -376,7 +374,8 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
         });
 
         JButton installButton = new JButton(StringManager.getString("INSTALL_1"),
-                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 16, Themes.getIconColor()));
+                FontIcon.of(BoxiconsRegular.PLUS_CIRCLE, 14, Themes.getIconColor()));
+        installButton.setMargin(new Insets(1, 6, 1, 6));
         installButton.setToolTipText(StringManager.getString("INSTALL_SELECTED_VARIANT_AS_MODULE_TO_THE_SELECTED_SLOT"));
         installButton.addActionListener(e -> {
             VariantFile selected = (VariantFile) variantPicker.getSelectedItem();
@@ -386,31 +385,8 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
             }
         });
 
-        JButton clearButton = new JButton(StringManager.getString("CLEAR"),
-                FontIcon.of(BoxiconsRegular.TRASH, 16, Themes.getIconColor()));
-        clearButton.setToolTipText(StringManager.getString("REMOVE_SELECTED_MODULE_FROM_VARIANT"));
-        clearButton.addActionListener(e -> {
-            if (moduleList == null) return;
-            InstalledFeature selectedFeature = moduleList.getSelectedValue();
-            if (selectedFeature == null) return;
-            LayerPainter painter = getCachedLayerPainter();
-            if (!(painter instanceof ShipPainter shipPainter)) return;
-            ShipVariant variant = shipPainter.getActiveVariant();
-            if (variant == null || variant.isEmpty()) return;
-            var modules = variant.getFittedModules();
-            String slotID = selectedFeature.getSlotID();
-            InstalledFeature toRemove = modules.get(slotID);
-            if (toRemove != null) {
-                EditDispatch.postFeatureUninstalled(modules, slotID, toRemove, null);
-            }
-        });
-
         controlsRow.add(variantPicker, BorderLayout.CENTER);
-
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
-        buttonsPanel.add(installButton);
-        buttonsPanel.add(clearButton);
-        controlsRow.add(buttonsPanel, BorderLayout.LINE_END);
+        controlsRow.add(installButton, BorderLayout.LINE_END);
 
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
@@ -421,23 +397,6 @@ public class ModuleControlPanel extends LayerPropertiesPanel {
         panel.add(contentPanel, BorderLayout.CENTER);
 
         return panel;
-    }
-
-    private record SimpleDocumentListener(Runnable callback) implements DocumentListener {
-        @Override
-        public void insertUpdate(DocumentEvent e) {
-            callback.run();
-        }
-
-        @Override
-        public void removeUpdate(DocumentEvent e) {
-            callback.run();
-        }
-
-        @Override
-        public void changedUpdate(DocumentEvent e) {
-            callback.run();
-        }
     }
 
 }

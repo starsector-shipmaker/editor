@@ -7,8 +7,22 @@ set -e
 
 # Force X11 backend for Java AWT to ensure LWJGL's GLX works correctly under Wayland
 export GDK_BACKEND=x11
-# Fix for non-reparenting window managers like dwm, sway (XWayland), and openbox
-export _JAVA_AWT_WM_NONREPARENTING=1
+# Only enable _JAVA_AWT_WM_NONREPARENTING on actual non-reparenting WMs or Wayland/XWayland.
+# Setting it on reparenting X11 WMs (e.g., Openbox, XFCE/xfwm4, KWin, Mutter) breaks
+# AWT screen-coordinate tracking and causes heavyweight JComboBox/JMenu popups to render
+# near the top-left of the screen instead of under their dropdown control.
+if [ -z "${_JAVA_AWT_WM_NONREPARENTING+x}" ]; then
+    wm_hint="$(printf '%s %s' "${XDG_CURRENT_DESKTOP:-}" "${DESKTOP_SESSION:-}" | tr '[:upper:]' '[:lower:]')"
+    if [ -n "${WAYLAND_DISPLAY:-}" ] || [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
+        export _JAVA_AWT_WM_NONREPARENTING=1
+    else
+        case "$wm_hint" in
+            *dwm*|*sway*|*hyprland*|*bspwm*|*awesome*|*xmonad*|*qtile*|*herbstluftwm*|*river*|*wayfire*|*ratpoison*)
+                export _JAVA_AWT_WM_NONREPARENTING=1
+                ;;
+        esac
+    fi
+fi
 
 # Resolve directory containing ship_editor.jar
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
